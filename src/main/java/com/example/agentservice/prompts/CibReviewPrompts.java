@@ -1,4 +1,4 @@
-package com.example.agentservice.agile;
+package com.example.agentservice.prompts;
 
 import java.util.List;
 

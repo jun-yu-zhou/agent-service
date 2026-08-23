@@ -1,8 +1,8 @@
 package com.example.agentservice.agile;
 
-import com.example.document2entity.entity.LongExtractReviewResult;
-import com.example.document2entity.entity.LongFactExtractionResult;
-import com.example.document2entity.formatter.QwenLongChatFormatter;
+import com.example.agentservice.entity.LongExtractReviewResult;
+import com.example.agentservice.entity.LongFactExtractionResult;
+import com.example.agentservice.formatter.QwenLongChatFormatter;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.openai.client.OpenAIClient;

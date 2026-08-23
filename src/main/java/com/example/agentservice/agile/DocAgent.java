@@ -2,9 +2,9 @@ package com.example.agentservice.agile;
 
 
 import cn.hutool.json.JSONUtil;
-import com.example.document2entity.entity.Doc;
-import com.example.document2entity.entity.RequirementReviewResult;
-import com.example.document2entity.formatter.QwenDocDashScopeChatFormatter;
+import com.example.agentservice.entity.Doc;
+import com.example.agentservice.entity.RequirementReviewResult;
+import com.example.agentservice.formatter.QwenDocDashScopeChatFormatter;
 import io.agentscope.core.ReActAgent;
 import io.agentscope.core.message.Msg;
 import io.agentscope.core.message.MsgRole;

@@ -1,8 +1,10 @@
 package com.example.agentservice.agile;
 
-import com.example.document2entity.entity.CibDimensionResult;
-import com.example.document2entity.entity.CibReviewResult;
-import com.example.document2entity.formatter.QwenDocDashScopeChatFormatter;
+
+import com.example.agentservice.entity.CibDimensionResult;
+import com.example.agentservice.entity.CibReviewResult;
+import com.example.agentservice.formatter.QwenDocDashScopeChatFormatter;
+import com.example.agentservice.prompts.CibReviewPrompts;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.agentscope.core.ReActAgent;

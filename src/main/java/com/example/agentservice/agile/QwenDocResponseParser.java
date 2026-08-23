@@ -1,7 +1,7 @@
 package com.example.agentservice.agile;
 
-import com.example.document2entity.entity.Doc;
-import com.example.document2entity.entity.LongFactExtractionResult;
+import com.example.agentservice.entity.Doc;
+import com.example.agentservice.entity.LongFactExtractionResult;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
