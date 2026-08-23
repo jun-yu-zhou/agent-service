@@ -1,0 +1,17 @@
+# Copy this file to application-local.yml and fill in local-only values.
+# application-local.yml is ignored by Git.
+app:
+  dashscope:
+    api-key: ""
+  oss:
+    endpoint: "https://oss-cn-beijing.aliyuncs.com"
+    region: "cn-beijing"
+    bucket: ""
+    access-key-id: ""
+    access-key-secret: ""
+  imm:
+    endpoint: "imm.cn-beijing.aliyuncs.com"
+    project-name: "pdfReview"
+  documents:
+    rule-file-url: ""
+    requirement-file-url: ""
