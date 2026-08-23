@@ -5,23 +5,12 @@ import com.alibaba.dashscope.aigc.multimodalconversation.MultiModalConversationP
 import com.alibaba.dashscope.aigc.multimodalconversation.MultiModalConversationResult;
 import com.alibaba.dashscope.common.MultiModalMessage;
 import com.alibaba.dashscope.common.Role;
-import com.aliyun.imm20200930.Client;
-import com.aliyun.imm20200930.models.CreateOfficeConversionTaskRequest;
-import com.aliyun.imm20200930.models.CreateOfficeConversionTaskResponse;
-import com.aliyun.imm20200930.models.GetTaskRequest;
-import com.aliyun.imm20200930.models.GetTaskResponse;
-import com.aliyun.oss.ClientBuilderConfiguration;
-import com.aliyun.oss.OSS;
-import com.aliyun.oss.OSSClientBuilder;
-import com.aliyun.oss.common.auth.DefaultCredentialProvider;
-import com.aliyun.oss.common.comm.SignVersion;
-import com.aliyun.oss.model.ListObjectsRequest;
-import com.aliyun.oss.model.OSSObjectSummary;
-import com.aliyun.teaopenapi.models.Config;
-import com.aliyun.teautil.models.RuntimeOptions;
-import com.example.agentservice.entity.CibDimensionResult;
+import com.example.agentservice.AgentServiceApplication;
 import com.example.agentservice.config.AgentServiceConfig;
+import com.example.agentservice.entity.CibDimensionResult;
+import com.example.agentservice.entity.ImmImagePage;
 import com.example.agentservice.prompts.CibReviewPrompts;
+import com.example.agentservice.service.ImmService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.agentscope.core.ReActAgent;
@@ -30,31 +19,30 @@ import io.agentscope.core.message.MsgRole;
 import io.agentscope.core.model.ExecutionConfig;
 import io.agentscope.core.model.GenerateOptions;
 import io.agentscope.core.model.OpenAIChatModel;
-import io.agentscope.core.model.transport.HttpTransportConfig;
-import io.agentscope.core.model.transport.JdkHttpTransport;
+import com.alibaba.dashscope.protocol.ConnectionOptions;
+import org.springframework.boot.WebApplicationType;
+import org.springframework.boot.builder.SpringApplicationBuilder;
+import org.springframework.context.ConfigurableApplicationContext;
 
-import java.net.URI;
-import java.net.URLDecoder;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.time.Instant;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
+/** IMM图片转换后的多模态审查流程。IMM转换能力通过ImmService注入。 */
 public class ImmBeforeReview {
 
     private static final String MODEL_NAME = "qwen3.7-plus";
-    private static final String DASH_SCOPE_BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1";
     private static final int REVIEW_THREAD_COUNT = 6;
-
-    // 自定义域名无法从 URL 推断真实 Bucket，请按 OSS 控制台实际配置修改。
-    private static final String OUTPUT_PREFIX = "imm-review";
-    private static final int OUTPUT_WAIT_SECONDS = 600;
-
+    private static final ConnectionOptions MULTIMODAL_CONNECTION_OPTIONS = ConnectionOptions.builder()
+            .connectTimeout(Duration.ofSeconds(30))
+            .writeTimeout(Duration.ofMinutes(5))
+            .readTimeout(Duration.ofMinutes(30))
+            .build();
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final List<String> PDF_URLS = List.of(
             "https://javawebemp.oss-cn-beijing.aliyuncs.com/Scan-%E5%AE%9C%E6%98%8C%E5%87%A0%E4%BD%95%E6%B5%8B%E7%BB%98%E7%A7%91%E6%8A%80%E6%9C%89%E9%99%90%E5%85%AC%E5%8F%B88960772218806061282.pdf",
@@ -62,162 +50,36 @@ public class ImmBeforeReview {
             "https://javawebemp.oss-cn-beijing.aliyuncs.com/%E4%B8%89%E5%B3%A1%E5%A4%A7%E5%AD%A6%E6%96%B0%E5%BB%BA%E5%AD%A6%E7%94%9F%E5%85%AC%E5%AF%93%E9%A1%B9%E7%9B%AE%E5%A4%9A%E6%B5%8B%E5%90%88%E4%B8%80%E7%AB%9E%E4%BA%89%E6%80%A7%E7%A3%8B%E5%95%86%E5%93%8D%E5%BA%94%E6%96%87%E4%BB%B6%EF%BC%88%E6%8A%95%E6%A0%87%E6%96%87%E4%BB%B6%EF%BC%89--%E6%B9%96%E5%8C%97%E6%8D%B7%E5%B8%86%E7%A7%91%E6%8A%80%E6%9C%89%E9%99%90%E5%85%AC%E5%8F%B8-%E6%B9%96%E5%8C%97%E6%8D%B7%E5%B8%86%E7%A7%91%E6%8A%80%E6%9C%89%E9%99%90%E5%85%AC%E5%8F%B85201011215828763487.pdf",
             "https://javawebemp.oss-cn-beijing.aliyuncs.com/%E4%BA%8C%E8%BD%AE%E6%8A%A5%E4%BB%B7%281%29-%E5%AE%9C%E6%98%8C%E5%87%A0%E4%BD%95%E6%B5%8B%E7%BB%98%E7%A7%91%E6%8A%80%E6%9C%89%E9%99%90%E5%85%AC%E5%8F%B81732505438540525103.pdf");
 
-    public static void main(String[] args) throws Exception {
-        long startNanos = System.nanoTime();
-        OSS ossClient = createOssClient();
-        Client immClient = createImmClient();
-        JdkHttpTransport httpTransport = newHttpTransport();
-        try {
-            List<ImagePage> imagePages = convertPdfsToImages(ossClient, immClient, PDF_URLS);
-            System.out.println("总图片数: " + imagePages.size());
-            System.out.println("阶段2/3：开始并发执行6个多模态专项审查...");
-            List<CibDimensionResult> dimensionResults = reviewDimensions(imagePages);
-            System.out.println("阶段3/3：专项审查完成，开始生成汇总报告...");
-            String report = generateReport(dimensionResults, httpTransport);
-            System.out.println(report);
-        } finally {
-            ossClient.shutdown();
+    private final ImmService immService;
+
+    public ImmBeforeReview(ImmService immService) {
+        this.immService = immService;
+    }
+
+    public static void main(String[] args) {
+        SpringApplicationBuilder application = new SpringApplicationBuilder(AgentServiceApplication.class)
+                .web(WebApplicationType.NONE);
+        try (ConfigurableApplicationContext context = application.run()) {
+            ImmBeforeReview review = new ImmBeforeReview(context.getBean(ImmService.class));
+            review.execute(args.length == 0 ? PDF_URLS : Arrays.asList(args));
+        } catch (Exception exception) {
+            throw new IllegalStateException("IMM审查流程执行失败", exception);
         }
+    }
+
+    public void execute(List<String> pdfUrls) throws Exception {
+        long startNanos = System.nanoTime();
+        List<ImmImagePage> imagePages = immService.convertPdfsToImages(pdfUrls);
+        System.out.println("总图片数: " + imagePages.size());
+        System.out.println("阶段2/3：开始并发执行6个多模态专项审查...");
+        List<CibDimensionResult> dimensionResults = reviewDimensions(imagePages);
+        System.out.println("阶段3/3：专项审查完成，开始生成汇总报告...");
+        String report = generateReport(dimensionResults);
+        System.out.println(report);
         System.out.printf("总耗时: %.3f 秒%n", (System.nanoTime() - startNanos) / 1_000_000_000D);
     }
 
-    private static OSS createOssClient() throws Exception {
-        DefaultCredentialProvider credentialsProvider =
-                new DefaultCredentialProvider(AgentServiceConfig.ossAccessKeyId(),
-                        AgentServiceConfig.ossAccessKeySecret());
-        ClientBuilderConfiguration configuration = new ClientBuilderConfiguration();
-        configuration.setSignatureVersion(SignVersion.V4);
-        return OSSClientBuilder.create()
-                .endpoint(AgentServiceConfig.ossEndpoint())
-                .region(AgentServiceConfig.ossRegion())
-                .credentialsProvider(credentialsProvider)
-                .clientConfiguration(configuration)
-                .build();
-    }
-
-    private static Client createImmClient() throws Exception {
-        Config config = new Config()
-                .setAccessKeyId(AgentServiceConfig.ossAccessKeyId())
-                .setAccessKeySecret(AgentServiceConfig.ossAccessKeySecret())
-                .setRegionId(AgentServiceConfig.ossRegion())
-                .setEndpoint(AgentServiceConfig.immEndpoint());
-        return new Client(config);
-    }
-
-    private static List<ImagePage> convertPdfsToImages(OSS ossClient, Client immClient, List<String> pdfUrls)
-            throws Exception {
-        List<ImagePage> allImagePages = new ArrayList<>();
-        for (String pdfUrl : pdfUrls) {
-            if (!pdfUrl.toLowerCase().contains(".pdf")) {
-                throw new IllegalArgumentException("仅支持PDF文件: " + pdfUrl);
-            }
-            String sourceKey = objectKey(pdfUrl);
-            String outputPrefix = OUTPUT_PREFIX + "/" + UUID.randomUUID() + "/";
-            CreateOfficeConversionTaskRequest request = new CreateOfficeConversionTaskRequest()
-                    .setProjectName(AgentServiceConfig.immProjectName())
-                    .setSourceURI("oss://" + AgentServiceConfig.ossBucket() + "/" + sourceKey)
-                    .setSourceType("pdf")
-                    .setTargetType("png")
-                    .setTargetURIPrefix("oss://" + AgentServiceConfig.ossBucket() + "/" + outputPrefix)
-                    .setStartPage(1L)
-                    .setEndPage(-1L);
-            CreateOfficeConversionTaskResponse task = immClient.createOfficeConversionTaskWithOptions(
-                    request, new RuntimeOptions());
-            String taskId = task.getBody().getTaskId();
-            System.out.println("已提交IMM转换任务: " + taskId + ", project=" + AgentServiceConfig.immProjectName()
-                    + ", object=" + sourceKey);
-            waitForImmTask(immClient, taskId);
-
-            List<OSSObjectSummary> outputs = waitForOutputs(ossClient, outputPrefix);
-            if (outputs.isEmpty()) {
-                throw new IllegalStateException("OSS/IMM转换未生成图片: " + sourceKey);
-            }
-            outputs.sort(Comparator.comparingInt((OSSObjectSummary item) -> pageNumber(item.getKey()))
-                    .thenComparing(OSSObjectSummary::getKey));
-            for (int outputIndex = 0; outputIndex < outputs.size(); outputIndex++) {
-                OSSObjectSummary output = outputs.get(outputIndex);
-                String imageUrl = ossClient.generatePresignedUrl(
-                        AgentServiceConfig.ossBucket(), output.getKey(), Date.from(Instant.now().plus(Duration.ofHours(2)))).toString();
-                int page = pageNumber(output.getKey());
-                if (page == Integer.MAX_VALUE) {
-                    page = outputIndex + 1;
-                }
-                allImagePages.add(new ImagePage(documentName(sourceKey), page, imageUrl));
-                System.out.println("图片OSS URL: " + imageUrl);
-            }
-        }
-        return allImagePages;
-    }
-
-    private static void waitForImmTask(Client immClient, String taskId) throws Exception {
-        long deadline = System.nanoTime() + Duration.ofSeconds(OUTPUT_WAIT_SECONDS).toNanos();
-        while (System.nanoTime() < deadline) {
-            GetTaskResponse response = immClient.getTaskWithOptions(
-                    new GetTaskRequest()
-                            .setProjectName(AgentServiceConfig.immProjectName())
-                            .setTaskType("OfficeConversion")
-                            .setTaskId(taskId),
-                    new RuntimeOptions());
-            var body = response.getBody();
-            String status = body == null ? null : body.getStatus();
-            System.out.println("IMM任务状态: " + status + ", progress="
-                    + (body == null ? null : body.getProgress()));
-            if ("Succeeded".equalsIgnoreCase(status) || "Success".equalsIgnoreCase(status)) {
-                return;
-            }
-            if ("Failed".equalsIgnoreCase(status) || "Error".equalsIgnoreCase(status)) {
-                throw new IllegalStateException("IMM转换失败: " + (body == null ? "unknown" : body.getMessage()));
-            }
-            Thread.sleep(3000L);
-        }
-        throw new IllegalStateException("IMM转换任务超时: " + taskId);
-    }
-
-    private static List<OSSObjectSummary> waitForOutputs(OSS ossClient, String prefix) throws InterruptedException {
-        long deadline = System.nanoTime() + Duration.ofSeconds(OUTPUT_WAIT_SECONDS).toNanos();
-        int previousCount = 0;
-        int stableRounds = 0;
-        List<OSSObjectSummary> outputs = List.of();
-        while (System.nanoTime() < deadline) {
-            outputs = listOutputs(ossClient, prefix);
-            if (!outputs.isEmpty() && outputs.size() == previousCount) {
-                stableRounds++;
-                if (stableRounds >= 3) {
-                    return outputs;
-                }
-            } else {
-                stableRounds = 0;
-            }
-            previousCount = outputs.size();
-            Thread.sleep(2000L);
-        }
-        return outputs;
-    }
-
-    private static List<OSSObjectSummary> listOutputs(OSS ossClient, String prefix) {
-        List<OSSObjectSummary> result = new ArrayList<>();
-        String marker = null;
-        do {
-            var page = ossClient.listObjects(new ListObjectsRequest(AgentServiceConfig.ossBucket()).withPrefix(prefix).withMarker(marker));
-            result.addAll(page.getObjectSummaries().stream()
-                    .filter(item -> item.getKey().endsWith(".png"))
-                    .toList());
-            marker = page.isTruncated() ? page.getNextMarker() : null;
-        } while (marker != null && !marker.isBlank());
-        return result;
-    }
-
-    private static JdkHttpTransport newHttpTransport() {
-        return JdkHttpTransport.builder()
-                .config(HttpTransportConfig.builder()
-                        .connectTimeout(Duration.ofSeconds(30))
-                        .readTimeout(Duration.ofMinutes(20))
-                        .writeTimeout(Duration.ofMinutes(2))
-                        .build())
-                .build();
-    }
-
-    private static List<CibDimensionResult> reviewDimensions(List<ImagePage> imagePages) {
+    private List<CibDimensionResult> reviewDimensions(List<ImmImagePage> imagePages) {
         ExecutorService executor = Executors.newFixedThreadPool(REVIEW_THREAD_COUNT);
         try {
             List<CompletableFuture<CibDimensionResult>> futures = CibReviewPrompts.DIMENSIONS.stream()
@@ -230,8 +92,8 @@ public class ImmBeforeReview {
         }
     }
 
-    private static CibDimensionResult reviewDimension(
-            CibReviewPrompts.Dimension dimension, List<ImagePage> imagePages) {
+    private CibDimensionResult reviewDimension(
+            CibReviewPrompts.Dimension dimension, List<ImmImagePage> imagePages) {
         System.out.println("开始专项审查：" + dimension.name());
         try {
             MultiModalConversationResult response = callMultimodal(dimension, imagePages);
@@ -259,10 +121,10 @@ public class ImmBeforeReview {
         }
     }
 
-    private static MultiModalConversationResult callMultimodal(
-            CibReviewPrompts.Dimension dimension, List<ImagePage> imagePages) throws Exception {
+    private MultiModalConversationResult callMultimodal(
+            CibReviewPrompts.Dimension dimension, List<ImmImagePage> imagePages) throws Exception {
         List<Map<String, Object>> content = new ArrayList<>();
-        for (ImagePage imagePage : imagePages) {
+        for (ImmImagePage imagePage : imagePages) {
             content.add(Map.of("image", imagePage.url()));
         }
         content.add(Map.of("text", "图片顺序与证据来源映射：\n" + imageMapping(imagePages)
@@ -283,10 +145,13 @@ public class ImmBeforeReview {
                 .maxLength(4096)
                 .temperature(0.2F)
                 .build();
-        return new MultiModalConversation().call(param);
+        return new MultiModalConversation(
+                "http",
+                "https://dashscope.aliyuncs.com/api/v1",
+                MULTIMODAL_CONNECTION_OPTIONS).call(param);
     }
 
-    private static String imageMapping(List<ImagePage> imagePages) {
+    private String imageMapping(List<ImmImagePage> imagePages) {
         StringBuilder mapping = new StringBuilder();
         int start = 1;
         int index = 0;
@@ -307,7 +172,7 @@ public class ImmBeforeReview {
         return mapping.toString();
     }
 
-    private static String extractText(MultiModalConversationResult response) {
+    private String extractText(MultiModalConversationResult response) {
         if (response == null || response.getOutput() == null
                 || response.getOutput().getChoices() == null
                 || response.getOutput().getChoices().isEmpty()
@@ -325,7 +190,7 @@ public class ImmBeforeReview {
                 .reduce("", String::concat);
     }
 
-    private static void printUsage(String dimension, MultiModalConversationResult response) {
+    private void printUsage(String dimension, MultiModalConversationResult response) {
         int input = response.getUsage() == null || response.getUsage().getInputTokens() == null
                 ? 0 : response.getUsage().getInputTokens();
         int output = response.getUsage() == null || response.getUsage().getOutputTokens() == null
@@ -334,17 +199,15 @@ public class ImmBeforeReview {
                 + ", output=" + output + ", total=" + (input + output));
     }
 
-    private static String generateReport(List<CibDimensionResult> dimensionResults,
-                                         JdkHttpTransport httpTransport) {
+    String generateReport(List<CibDimensionResult> dimensionResults) {
         ReActAgent reportAgent = ReActAgent.builder()
                 .name("cib-report")
                 .sysPrompt(CibReviewPrompts.REPORT_PROMPT)
                 .model(OpenAIChatModel.builder()
                         .apiKey(AgentServiceConfig.dashScopeApiKey())
-                        .modelName("qwen3.8-max")
-                        .baseUrl(DASH_SCOPE_BASE_URL)
+                        .modelName("qwen3.7-plus")
+                        .baseUrl("https://dashscope.aliyuncs.com/compatible-mode/v1")
                         .endpointPath("/chat/completions")
-                        .httpTransport(httpTransport)
                         .stream(true)
                         .generateOptions(GenerateOptions.builder()
                                 .maxTokens(8192)
@@ -367,7 +230,7 @@ public class ImmBeforeReview {
         return response.getTextContent();
     }
 
-    private static String toJson(Object value) {
+    private String toJson(Object value) {
         try {
             return OBJECT_MAPPER.writeValueAsString(value);
         } catch (JsonProcessingException exception) {
@@ -375,36 +238,4 @@ public class ImmBeforeReview {
         }
     }
 
-    private static String objectKey(String url) {
-        String path = URI.create(url).getRawPath();
-        if (path == null || path.length() <= 1) {
-            throw new IllegalArgumentException("OSS URL没有对象路径: " + url);
-        }
-        return URLDecoder.decode(path.substring(1).replace("+", "%2B"), StandardCharsets.UTF_8);
-    }
-
-    private static int pageNumber(String key) {
-        String fileName = key.substring(key.lastIndexOf('/') + 1);
-        String stem = fileName.substring(0, fileName.lastIndexOf('.'));
-        try {
-            return Integer.parseInt(stem);
-        } catch (RuntimeException ignored) {
-            Matcher matcher = Pattern.compile("(\\d+)$").matcher(stem);
-            if (matcher.find()) {
-                try {
-                    return Integer.parseInt(matcher.group(1));
-                } catch (NumberFormatException ignoredNumber) {
-                    // Fall through to the stable OSS key order.
-                }
-            }
-            return Integer.MAX_VALUE;
-        }
-    }
-
-    private static String documentName(String sourceKey) {
-        return sourceKey.substring(sourceKey.lastIndexOf('/') + 1);
-    }
-
-    private record ImagePage(String document, int page, String url) {
-    }
 }

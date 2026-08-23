@@ -101,7 +101,7 @@ public class PDFReview {
     private static OpenAIChatModel newReportModel(JdkHttpTransport httpTransport) {
         return OpenAIChatModel.builder()
                 .apiKey(com.example.agentservice.config.AgentServiceConfig.dashScopeApiKey())
-                .modelName("qwen3.8-max")
+                .modelName("qwen3.7-plus")
                 .baseUrl(QWEN_LONG_BASE_URL)
                 .endpointPath("/chat/completions")
                 .httpTransport(httpTransport)

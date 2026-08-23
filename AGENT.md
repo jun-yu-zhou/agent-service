@@ -8,6 +8,7 @@
 - `DocConcurrencyAgent`：使用 `qwen-doc-turbo` 并发执行投标文件专项审查，再生成汇总报告。
 - `PDFReview`、`LongExtractBeforeReview`：PDF 上传、长文档事实抽取和报告汇总实验。
 - `ImmBeforeReview`：使用 OSS/IMM 将 PDF 转成图片，再调用多模态模型审查。
+- `ImmService` / `ImmServiceImpl`：提供 OSS/IMM PDF 转逐页图片服务，业务流程通过构造器注入使用。
 - `BidControlReview`：使用 `qwen-doc-turbo` 审查招标文件控标风险，再使用 `qwen3.7-plus` 汇总为 Markdown 表格。
 
 ## 凭证配置
@@ -46,6 +47,8 @@
 - `qwen-long`：通过 `QwenLongChatFormatter` 传递文件 ID，适合长文档实验。
 - PDF 多模态流程使用 `PdfDashScopeChatFormatter` 或 IMM 转换后的图片 URL。
 - `qwen3.7-plus`、`qwen3.8-max`：通过 OpenAI 兼容接口生成文本汇总报告。
+
+IMM 转换统一调用 `ImmService.convertPdfsToImages`，返回包含文档名、页码和签名图片 URL 的 `ImmImagePage` 列表。不要在审查 Agent 中直接创建 OSS 或 IMM 客户端；新增流程应注入 `ImmService`。独立运行 `ImmBeforeReview` 时，main 会启动非 Web Spring 上下文并获取 `ImmService` Bean。
 
 模型提示词应明确事实来源、输出格式和证据要求。法律、合规类结论必须要求模型给出法律文件和条款依据，并在无法核验时标记人工复核，不得由 Java 代码编造法律结论。
 

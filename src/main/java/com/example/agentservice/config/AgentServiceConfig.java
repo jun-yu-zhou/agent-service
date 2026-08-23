@@ -19,6 +19,10 @@ public final class AgentServiceConfig {
     }
 
     public static String dashScopeApiKey() {
+        String localValue = LOCAL_PROPERTIES.getProperty("app.dashscope.api-key");
+        if (localValue != null && !localValue.isBlank() && !localValue.startsWith("${")) {
+            return localValue;
+        }
         return required("app.dashscope.api-key", "DASHSCOPE_API_KEY");
     }
 
