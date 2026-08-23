@@ -17,7 +17,6 @@ import java.util.Map;
 
 public class DocReview {
 
-    private static final String ai_key = "DASHSCOPE_API_KEY";
 
     private static final String SysPrompt = """
             # 你是一名投标文件围标串标审查专家，审查比对多份投标文件信息判断是否存在围标串标行为
@@ -78,7 +77,7 @@ public class DocReview {
                 .build();
 
         DashScopeChatModel model = DashScopeChatModel.builder()
-                .apiKey(ai_key)
+                .apiKey(com.example.agentservice.config.AgentServiceConfig.dashScopeApiKey())
                 .modelName("qwen-doc-turbo")
                 .endpointType(EndpointType.TEXT)
                 .formatter(new QwenDocDashScopeChatFormatter())

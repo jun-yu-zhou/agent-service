@@ -30,3 +30,7 @@ build/
 
 ### VS Code ###
 .vscode/
+
+# Local credentials and test URLs. Never commit this file.
+src/main/resources/application-local.yml
+.env

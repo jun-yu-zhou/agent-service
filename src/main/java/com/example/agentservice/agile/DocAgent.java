@@ -2,6 +2,7 @@ package com.example.agentservice.agile;
 
 
 import cn.hutool.json.JSONUtil;
+import com.example.agentservice.config.AgentServiceConfig;
 import com.example.agentservice.entity.Doc;
 import com.example.agentservice.entity.RequirementReviewResult;
 import com.example.agentservice.formatter.QwenDocDashScopeChatFormatter;
@@ -19,9 +20,6 @@ import java.util.Map;
 @Slf4j
 public class DocAgent {
 
-    private static final String DEFAULT_API_KEY = "DASHSCOPE_API_KEY";
-    private static final String DEFAULT_RULE_FILE_URL = "http://oss1.easyjcx.com/co-order/2026/07/08/73174e05f560452ba2e4fbded70027b31740272950627875044.xlsx?Expires=317111961300&OSSAccessKeyId=REDACTED&Signature=REDACTED";
-    private static final String DEFAULT_REQUIREMENT_FILE_URL = "http://oss1.easyjcx.com/co-order/2026/07/08/d527e68d721e4c3da7127e385fbf8677906041264162280110.docx?Expires=317111963194&OSSAccessKeyId=REDACTED&Signature=REDACTED";
 
     private static final String RULE_EXTRACTION_PROMPT = """
             # 角色
@@ -148,9 +146,9 @@ public class DocAgent {
     }
 
     public static void main(String[] args) {
-        String apiKey = System.getenv().getOrDefault("DASHSCOPE_API_KEY", DEFAULT_API_KEY);
-        String ruleFileUrl = args.length > 0 ? args[0] : DEFAULT_RULE_FILE_URL;
-        String requirementFileUrl = args.length > 1 ? args[1] : DEFAULT_REQUIREMENT_FILE_URL;
+        String apiKey = AgentServiceConfig.dashScopeApiKey();
+        String ruleFileUrl = args.length > 0 ? args[0] : AgentServiceConfig.ruleFileUrl();
+        String requirementFileUrl = args.length > 1 ? args[1] : AgentServiceConfig.requirementFileUrl();
 
         RequirementReviewResult result = new DocAgent(apiKey)
                 .execute(ruleFileUrl, requirementFileUrl);

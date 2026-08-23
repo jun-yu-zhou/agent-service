@@ -20,6 +20,7 @@ import com.aliyun.oss.model.OSSObjectSummary;
 import com.aliyun.teaopenapi.models.Config;
 import com.aliyun.teautil.models.RuntimeOptions;
 import com.example.agentservice.entity.CibDimensionResult;
+import com.example.agentservice.config.AgentServiceConfig;
 import com.example.agentservice.prompts.CibReviewPrompts;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -46,19 +47,11 @@ import java.util.regex.Pattern;
 
 public class ImmBeforeReview {
 
-    private static final String DASH_SCOPE_API_KEY = "DASHSCOPE_API_KEY";
     private static final String MODEL_NAME = "qwen3.7-plus";
     private static final String DASH_SCOPE_BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1";
     private static final int REVIEW_THREAD_COUNT = 6;
 
     // 自定义域名无法从 URL 推断真实 Bucket，请按 OSS 控制台实际配置修改。
-    private static final String OSS_ENDPOINT = "https://oss-cn-beijing.aliyuncs.com";
-    private static final String OSS_REGION = "cn-beijing";
-    private static final String OSS_BUCKET = "javawebemp";
-    private static final String OSS_ACCESS_KEY_ID = "ALIYUN_OSS_ACCESS_KEY_ID";
-    private static final String OSS_ACCESS_KEY_SECRET = "ALIYUN_OSS_ACCESS_KEY_SECRET";
-    private static final String IMM_PROJECT_NAME = "pdfReview";
-    private static final String IMM_ENDPOINT = "imm.cn-beijing.aliyuncs.com";
     private static final String OUTPUT_PREFIX = "imm-review";
     private static final int OUTPUT_WAIT_SECONDS = 600;
 
@@ -90,12 +83,13 @@ public class ImmBeforeReview {
 
     private static OSS createOssClient() throws Exception {
         DefaultCredentialProvider credentialsProvider =
-                new DefaultCredentialProvider(OSS_ACCESS_KEY_ID, OSS_ACCESS_KEY_SECRET);
+                new DefaultCredentialProvider(AgentServiceConfig.ossAccessKeyId(),
+                        AgentServiceConfig.ossAccessKeySecret());
         ClientBuilderConfiguration configuration = new ClientBuilderConfiguration();
         configuration.setSignatureVersion(SignVersion.V4);
         return OSSClientBuilder.create()
-                .endpoint(OSS_ENDPOINT)
-                .region(OSS_REGION)
+                .endpoint(AgentServiceConfig.ossEndpoint())
+                .region(AgentServiceConfig.ossRegion())
                 .credentialsProvider(credentialsProvider)
                 .clientConfiguration(configuration)
                 .build();
@@ -103,10 +97,10 @@ public class ImmBeforeReview {
 
     private static Client createImmClient() throws Exception {
         Config config = new Config()
-                .setAccessKeyId(OSS_ACCESS_KEY_ID)
-                .setAccessKeySecret(OSS_ACCESS_KEY_SECRET)
-                .setRegionId(OSS_REGION)
-                .setEndpoint(IMM_ENDPOINT);
+                .setAccessKeyId(AgentServiceConfig.ossAccessKeyId())
+                .setAccessKeySecret(AgentServiceConfig.ossAccessKeySecret())
+                .setRegionId(AgentServiceConfig.ossRegion())
+                .setEndpoint(AgentServiceConfig.immEndpoint());
         return new Client(config);
     }
 
@@ -120,17 +114,17 @@ public class ImmBeforeReview {
             String sourceKey = objectKey(pdfUrl);
             String outputPrefix = OUTPUT_PREFIX + "/" + UUID.randomUUID() + "/";
             CreateOfficeConversionTaskRequest request = new CreateOfficeConversionTaskRequest()
-                    .setProjectName(IMM_PROJECT_NAME)
-                    .setSourceURI("oss://" + OSS_BUCKET + "/" + sourceKey)
+                    .setProjectName(AgentServiceConfig.immProjectName())
+                    .setSourceURI("oss://" + AgentServiceConfig.ossBucket() + "/" + sourceKey)
                     .setSourceType("pdf")
                     .setTargetType("png")
-                    .setTargetURIPrefix("oss://" + OSS_BUCKET + "/" + outputPrefix)
+                    .setTargetURIPrefix("oss://" + AgentServiceConfig.ossBucket() + "/" + outputPrefix)
                     .setStartPage(1L)
                     .setEndPage(-1L);
             CreateOfficeConversionTaskResponse task = immClient.createOfficeConversionTaskWithOptions(
                     request, new RuntimeOptions());
             String taskId = task.getBody().getTaskId();
-            System.out.println("已提交IMM转换任务: " + taskId + ", project=" + IMM_PROJECT_NAME
+            System.out.println("已提交IMM转换任务: " + taskId + ", project=" + AgentServiceConfig.immProjectName()
                     + ", object=" + sourceKey);
             waitForImmTask(immClient, taskId);
 
@@ -143,7 +137,7 @@ public class ImmBeforeReview {
             for (int outputIndex = 0; outputIndex < outputs.size(); outputIndex++) {
                 OSSObjectSummary output = outputs.get(outputIndex);
                 String imageUrl = ossClient.generatePresignedUrl(
-                        OSS_BUCKET, output.getKey(), Date.from(Instant.now().plus(Duration.ofHours(2)))).toString();
+                        AgentServiceConfig.ossBucket(), output.getKey(), Date.from(Instant.now().plus(Duration.ofHours(2)))).toString();
                 int page = pageNumber(output.getKey());
                 if (page == Integer.MAX_VALUE) {
                     page = outputIndex + 1;
@@ -160,7 +154,7 @@ public class ImmBeforeReview {
         while (System.nanoTime() < deadline) {
             GetTaskResponse response = immClient.getTaskWithOptions(
                     new GetTaskRequest()
-                            .setProjectName(IMM_PROJECT_NAME)
+                            .setProjectName(AgentServiceConfig.immProjectName())
                             .setTaskType("OfficeConversion")
                             .setTaskId(taskId),
                     new RuntimeOptions());
@@ -204,7 +198,7 @@ public class ImmBeforeReview {
         List<OSSObjectSummary> result = new ArrayList<>();
         String marker = null;
         do {
-            var page = ossClient.listObjects(new ListObjectsRequest(OSS_BUCKET).withPrefix(prefix).withMarker(marker));
+            var page = ossClient.listObjects(new ListObjectsRequest(AgentServiceConfig.ossBucket()).withPrefix(prefix).withMarker(marker));
             result.addAll(page.getObjectSummaries().stream()
                     .filter(item -> item.getKey().endsWith(".png"))
                     .toList());
@@ -280,7 +274,7 @@ public class ImmBeforeReview {
                 .content(content)
                 .build();
         MultiModalConversationParam param = MultiModalConversationParam.builder()
-                .apiKey(DASH_SCOPE_API_KEY)
+                .apiKey(AgentServiceConfig.dashScopeApiKey())
                 .model(MODEL_NAME)
                 .messages(Arrays.asList(MultiModalMessage.builder()
                         .role(Role.SYSTEM.getValue())
@@ -346,7 +340,7 @@ public class ImmBeforeReview {
                 .name("cib-report")
                 .sysPrompt(CibReviewPrompts.REPORT_PROMPT)
                 .model(OpenAIChatModel.builder()
-                        .apiKey(DASH_SCOPE_API_KEY)
+                        .apiKey(AgentServiceConfig.dashScopeApiKey())
                         .modelName("qwen3.8-max")
                         .baseUrl(DASH_SCOPE_BASE_URL)
                         .endpointPath("/chat/completions")

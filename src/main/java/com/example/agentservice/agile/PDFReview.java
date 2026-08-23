@@ -35,7 +35,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class PDFReview {
-    private static final String ai_key = "DASHSCOPE_API_KEY";
     private static final String QWEN_LONG_BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1";
     private static final int MODEL_PARSING_RETRIES = 6;
     private static final int REVIEW_THREAD_COUNT = 6;
@@ -82,7 +81,7 @@ public class PDFReview {
 
     private static DashScopeChatModel newReviewModel(JdkHttpTransport httpTransport, int maxTokens) {
         return DashScopeChatModel.builder()
-                .apiKey(ai_key)
+                .apiKey(com.example.agentservice.config.AgentServiceConfig.dashScopeApiKey())
                 .modelName("qwen-long")
                 .endpointType(EndpointType.TEXT)
                 .formatter(new QwenLongChatFormatter())
@@ -101,7 +100,7 @@ public class PDFReview {
 
     private static OpenAIChatModel newReportModel(JdkHttpTransport httpTransport) {
         return OpenAIChatModel.builder()
-                .apiKey(ai_key)
+                .apiKey(com.example.agentservice.config.AgentServiceConfig.dashScopeApiKey())
                 .modelName("qwen3.8-max")
                 .baseUrl(QWEN_LONG_BASE_URL)
                 .endpointPath("/chat/completions")
@@ -238,7 +237,7 @@ public class PDFReview {
 
     private static List<String> uploadPdfFiles(List<String> urls) {
         OpenAIClient fileClient = OpenAIOkHttpClient.builder()
-                .apiKey(ai_key)
+                .apiKey(com.example.agentservice.config.AgentServiceConfig.dashScopeApiKey())
                 .baseUrl(QWEN_LONG_BASE_URL)
                 .build();
         try {

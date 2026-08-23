@@ -1,5 +1,6 @@
 package com.example.agentservice.agile;
 
+import com.example.agentservice.config.AgentServiceConfig;
 
 import com.example.agentservice.formatter.QwenDocDashScopeChatFormatter;
 import io.agentscope.core.ReActAgent;
@@ -18,7 +19,6 @@ import java.util.Map;
  */
 public class BidControlReview {
 
-    private static final String API_KEY = "DASHSCOPE_API_KEY";
     private static final String DASH_SCOPE_BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1";
     private static final String TEST_URL = "https://javawebemp.oss-cn-beijing.aliyuncs.com/%E4%B8%89%E5%B3%A1%E5%A4%A7%E5%AD%A6%E6%96%B0%E5%BB%BA%E5%AD%A6%E7%94%9F%E5%85%AC%E5%AF%93%E9%A1%B9%E7%9B%AE%E5%A4%9A%E6%B5%8B%E5%90%88%E4%B8%80%E7%AB%9E%E4%BA%89%E6%80%A7%E7%A3%8B%E5%95%86%E6%96%87%E4%BB%B69.17%E5%AE%9A%E7%A8%BF.doc";
 
@@ -91,7 +91,7 @@ public class BidControlReview {
     }
 
     private static String reviewDocument(String documentUrl, JdkHttpTransport httpTransport) {
-        DashScopeChatModel model = DashScopeChatModel.builder().apiKey(API_KEY).modelName("qwen-doc-turbo").endpointType(EndpointType.TEXT).formatter(new QwenDocDashScopeChatFormatter()).httpTransport(httpTransport).stream(true).defaultOptions(GenerateOptions.builder().maxTokens(8192).temperature(0.1D).executionConfig(ExecutionConfig.builder().timeout(Duration.ofMinutes(20)).maxAttempts(1).build()).build()).build();
+        DashScopeChatModel model = DashScopeChatModel.builder().apiKey(AgentServiceConfig.dashScopeApiKey()).modelName("qwen-doc-turbo").endpointType(EndpointType.TEXT).formatter(new QwenDocDashScopeChatFormatter()).httpTransport(httpTransport).stream(true).defaultOptions(GenerateOptions.builder().maxTokens(8192).temperature(0.1D).executionConfig(ExecutionConfig.builder().timeout(Duration.ofMinutes(20)).maxAttempts(1).build()).build()).build();
 
         ReActAgent agent = ReActAgent.builder().name("bid-control-doc-review").sysPrompt(DOC_REVIEW_PROMPT).model(model).build();
         Msg request = Msg.builder().role(MsgRole.USER).textContent("请完整阅读这份招标文件并执行控标风险审查。").metadata(Map.of(QwenDocDashScopeChatFormatter.DOC_URLS_METADATA_KEY, List.of(documentUrl), QwenDocDashScopeChatFormatter.FILE_PARSING_STRATEGY_METADATA_KEY, "auto")).build();
@@ -103,7 +103,7 @@ public class BidControlReview {
     }
 
     private static String summarize(String docReview, JdkHttpTransport httpTransport) {
-        OpenAIChatModel model = OpenAIChatModel.builder().apiKey(API_KEY).modelName("qwen3.7-plus").baseUrl(DASH_SCOPE_BASE_URL).endpointPath("/chat/completions").httpTransport(httpTransport).stream(true).generateOptions(GenerateOptions.builder().maxTokens(4096).temperature(0.1D).additionalBodyParam("enable_thinking", true).additionalBodyParam("enable_search", true).additionalBodyParam("search_options", Map.of("forced_search", true, "search_strategy", "max")).executionConfig(ExecutionConfig.builder().timeout(Duration.ofMinutes(20)).maxAttempts(1).build()).build()).build();
+        OpenAIChatModel model = OpenAIChatModel.builder().apiKey(AgentServiceConfig.dashScopeApiKey()).modelName("qwen3.7-plus").baseUrl(DASH_SCOPE_BASE_URL).endpointPath("/chat/completions").httpTransport(httpTransport).stream(true).generateOptions(GenerateOptions.builder().maxTokens(4096).temperature(0.1D).additionalBodyParam("enable_thinking", true).additionalBodyParam("enable_search", true).additionalBodyParam("search_options", Map.of("forced_search", true, "search_strategy", "max")).executionConfig(ExecutionConfig.builder().timeout(Duration.ofMinutes(20)).maxAttempts(1).build()).build()).build();
 
         ReActAgent agent = ReActAgent.builder().name("bid-control-report").sysPrompt(REPORT_PROMPT).model(model).build();
         Msg request = Msg.builder().role(MsgRole.USER).textContent("以下是qwen-doc完成的审查草稿，请按系统要求生成最终报告：\n\n" + docReview).build();

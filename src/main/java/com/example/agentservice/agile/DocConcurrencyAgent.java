@@ -26,7 +26,6 @@ import java.util.concurrent.Executors;
 
 public class DocConcurrencyAgent {
 
-    private static final String ai_key = "DASHSCOPE_API_KEY";
     private static final String DASH_SCOPE_BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1";
     private static final int REVIEW_THREAD_COUNT = 6;
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
@@ -66,7 +65,7 @@ public class DocConcurrencyAgent {
 
     private static DashScopeChatModel newReviewModel(JdkHttpTransport httpTransport, int maxTokens) {
         return DashScopeChatModel.builder()
-                .apiKey(ai_key)
+                .apiKey(com.example.agentservice.config.AgentServiceConfig.dashScopeApiKey())
                 .modelName("qwen-doc-turbo")
                 .endpointType(EndpointType.TEXT)
                 .formatter(new QwenDocDashScopeChatFormatter())
@@ -84,7 +83,7 @@ public class DocConcurrencyAgent {
 
     private static OpenAIChatModel newReportModel(JdkHttpTransport httpTransport) {
         return OpenAIChatModel.builder()
-                .apiKey(ai_key)
+                .apiKey(com.example.agentservice.config.AgentServiceConfig.dashScopeApiKey())
                 .modelName("qwen3.8-max")
                 .baseUrl(DASH_SCOPE_BASE_URL)
                 .endpointPath("/chat/completions")
