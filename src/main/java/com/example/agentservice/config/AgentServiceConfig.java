@@ -9,7 +9,7 @@ import java.util.Properties;
 
 /**
  * Loads local development settings without putting secrets in source control.
- * JVM properties and environment variables take precedence over application-local.yml.
+ * API credentials are read from application-local.yml only.
  */
 public final class AgentServiceConfig {
 
@@ -23,7 +23,7 @@ public final class AgentServiceConfig {
         if (localValue != null && !localValue.isBlank() && !localValue.startsWith("${")) {
             return localValue;
         }
-        return required("app.dashscope.api-key", "DASHSCOPE_API_KEY");
+        throw new IllegalStateException("缺少配置 app.dashscope.api-key，请在 application-local.yml 中设置");
     }
 
     public static String ossEndpoint() {

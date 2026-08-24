@@ -7,6 +7,7 @@ import com.alibaba.dashscope.common.MultiModalMessage;
 import com.alibaba.dashscope.common.Role;
 import com.example.agentservice.AgentServiceApplication;
 import com.example.agentservice.config.AgentServiceConfig;
+import com.example.agentservice.config.ModelConfig;
 import com.example.agentservice.entity.CibDimensionResult;
 import com.example.agentservice.entity.ImmImagePage;
 import com.example.agentservice.prompts.CibReviewPrompts;
@@ -16,10 +17,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.agentscope.core.ReActAgent;
 import io.agentscope.core.message.Msg;
 import io.agentscope.core.message.MsgRole;
-import io.agentscope.core.model.ExecutionConfig;
-import io.agentscope.core.model.GenerateOptions;
-import io.agentscope.core.model.OpenAIChatModel;
-import com.alibaba.dashscope.protocol.ConnectionOptions;
 import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.ConfigurableApplicationContext;
@@ -36,13 +33,7 @@ import java.util.concurrent.Executors;
 /** IMM图片转换后的多模态审查流程。IMM转换能力通过ImmService注入。 */
 public class ImmBeforeReview {
 
-    private static final String MODEL_NAME = "qwen3.7-plus";
     private static final int REVIEW_THREAD_COUNT = 6;
-    private static final ConnectionOptions MULTIMODAL_CONNECTION_OPTIONS = ConnectionOptions.builder()
-            .connectTimeout(Duration.ofSeconds(30))
-            .writeTimeout(Duration.ofMinutes(5))
-            .readTimeout(Duration.ofMinutes(30))
-            .build();
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final List<String> PDF_URLS = List.of(
             "https://javawebemp.oss-cn-beijing.aliyuncs.com/Scan-%E5%AE%9C%E6%98%8C%E5%87%A0%E4%BD%95%E6%B5%8B%E7%BB%98%E7%A7%91%E6%8A%80%E6%9C%89%E9%99%90%E5%85%AC%E5%8F%B88960772218806061282.pdf",
@@ -51,16 +42,23 @@ public class ImmBeforeReview {
             "https://javawebemp.oss-cn-beijing.aliyuncs.com/%E4%BA%8C%E8%BD%AE%E6%8A%A5%E4%BB%B7%281%29-%E5%AE%9C%E6%98%8C%E5%87%A0%E4%BD%95%E6%B5%8B%E7%BB%98%E7%A7%91%E6%8A%80%E6%9C%89%E9%99%90%E5%85%AC%E5%8F%B81732505438540525103.pdf");
 
     private final ImmService immService;
+    private final ModelConfig modelConfig;
 
     public ImmBeforeReview(ImmService immService) {
+        this(immService, ModelConfig.standalone());
+    }
+
+    public ImmBeforeReview(ImmService immService, ModelConfig modelConfig) {
         this.immService = immService;
+        this.modelConfig = modelConfig;
     }
 
     public static void main(String[] args) {
         SpringApplicationBuilder application = new SpringApplicationBuilder(AgentServiceApplication.class)
                 .web(WebApplicationType.NONE);
         try (ConfigurableApplicationContext context = application.run()) {
-            ImmBeforeReview review = new ImmBeforeReview(context.getBean(ImmService.class));
+            ImmBeforeReview review = new ImmBeforeReview(
+                    context.getBean(ImmService.class), context.getBean(ModelConfig.class));
             review.execute(args.length == 0 ? PDF_URLS : Arrays.asList(args));
         } catch (Exception exception) {
             throw new IllegalStateException("IMM审查流程执行失败", exception);
@@ -137,7 +135,7 @@ public class ImmBeforeReview {
                 .build();
         MultiModalConversationParam param = MultiModalConversationParam.builder()
                 .apiKey(AgentServiceConfig.dashScopeApiKey())
-                .model(MODEL_NAME)
+                .model(ModelConfig.QWEN37_PLUS_MODEL_NAME)
                 .messages(Arrays.asList(MultiModalMessage.builder()
                         .role(Role.SYSTEM.getValue())
                         .content(List.of(Map.of("text", CibReviewPrompts.promptFor(dimension))))
@@ -145,10 +143,7 @@ public class ImmBeforeReview {
                 .maxLength(4096)
                 .temperature(0.2F)
                 .build();
-        return new MultiModalConversation(
-                "http",
-                "https://dashscope.aliyuncs.com/api/v1",
-                MULTIMODAL_CONNECTION_OPTIONS).call(param);
+        return modelConfig.qwen37PlusMultimodalModel().call(param);
     }
 
     private String imageMapping(List<ImmImagePage> imagePages) {
@@ -203,21 +198,7 @@ public class ImmBeforeReview {
         ReActAgent reportAgent = ReActAgent.builder()
                 .name("cib-report")
                 .sysPrompt(CibReviewPrompts.REPORT_PROMPT)
-                .model(OpenAIChatModel.builder()
-                        .apiKey(AgentServiceConfig.dashScopeApiKey())
-                        .modelName("qwen3.7-plus")
-                        .baseUrl("https://dashscope.aliyuncs.com/compatible-mode/v1")
-                        .endpointPath("/chat/completions")
-                        .stream(true)
-                        .generateOptions(GenerateOptions.builder()
-                                .maxTokens(8192)
-                                .temperature(0.15D)
-                                .executionConfig(ExecutionConfig.builder()
-                                        .timeout(Duration.ofMinutes(20))
-                                        .maxAttempts(1)
-                                        .build())
-                                .build())
-                        .build())
+                .model(modelConfig.qwen37PlusReportModel())
                 .build();
         Msg request = Msg.builder()
                 .role(MsgRole.USER)

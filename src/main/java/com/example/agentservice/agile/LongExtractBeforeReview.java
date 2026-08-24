@@ -2,6 +2,7 @@ package com.example.agentservice.agile;
 
 import com.example.agentservice.entity.LongExtractReviewResult;
 import com.example.agentservice.entity.LongFactExtractionResult;
+import com.example.agentservice.config.ModelConfig;
 import com.example.agentservice.formatter.QwenLongChatFormatter;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -14,8 +15,6 @@ import io.agentscope.core.ReActAgent;
 import io.agentscope.core.message.Msg;
 import io.agentscope.core.message.MsgRole;
 import io.agentscope.core.model.*;
-import io.agentscope.core.model.transport.HttpTransportConfig;
-import io.agentscope.core.model.transport.JdkHttpTransport;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -37,6 +36,7 @@ public class LongExtractBeforeReview {
 
     private static final String DASH_SCOPE_BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1";
     private static final int THREAD_COUNT = 6;
+    private static final ModelConfig MODEL_CONFIG = ModelConfig.standalone();
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final HttpClient FILE_DOWNLOAD_CLIENT = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(30))
@@ -71,12 +71,10 @@ public class LongExtractBeforeReview {
         validatePdfUrls(pdfUrls);
         LocalDateTime start = LocalDateTime.now();
         List<String> fileIds = uploadPdfFiles(pdfUrls);
-        JdkHttpTransport httpTransport = newHttpTransport();
-
         System.out.println("阶段1/2：Qwen-Long候选事实抽取，停用COLLUSION_RISK...");
-        List<LongFactExtractionResult> extractionResults = extractFacts(pdfUrls, fileIds, httpTransport);
+        List<LongFactExtractionResult> extractionResults = extractFacts(pdfUrls, fileIds);
         System.out.println("阶段2/2：Qwen3.8-Max根据候选事实生成最终报告...");
-        String report = generateReport(extractionResults, httpTransport);
+        String report = generateReport(extractionResults);
 
         LongExtractReviewResult result = new LongExtractReviewResult();
         result.setExtractionResults(extractionResults);
@@ -87,8 +85,7 @@ public class LongExtractBeforeReview {
 
     private static List<LongFactExtractionResult> extractFacts(
             List<String> pdfUrls,
-            List<String> fileIds,
-            JdkHttpTransport httpTransport) {
+            List<String> fileIds) {
         ExecutorService executor = Executors.newFixedThreadPool(THREAD_COUNT);
         try {
             List<CompletableFuture<LongFactExtractionResult>> futures = new ArrayList<>();
@@ -97,11 +94,11 @@ public class LongExtractBeforeReview {
                     for (int index = 0; index < pdfUrls.size(); index++) {
                         int fileIndex = index;
                         futures.add(CompletableFuture.supplyAsync(
-                                () -> extract(dimension, pdfUrls, fileIds, fileIndex, httpTransport), executor));
+                                () -> extract(dimension, pdfUrls, fileIds, fileIndex), executor));
                     }
                 } else {
                     futures.add(CompletableFuture.supplyAsync(
-                            () -> extract(dimension, pdfUrls, fileIds, -1, httpTransport), executor));
+                            () -> extract(dimension, pdfUrls, fileIds, -1), executor));
                 }
             }
             return futures.stream().map(CompletableFuture::join).toList();
@@ -114,8 +111,7 @@ public class LongExtractBeforeReview {
             ExtractDimension dimension,
             List<String> pdfUrls,
             List<String> fileIds,
-            int singleFileIndex,
-            JdkHttpTransport httpTransport) {
+            int singleFileIndex) {
         List<String> selectedFileIds = singleFileIndex >= 0
                 ? List.of(fileIds.get(singleFileIndex))
                 : fileIds;
@@ -124,7 +120,7 @@ public class LongExtractBeforeReview {
                 .name("long-extract-" + dimension.code().toLowerCase(Locale.ROOT)
                         + (singleFileIndex >= 0 ? "-" + singleFileIndex : ""))
                 .sysPrompt(extractionPrompt(dimension, singleFileIndex >= 0))
-                .model(newLongModel(httpTransport))
+                .model(MODEL_CONFIG.qwenLongModel())
                 .build();
         Msg request = Msg.builder()
                 .role(MsgRole.USER)
@@ -165,13 +161,11 @@ public class LongExtractBeforeReview {
         }
     }
 
-    private static String generateReport(
-            List<LongFactExtractionResult> extractionResults,
-            JdkHttpTransport httpTransport) {
+    private static String generateReport(List<LongFactExtractionResult> extractionResults) {
         ReActAgent agent = ReActAgent.builder()
                 .name("validated-fact-report")
                 .sysPrompt(REPORT_PROMPT)
-                .model(newTextModel(httpTransport))
+                .model(MODEL_CONFIG.qwen38MaxLongReportModel())
                 .build();
         Msg request = Msg.builder()
                 .role(MsgRole.USER)
@@ -183,55 +177,6 @@ public class LongExtractBeforeReview {
             throw new IllegalStateException("报告Agent未返回内容");
         }
         return response.getTextContent();
-    }
-
-    private static DashScopeChatModel newLongModel(JdkHttpTransport httpTransport) {
-        return DashScopeChatModel.builder()
-                .apiKey(com.example.agentservice.config.AgentServiceConfig.dashScopeApiKey())
-                .modelName("qwen-long")
-                .endpointType(EndpointType.TEXT)
-                .formatter(new QwenLongChatFormatter())
-                .httpTransport(httpTransport)
-                .stream(true)
-                .defaultOptions(GenerateOptions.builder()
-                        .maxTokens(4096)
-                        .temperature(0.2D)
-                        .executionConfig(ExecutionConfig.builder()
-                                .timeout(Duration.ofMinutes(20))
-                                .maxAttempts(1)
-                                .build())
-                        .build())
-                .build();
-    }
-
-    private static OpenAIChatModel newTextModel(JdkHttpTransport httpTransport) {
-        return OpenAIChatModel.builder()
-                .apiKey(com.example.agentservice.config.AgentServiceConfig.dashScopeApiKey())
-                .modelName("qwen3.8-max")
-                .baseUrl(DASH_SCOPE_BASE_URL)
-                .endpointPath("/chat/completions")
-                .httpTransport(httpTransport)
-                .stream(true)
-                .generateOptions(GenerateOptions.builder()
-                        .maxTokens(4096)
-                        .reasoningEffort("low")
-                        .temperature(0.15D)
-                        .executionConfig(ExecutionConfig.builder()
-                                .timeout(Duration.ofMinutes(20))
-                                .maxAttempts(1)
-                                .build())
-                        .build())
-                .build();
-    }
-
-    private static JdkHttpTransport newHttpTransport() {
-        return JdkHttpTransport.builder()
-                .config(HttpTransportConfig.builder()
-                        .connectTimeout(Duration.ofSeconds(30))
-                        .readTimeout(Duration.ofMinutes(20))
-                        .writeTimeout(Duration.ofMinutes(2))
-                        .build())
-                .build();
     }
 
     private static String extractionRequest(

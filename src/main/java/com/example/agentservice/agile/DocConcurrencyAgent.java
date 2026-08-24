@@ -5,14 +5,13 @@ import com.example.agentservice.entity.CibDimensionResult;
 import com.example.agentservice.entity.CibReviewResult;
 import com.example.agentservice.formatter.QwenDocDashScopeChatFormatter;
 import com.example.agentservice.prompts.CibReviewPrompts;
+import com.example.agentservice.config.ModelConfig;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.agentscope.core.ReActAgent;
 import io.agentscope.core.message.Msg;
 import io.agentscope.core.message.MsgRole;
 import io.agentscope.core.model.*;
-import io.agentscope.core.model.transport.HttpTransportConfig;
-import io.agentscope.core.model.transport.JdkHttpTransport;
 
 import java.net.URI;
 import java.time.Duration;
@@ -28,6 +27,7 @@ public class DocConcurrencyAgent {
 
     private static final String DASH_SCOPE_BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1";
     private static final int REVIEW_THREAD_COUNT = 6;
+    private static final ModelConfig MODEL_CONFIG = ModelConfig.standalone();
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final List<String> pdfList = List.of("https://javawebemp.oss-cn-beijing.aliyuncs.com/Scan-%E5%AE%9C%E6%98%8C%E5%87%A0%E4%BD%95%E6%B5%8B%E7%BB%98%E7%A7%91%E6%8A%80%E6%9C%89%E9%99%90%E5%85%AC%E5%8F%B88960772218806061282.pdf",
             "https://javawebemp.oss-cn-beijing.aliyuncs.com/%E4%BA%8C%E8%BD%AE%E6%8A%A5%E4%BB%B7%281%29-%E5%AE%9C%E6%98%8C%E5%87%A0%E4%BD%95%E6%B5%8B%E7%BB%98%E7%A7%91%E6%8A%80%E6%9C%89%E9%99%90%E5%85%AC%E5%8F%B81732505438540525103.pdf",
@@ -43,18 +43,10 @@ public class DocConcurrencyAgent {
     public static CibReviewResult execute(List<String> pdfUrls) {
         validatePdfUrls(pdfUrls);
         LocalDateTime start = LocalDateTime.now();
-        JdkHttpTransport httpTransport = JdkHttpTransport.builder()
-                .config(HttpTransportConfig.builder()
-                        .connectTimeout(Duration.ofSeconds(30))
-                        .readTimeout(Duration.ofMinutes(20))
-                        .writeTimeout(Duration.ofMinutes(2))
-                        .build())
-                .build();
-
         System.out.println("已准备 " + pdfUrls.size() + " 份PDF URL，开始并发执行6个 qwen-doc 专项评审...");
-        List<CibDimensionResult> dimensionResults = reviewDimensions(pdfUrls, httpTransport);
+        List<CibDimensionResult> dimensionResults = reviewDimensions(pdfUrls);
         System.out.println("专项评审完成，开始生成汇总报告...");
-        String report = generateReport(dimensionResults, httpTransport);
+        String report = generateReport(dimensionResults);
 
         CibReviewResult result = new CibReviewResult();
         result.setDimensionResults(dimensionResults);
@@ -63,50 +55,12 @@ public class DocConcurrencyAgent {
         return result;
     }
 
-    private static DashScopeChatModel newReviewModel(JdkHttpTransport httpTransport, int maxTokens) {
-        return DashScopeChatModel.builder()
-                .apiKey(com.example.agentservice.config.AgentServiceConfig.dashScopeApiKey())
-                .modelName("qwen-doc-turbo")
-                .endpointType(EndpointType.TEXT)
-                .formatter(new QwenDocDashScopeChatFormatter())
-                .httpTransport(httpTransport)
-                .stream(true)
-                .defaultOptions(GenerateOptions.builder()
-                        .maxTokens(maxTokens)
-                        .executionConfig(ExecutionConfig.builder()
-                                .timeout(Duration.ofMinutes(20))
-                                .maxAttempts(1)
-                                .build())
-                        .build())
-                .build();
-    }
-
-    private static OpenAIChatModel newReportModel(JdkHttpTransport httpTransport) {
-        return OpenAIChatModel.builder()
-                .apiKey(com.example.agentservice.config.AgentServiceConfig.dashScopeApiKey())
-                .modelName("qwen3.8-max")
-                .baseUrl(DASH_SCOPE_BASE_URL)
-                .endpointPath("/chat/completions")
-                .httpTransport(httpTransport)
-                .stream(true)
-                .generateOptions(GenerateOptions.builder()
-                        .maxTokens(8192)
-                        .executionConfig(ExecutionConfig.builder()
-                                .timeout(Duration.ofMinutes(20))
-                                .maxAttempts(1)
-                                .build())
-                        .build())
-                .build();
-    }
-
-    private static List<CibDimensionResult> reviewDimensions(
-            List<String> pdfUrls,
-            JdkHttpTransport httpTransport) {
+    private static List<CibDimensionResult> reviewDimensions(List<String> pdfUrls) {
         ExecutorService executor = Executors.newFixedThreadPool(REVIEW_THREAD_COUNT);
         try {
             List<CompletableFuture<CibDimensionResult>> futures = CibReviewPrompts.DIMENSIONS.stream()
                     .map(dimension -> CompletableFuture.supplyAsync(
-                            () -> reviewDimension(dimension, pdfUrls, httpTransport), executor))
+                            () -> reviewDimension(dimension, pdfUrls), executor))
                     .toList();
             return futures.stream().map(CompletableFuture::join).toList();
         } finally {
@@ -116,13 +70,12 @@ public class DocConcurrencyAgent {
 
     private static CibDimensionResult reviewDimension(
             CibReviewPrompts.Dimension dimension,
-            List<String> pdfUrls,
-            JdkHttpTransport httpTransport) {
+            List<String> pdfUrls) {
         System.out.println("开始专项评审：" + dimension.name());
         ReActAgent agent = ReActAgent.builder()
                 .name("cib-" + dimension.code().toLowerCase(Locale.ROOT))
                 .sysPrompt(CibReviewPrompts.promptFor(dimension))
-                .model(newReviewModel(httpTransport, 4096))
+                .model(MODEL_CONFIG.qwenDocTurboReviewModel())
                 .build();
         Msg request = Msg.builder()
                 .role(MsgRole.USER)
@@ -160,13 +113,11 @@ public class DocConcurrencyAgent {
         }
     }
 
-    private static String generateReport(
-            List<CibDimensionResult> dimensionResults,
-            JdkHttpTransport httpTransport) {
+    private static String generateReport(List<CibDimensionResult> dimensionResults) {
         ReActAgent reportAgent = ReActAgent.builder()
                 .name("cib-report")
                 .sysPrompt(CibReviewPrompts.REPORT_PROMPT)
-                .model(newReportModel(httpTransport))
+                .model(MODEL_CONFIG.qwen38MaxConcurrencyReportModel())
                 .build();
         Msg request = Msg.builder()
                 .role(MsgRole.USER)

@@ -3,6 +3,7 @@ package com.example.agentservice.agile;
 
 import cn.hutool.json.JSONUtil;
 import com.example.agentservice.config.AgentServiceConfig;
+import com.example.agentservice.config.ModelConfig;
 import com.example.agentservice.entity.Doc;
 import com.example.agentservice.entity.RequirementReviewResult;
 import com.example.agentservice.formatter.QwenDocDashScopeChatFormatter;
@@ -137,12 +138,18 @@ public class DocAgent {
             """;
 
     private final String apiKey;
+    private final ModelConfig modelConfig;
 
     public DocAgent(String apiKey) {
+        this(apiKey, ModelConfig.standalone());
+    }
+
+    public DocAgent(String apiKey, ModelConfig modelConfig) {
         if (apiKey == null || apiKey.isBlank()) {
             throw new IllegalArgumentException("DashScope API key must not be blank");
         }
         this.apiKey = apiKey;
+        this.modelConfig = modelConfig;
     }
 
     public static void main(String[] args) {
@@ -164,7 +171,7 @@ public class DocAgent {
         log.info("阶段1/3：规则提取完成，共 {} 个主指标", rules.getOrder().size());
 
         log.info("阶段2/3：开始并发评审需求文件");
-        RequirementReviewResult result = new RequirementReviewService(apiKey)
+        RequirementReviewResult result = new RequirementReviewService(apiKey, modelConfig)
                 .review(rules, requirementFileUrl);
         log.info("阶段2/3：最小指标评审完成，共 {} 个，成功 {} 个，失败 {} 个",
                 result.getLeafIndicatorCount(),
@@ -183,14 +190,7 @@ public class DocAgent {
         ReActAgent ruleAgent = ReActAgent.builder()
                 .name("rule-extractor")
                 .sysPrompt(RULE_EXTRACTION_PROMPT)
-                .model(DashScopeChatModel.builder()
-                        .apiKey(apiKey)
-                        .modelName("qwen-doc-turbo")
-                        .formatter(new QwenDocDashScopeChatFormatter())
-                        .defaultOptions(GenerateOptions.builder()
-                                .temperature(0.1)
-                                .build())
-                        .build())
+                .model(modelConfig.qwenDocTurboModel())
                 .build();
 
         Msg msg = Msg.builder()

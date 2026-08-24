@@ -5,6 +5,7 @@ import com.example.agentservice.entity.Doc;
 import com.example.agentservice.entity.IndicatorReviewResult;
 import com.example.agentservice.entity.RequirementReviewResult;
 import com.example.agentservice.entity.ReviewSummaryReport;
+import com.example.agentservice.config.ModelConfig;
 import com.example.agentservice.formatter.QwenDocDashScopeChatFormatter;
 import io.agentscope.core.ReActAgent;
 import io.agentscope.core.message.Msg;
@@ -88,12 +89,18 @@ public class RequirementReviewService {
             """;
 
     private final String apiKey;
+    private final ModelConfig modelConfig;
 
     public RequirementReviewService(String apiKey) {
+        this(apiKey, ModelConfig.standalone());
+    }
+
+    public RequirementReviewService(String apiKey, ModelConfig modelConfig) {
         if (apiKey == null || apiKey.isBlank()) {
             throw new IllegalArgumentException("DashScope API key must not be blank");
         }
         this.apiKey = apiKey;
+        this.modelConfig = modelConfig;
     }
 
     public RequirementReviewResult review(Doc rules, String requirementFileUrl) {
@@ -227,19 +234,13 @@ public class RequirementReviewService {
     }
 
     private ReActAgent newAgent(String name, String modelName, String prompt, boolean documentModel) {
-        DashScopeChatModel.Builder modelBuilder = DashScopeChatModel.builder()
-                .apiKey(apiKey)
-                .modelName(modelName)
-                .defaultOptions(GenerateOptions.builder()
-                        .temperature(0.1)
-                        .build());
-        if (documentModel) {
-            modelBuilder.formatter(new QwenDocDashScopeChatFormatter());
-        }
+        DashScopeChatModel model = documentModel
+                ? modelConfig.qwenDocTurboModel()
+                : modelConfig.qwenPlusSummaryModel();
         return ReActAgent.builder()
                 .name(name)
                 .sysPrompt(prompt)
-                .model(modelBuilder.build())
+                .model(model)
                 .build();
     }
 

@@ -1,22 +1,17 @@
 package com.example.agentservice.agile;
 
 import com.example.agentservice.formatter.QwenDocDashScopeChatFormatter;
+import com.example.agentservice.config.ModelConfig;
 import io.agentscope.core.ReActAgent;
 import io.agentscope.core.message.Msg;
 import io.agentscope.core.message.MsgRole;
 import io.agentscope.core.model.DashScopeChatModel;
-import io.agentscope.core.model.EndpointType;
-import io.agentscope.core.model.ExecutionConfig;
-import io.agentscope.core.model.GenerateOptions;
-import io.agentscope.core.model.transport.HttpTransportConfig;
-import io.agentscope.core.model.transport.JdkHttpTransport;
-
-import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
 public class DocReview {
 
+    private static final ModelConfig MODEL_CONFIG = ModelConfig.standalone();
 
     private static final String SysPrompt = """
             # 你是一名投标文件围标串标审查专家，审查比对多份投标文件信息判断是否存在围标串标行为
@@ -68,28 +63,7 @@ public class DocReview {
             "https://javawebemp.oss-cn-beijing.aliyuncs.com/%E4%B8%89%E5%B3%A1%E5%A4%A7%E5%AD%A6%E6%96%B0%E5%BB%BA%E5%AD%A6%E7%94%9F%E5%85%AC%E5%AF%93%E9%A1%B9%E7%9B%AE%E5%A4%9A%E6%B5%8B%E5%90%88%E4%B8%80%E7%AB%9E%E4%BA%89%E6%80%A7%E7%A3%8B%E5%95%86%E5%93%8D%E5%BA%94%E6%96%87%E4%BB%B6%EF%BC%88%E6%8A%95%E6%A0%87%E6%96%87%E4%BB%B6%EF%BC%89--%E6%B9%96%E5%8C%97%E6%8D%B7%E5%B8%86%E7%A7%91%E6%8A%80%E6%9C%89%E9%99%90%E5%85%AC%E5%8F%B8-%E6%B9%96%E5%8C%97%E6%8D%B7%E5%B8%86%E7%A7%91%E6%8A%80%E6%9C%89%E9%99%90%E5%85%AC%E5%8F%B85201011215828763487.pdf");
 
     public static void main(String[] args) {
-        JdkHttpTransport httpTransport = JdkHttpTransport.builder()
-                .config(HttpTransportConfig.builder()
-                        .connectTimeout(Duration.ofSeconds(30))
-                        .readTimeout(Duration.ofMinutes(20))
-                        .writeTimeout(Duration.ofMinutes(2))
-                        .build())
-                .build();
-
-        DashScopeChatModel model = DashScopeChatModel.builder()
-                .apiKey(com.example.agentservice.config.AgentServiceConfig.dashScopeApiKey())
-                .modelName("qwen-doc-turbo")
-                .endpointType(EndpointType.TEXT)
-                .formatter(new QwenDocDashScopeChatFormatter())
-                .httpTransport(httpTransport)
-                .stream(true)
-                .defaultOptions(GenerateOptions.builder()
-                        .executionConfig(ExecutionConfig.builder()
-                                .timeout(Duration.ofMinutes(20))
-                                .maxAttempts(1)
-                                .build())
-                        .build())
-                .build();
+        DashScopeChatModel model = MODEL_CONFIG.qwenDocTurboModel();
 
         ReActAgent agent = ReActAgent.builder()
                 .name("doc-review")

@@ -2,6 +2,7 @@ package com.example.agentservice.agile;
 
 import com.example.agentservice.entity.CibDimensionResult;
 import com.example.agentservice.entity.CibReviewResult;
+import com.example.agentservice.config.ModelConfig;
 import com.example.agentservice.formatter.QwenLongChatFormatter;
 import com.example.agentservice.prompts.CibReviewPrompts;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -15,8 +16,6 @@ import io.agentscope.core.ReActAgent;
 import io.agentscope.core.message.Msg;
 import io.agentscope.core.message.MsgRole;
 import io.agentscope.core.model.*;
-import io.agentscope.core.model.transport.HttpTransportConfig;
-import io.agentscope.core.model.transport.JdkHttpTransport;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -38,6 +37,7 @@ public class PDFReview {
     private static final String QWEN_LONG_BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1";
     private static final int MODEL_PARSING_RETRIES = 6;
     private static final int REVIEW_THREAD_COUNT = 6;
+    private static final ModelConfig MODEL_CONFIG = ModelConfig.standalone();
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final HttpClient FILE_DOWNLOAD_CLIENT = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(30))
@@ -59,18 +59,10 @@ public class PDFReview {
         LocalDateTime start = LocalDateTime.now();
         List<String> fileIds = uploadPdfFiles(pdfUrls);
 
-        JdkHttpTransport httpTransport = JdkHttpTransport.builder()
-                .config(HttpTransportConfig.builder()
-                        .connectTimeout(Duration.ofSeconds(30))
-                        .readTimeout(Duration.ofMinutes(20))
-                        .writeTimeout(Duration.ofMinutes(2))
-                        .build())
-                .build();
-
         System.out.println("已上传并解析 " + pdfUrls.size() + " 份PDF，开始并发执行6个专项评审...");
-        List<CibDimensionResult> dimensionResults = reviewDimensions(fileIds, httpTransport);
+        List<CibDimensionResult> dimensionResults = reviewDimensions(fileIds);
         System.out.println("专项评审完成，开始生成汇总报告...");
-        String report = generateReport(dimensionResults, httpTransport);
+        String report = generateReport(dimensionResults);
 
         CibReviewResult result = new CibReviewResult();
         result.setDimensionResults(dimensionResults);
@@ -79,52 +71,12 @@ public class PDFReview {
         return result;
     }
 
-    private static DashScopeChatModel newReviewModel(JdkHttpTransport httpTransport, int maxTokens) {
-        return DashScopeChatModel.builder()
-                .apiKey(com.example.agentservice.config.AgentServiceConfig.dashScopeApiKey())
-                .modelName("qwen-long")
-                .endpointType(EndpointType.TEXT)
-                .formatter(new QwenLongChatFormatter())
-                .httpTransport(httpTransport)
-                .stream(true)
-                .defaultOptions(GenerateOptions.builder()
-                        .maxTokens(maxTokens)
-                        .temperature(0.2D)
-                        .executionConfig(ExecutionConfig.builder()
-                                .timeout(Duration.ofMinutes(20))
-                                .maxAttempts(1)
-                                .build())
-                        .build())
-                .build();
-    }
-
-    private static OpenAIChatModel newReportModel(JdkHttpTransport httpTransport) {
-        return OpenAIChatModel.builder()
-                .apiKey(com.example.agentservice.config.AgentServiceConfig.dashScopeApiKey())
-                .modelName("qwen3.7-plus")
-                .baseUrl(QWEN_LONG_BASE_URL)
-                .endpointPath("/chat/completions")
-                .httpTransport(httpTransport)
-                .stream(true)
-                .generateOptions(GenerateOptions.builder()
-                        .maxTokens(8192)
-                        .temperature(0.15D)
-                        .executionConfig(ExecutionConfig.builder()
-                                .timeout(Duration.ofMinutes(20))
-                                .maxAttempts(1)
-                                .build())
-                        .build())
-                .build();
-    }
-
-    private static List<CibDimensionResult> reviewDimensions(
-            List<String> fileIds,
-            JdkHttpTransport httpTransport) {
+    private static List<CibDimensionResult> reviewDimensions(List<String> fileIds) {
         ExecutorService executor = Executors.newFixedThreadPool(REVIEW_THREAD_COUNT);
         try {
             List<CompletableFuture<CibDimensionResult>> futures = CibReviewPrompts.DIMENSIONS.stream()
                     .map(dimension -> CompletableFuture.supplyAsync(
-                            () -> reviewDimension(dimension, fileIds, httpTransport), executor))
+                            () -> reviewDimension(dimension, fileIds), executor))
                     .toList();
             return futures.stream().map(CompletableFuture::join).toList();
         } finally {
@@ -134,13 +86,12 @@ public class PDFReview {
 
     private static CibDimensionResult reviewDimension(
             CibReviewPrompts.Dimension dimension,
-            List<String> fileIds,
-            JdkHttpTransport httpTransport) {
+            List<String> fileIds) {
         System.out.println("开始专项评审：" + dimension.name());
         ReActAgent agent = ReActAgent.builder()
                 .name("cib-" + dimension.code().toLowerCase(Locale.ROOT))
                 .sysPrompt(CibReviewPrompts.promptFor(dimension))
-                .model(newReviewModel(httpTransport, 4096))
+                .model(MODEL_CONFIG.qwenLongModel())
                 .build();
         Msg request = Msg.builder()
                 .role(MsgRole.USER)
@@ -176,13 +127,11 @@ public class PDFReview {
         }
     }
 
-    private static String generateReport(
-            List<CibDimensionResult> dimensionResults,
-            JdkHttpTransport httpTransport) {
+    private static String generateReport(List<CibDimensionResult> dimensionResults) {
         ReActAgent reportAgent = ReActAgent.builder()
                 .name("cib-report")
                 .sysPrompt(CibReviewPrompts.REPORT_PROMPT)
-                .model(newReportModel(httpTransport))
+                .model(MODEL_CONFIG.qwen37PlusReportModel())
                 .build();
         Msg request = Msg.builder()
                 .role(MsgRole.USER)
