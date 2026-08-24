@@ -15,11 +15,11 @@
 
 禁止在 Java、YAML、提示词、README 或测试数据中写入真实的 DashScope API Key、OSS AccessKey、AccessKey Secret 或带签名的 OSS URL。
 
-提交到 Git 的配置文件是 `src/main/resources/application.yml`，只保留环境变量占位符。个人开发配置放在被 Git 忽略的 `src/main/resources/application-local.yml`，可复制 `application-local.yml.example` 后填写。
+提交到 Git 的配置文件是 `src/main/resources/application.yml`，不包含真实凭证。个人开发配置放在被 Git 忽略的 `src/main/resources/application-local.yml`，可复制 `application-local.yml.example` 后填写。
 
-配置优先级从高到低为：
+DashScope API Key 只从 `application-local.yml` 读取。其他非敏感配置的优先级从高到低为：
 
-1. JVM 系统属性，例如 `-DDASHSCOPE_API_KEY=...`。
+1. JVM 系统属性。
 2. 操作系统环境变量。
 3. `application-local.yml`。
 4. `application.yml` 中的非敏感默认值。
@@ -28,7 +28,6 @@
 
 | 配置 | 环境变量 |
 | --- | --- |
-| DashScope API Key | `DASHSCOPE_API_KEY` |
 | OSS Endpoint | `ALIYUN_OSS_ENDPOINT` |
 | OSS Region | `ALIYUN_OSS_REGION` |
 | OSS Bucket | `ALIYUN_OSS_BUCKET` |
@@ -54,7 +53,7 @@ IMM 转换统一调用 `ImmService.convertPdfsToImages`，返回包含文档名�
 
 ## 运行方式
 
-各实验流程保留独立 `main` 方法，通常在 IntelliJ IDEA 中直接运行对应类。运行前配置环境变量，或在 `application-local.yml` 填写本地值。
+各实验流程保留独立 `main` 方法，通常在 IntelliJ IDEA 中直接运行对应类。运行前在 `application-local.yml` 配置 DashScope API Key，其他配置可使用环境变量或本地 YAML。
 
 编译命令：
 

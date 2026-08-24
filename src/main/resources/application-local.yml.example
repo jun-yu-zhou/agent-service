@@ -12,6 +12,3 @@ app:
   imm:
     endpoint: "imm.cn-beijing.aliyuncs.com"
     project-name: "pdfReview"
-  documents:
-    rule-file-url: ""
-    requirement-file-url: ""
