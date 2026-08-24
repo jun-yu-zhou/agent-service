@@ -28,7 +28,6 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
-import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -58,16 +57,14 @@ public class ImmServiceImpl implements ImmService {
     private List<ImmImagePage> convertOnePdf(OSS ossClient, Client immClient, String pdfUrl)
             throws Exception {
         String sourceKey = objectKey(pdfUrl);
-        String outputPrefix = OUTPUT_PREFIX + "/" + UUID.randomUUID() + "/";
+        String documentName = documentName(sourceKey);
+        String outputPrefix = OUTPUT_PREFIX + "/" + documentName + "/";
         String bucket = AgentServiceConfig.ossBucket();
         CreateOfficeConversionTaskRequest request = new CreateOfficeConversionTaskRequest()
                 .setProjectName(AgentServiceConfig.immProjectName())
                 .setSourceURI("oss://" + bucket + "/" + sourceKey)
-                .setSourceType("pdf")
                 .setTargetType("png")
-                .setTargetURIPrefix("oss://" + bucket + "/" + outputPrefix)
-                .setStartPage(1L)
-                .setEndPage(-1L);
+                .setTargetURIPrefix("oss://" + bucket + "/" + outputPrefix);
         CreateOfficeConversionTaskResponse task = immClient.createOfficeConversionTaskWithOptions(
                 request, new RuntimeOptions());
         String taskId = task.getBody().getTaskId();
@@ -91,7 +88,7 @@ public class ImmServiceImpl implements ImmService {
             if (page == Integer.MAX_VALUE) {
                 page = index + 1;
             }
-            pages.add(new ImmImagePage(documentName(sourceKey), page, imageUrl));
+            pages.add(new ImmImagePage(documentName, page, imageUrl));
             System.out.println("图片OSS URL: " + imageUrl);
         }
         return pages;
