@@ -37,3 +37,6 @@ src/main/resources/application-local.yml
 
 # Local replay entry for rerunning only the paid report stage.
 src/test/java/com/example/agentservice/agile/ImmReportReplay.java
+
+# Local IMM integration test containing a signed OSS URL.
+src/test/java/com/example/agentservice/service/ImmServiceIntegrationTests.java
