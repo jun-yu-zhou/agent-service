@@ -3,6 +3,8 @@ package com.example.agentservice.service.impl;
 import com.aliyun.imm20200930.Client;
 import com.aliyun.imm20200930.models.CreateOfficeConversionTaskRequest;
 import com.aliyun.imm20200930.models.CreateOfficeConversionTaskResponse;
+import com.aliyun.imm20200930.models.ExtractDocumentTextRequest;
+import com.aliyun.imm20200930.models.ExtractDocumentTextResponse;
 import com.aliyun.imm20200930.models.GetTaskRequest;
 import com.aliyun.imm20200930.models.GetTaskResponse;
 import com.aliyun.oss.ClientBuilderConfiguration;
@@ -28,6 +30,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -52,6 +55,22 @@ public class ImmServiceImpl implements ImmService {
         } finally {
             ossClient.shutdown();
         }
+    }
+
+    @Override
+    public String extractDocumentText(String wordOssUrl, String fileExtension) throws Exception {
+        String sourceType = validateWordSource(wordOssUrl, fileExtension);
+        String sourceUri = "oss://" + AgentServiceConfig.ossBucket() + "/" + objectKey(wordOssUrl);
+        ExtractDocumentTextRequest request = new ExtractDocumentTextRequest()
+                .setProjectName(AgentServiceConfig.immProjectName())
+                .setSourceURI(sourceUri)
+                .setSourceType(sourceType);
+        ExtractDocumentTextResponse response = createImmClient().extractDocumentTextWithOptions(
+                request, new RuntimeOptions());
+        if (response.getBody() == null) {
+            throw new IllegalStateException("IMM文档正文提取未返回响应内容: " + sourceUri);
+        }
+        return response.getBody().getDocumentText();
     }
 
     private List<ImmImagePage> convertOnePdf(OSS ossClient, Client immClient, String pdfUrl)
@@ -193,6 +212,28 @@ public class ImmServiceImpl implements ImmService {
                 throw new IllegalArgumentException("仅支持 PDF 文件，非法文件地址: " + url);
             }
         }
+    }
+
+    private String validateWordSource(String url, String fileExtension) {
+        if (url == null || url.isBlank()) {
+            throw new IllegalArgumentException("Word 文件地址不能为空");
+        }
+        URI uri = URI.create(url);
+        String scheme = uri.getScheme();
+        if (!"http".equalsIgnoreCase(scheme) && !"https".equalsIgnoreCase(scheme)) {
+            throw new IllegalArgumentException("Word 文件地址必须是 HTTP 或 HTTPS OSS URL: " + url);
+        }
+        if (fileExtension == null || fileExtension.isBlank()) {
+            throw new IllegalArgumentException("Word 文件后缀不能为空");
+        }
+        String sourceType = fileExtension.startsWith(".")
+                ? fileExtension.substring(1)
+                : fileExtension;
+        sourceType = sourceType.toLowerCase(Locale.ROOT);
+        if (!"doc".equals(sourceType) && !"docx".equals(sourceType)) {
+            throw new IllegalArgumentException("仅支持 doc 或 docx 文件后缀: " + fileExtension);
+        }
+        return sourceType;
     }
 
     private String objectKey(String url) {

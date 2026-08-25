@@ -8,4 +8,7 @@ public interface ImmService {
 
     /** Converts PDF files in OSS to page images and returns their signed OSS URLs. */
     List<ImmImagePage> convertPdfsToImages(List<String> pdfUrls) throws Exception;
+
+    /** Extracts plain text from a Word document in OSS. */
+    String extractDocumentText(String wordOssUrl, String fileExtension) throws Exception;
 }
