@@ -1,6 +1,10 @@
 package com.example.agentservice.service.impl;
 
 import com.aliyun.imm20200930.Client;
+import com.aliyun.imm20200930.models.DetectImageTextsRequest;
+import com.aliyun.imm20200930.models.DetectImageTextsResponse;
+import com.aliyun.imm20200930.models.CreateImageSplicingTaskRequest;
+import com.aliyun.imm20200930.models.CreateImageSplicingTaskResponse;
 import com.aliyun.imm20200930.models.CreateOfficeConversionTaskRequest;
 import com.aliyun.imm20200930.models.CreateOfficeConversionTaskResponse;
 import com.aliyun.imm20200930.models.ExtractDocumentTextRequest;
@@ -31,6 +35,7 @@ import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -38,6 +43,7 @@ import java.util.regex.Pattern;
 public class ImmServiceImpl implements ImmService {
 
     private static final String OUTPUT_PREFIX = "imm-review";
+    private static final String IMAGE_SPLICING_PREFIX = "imm/image-splicing";
     private static final int OUTPUT_WAIT_SECONDS = 600;
     private static final Pattern PAGE_NUMBER_PATTERN = Pattern.compile("(\\d+)$");
 
@@ -73,6 +79,59 @@ public class ImmServiceImpl implements ImmService {
         return response.getBody().getDocumentText();
     }
 
+    @Override
+    public String spliceImages(List<String> imageUrls) throws Exception {
+        validateImageUrls(imageUrls);
+        OSS ossClient = createOssClient();
+        try {
+            Client immClient = createImmClient();
+            String bucket = AgentServiceConfig.ossBucket();
+            String targetKey = IMAGE_SPLICING_PREFIX + "/" + UUID.randomUUID() + ".png";
+            List<CreateImageSplicingTaskRequest.CreateImageSplicingTaskRequestSources> sources =
+                    imageUrls.stream()
+                            .map(this::imageSource)
+                            .toList();
+            CreateImageSplicingTaskRequest request = new CreateImageSplicingTaskRequest()
+                    .setProjectName(AgentServiceConfig.immProjectName())
+                    .setSources(sources)
+                    .setTargetURI("oss://" + bucket + "/" + targetKey)
+                    .setImageFormat("png")
+                    .setDirection("horizontal")
+                    .setScaleType("fit")
+                    .setPadding(0L)
+                    .setMargin(0L)
+                    .setBackgroundColor("#FFFFFF");
+            CreateImageSplicingTaskResponse task = immClient.createImageSplicingTaskWithOptions(
+                    request, new RuntimeOptions());
+            if (task.getBody() == null || task.getBody().getTaskId() == null
+                    || task.getBody().getTaskId().isBlank()) {
+                throw new IllegalStateException("IMM图片拼接未返回任务ID");
+            }
+            String taskId = task.getBody().getTaskId();
+            System.out.println("已提交IMM图片拼接任务: " + taskId + ", target=" + targetKey);
+            waitForTask(immClient, taskId, "ImageSplicing");
+            return ossClient.generatePresignedUrl(
+                    bucket, targetKey, Date.from(Instant.now().plus(Duration.ofHours(2)))).toString();
+        } finally {
+            ossClient.shutdown();
+        }
+    }
+
+    @Override
+    public String detectImageTexts(String imageUrl) throws Exception {
+        validateImageUrls(imageUrl == null ? null : List.of(imageUrl));
+        String sourceUri = "oss://" + AgentServiceConfig.ossBucket() + "/" + objectKey(imageUrl);
+        DetectImageTextsRequest request = new DetectImageTextsRequest()
+                .setProjectName(AgentServiceConfig.immProjectName())
+                .setSourceURI(sourceUri);
+        DetectImageTextsResponse response = createImmClient().detectImageTextsWithOptions(
+                request, new RuntimeOptions());
+        if (response.getBody() == null) {
+            throw new IllegalStateException("IMM图片正文提取未返回响应内容: " + sourceUri);
+        }
+        return response.getBody().getOCRTexts();
+    }
+
     private List<ImmImagePage> convertOnePdf(OSS ossClient, Client immClient, String pdfUrl)
             throws Exception {
         String sourceKey = objectKey(pdfUrl);
@@ -89,7 +148,7 @@ public class ImmServiceImpl implements ImmService {
         String taskId = task.getBody().getTaskId();
         System.out.println("已提交IMM转换任务: " + taskId + ", project="
                 + AgentServiceConfig.immProjectName() + ", object=" + sourceKey);
-        waitForTask(immClient, taskId);
+        waitForTask(immClient, taskId, "OfficeConversion");
 
         List<OSSObjectSummary> outputs = waitForOutputs(ossClient, outputPrefix);
         if (outputs.isEmpty()) {
@@ -135,24 +194,24 @@ public class ImmServiceImpl implements ImmService {
         return new Client(config);
     }
 
-    private void waitForTask(Client immClient, String taskId) throws Exception {
+    private void waitForTask(Client immClient, String taskId, String taskType) throws Exception {
         long deadline = System.nanoTime() + Duration.ofSeconds(OUTPUT_WAIT_SECONDS).toNanos();
         while (System.nanoTime() < deadline) {
             GetTaskResponse response = immClient.getTaskWithOptions(
                     new GetTaskRequest()
                             .setProjectName(AgentServiceConfig.immProjectName())
-                            .setTaskType("OfficeConversion")
+                            .setTaskType(taskType)
                             .setTaskId(taskId),
                     new RuntimeOptions());
             var body = response.getBody();
             String status = body == null ? null : body.getStatus();
-            System.out.println("IMM任务状态: " + status + ", progress="
+            System.out.println("IMM任务状态: " + status + ", type=" + taskType + ", progress="
                     + (body == null ? null : body.getProgress()));
             if ("Succeeded".equalsIgnoreCase(status) || "Success".equalsIgnoreCase(status)) {
                 return;
             }
             if ("Failed".equalsIgnoreCase(status) || "Error".equalsIgnoreCase(status)) {
-                throw new IllegalStateException("IMM转换失败: "
+                throw new IllegalStateException("IMM任务失败: "
                         + (body == null ? "unknown" : body.getMessage()));
             }
             Thread.sleep(3000L);
@@ -212,6 +271,36 @@ public class ImmServiceImpl implements ImmService {
                 throw new IllegalArgumentException("仅支持 PDF 文件，非法文件地址: " + url);
             }
         }
+    }
+
+    private void validateImageUrls(List<String> urls) {
+        if (urls == null || urls.isEmpty()) {
+            throw new IllegalArgumentException("至少需要传入一张图片地址");
+        }
+        if (urls.size() > 10) {
+            throw new IllegalArgumentException("图片拼接最多支持 10 张图片");
+        }
+        for (String url : urls) {
+            if (url == null || url.isBlank()) {
+                throw new IllegalArgumentException("图片地址不能为空");
+            }
+            URI uri = URI.create(url);
+            String scheme = uri.getScheme();
+            String path = uri.getPath();
+            boolean httpUrl = "http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme);
+            boolean imagePath = path != null
+                    && (path.toLowerCase(Locale.ROOT).endsWith(".jpg")
+                    || path.toLowerCase(Locale.ROOT).endsWith(".png"));
+            if (!httpUrl || !imagePath) {
+                throw new IllegalArgumentException("仅支持 JPG 或 PNG 图片地址: " + url);
+            }
+        }
+    }
+
+    private CreateImageSplicingTaskRequest.CreateImageSplicingTaskRequestSources imageSource(
+            String imageUrl) {
+        return new CreateImageSplicingTaskRequest.CreateImageSplicingTaskRequestSources()
+                .setURI("oss://" + AgentServiceConfig.ossBucket() + "/" + objectKey(imageUrl));
     }
 
     private String validateWordSource(String url, String fileExtension) {

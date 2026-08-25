@@ -40,3 +40,5 @@ src/test/java/com/example/agentservice/agile/ImmReportReplay.java
 
 # Local IMM integration test containing a signed OSS URL.
 src/test/java/com/example/agentservice/service/ImmServiceIntegrationTests.java
+src/test/java/com/example/agentservice/service/ImmImageSplicingIntegrationTests.java
+src/test/java/com/example/agentservice/service/ImmImageTextIntegrationTests.java
