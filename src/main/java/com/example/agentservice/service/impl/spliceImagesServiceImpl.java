@@ -22,7 +22,16 @@ public class spliceImagesServiceImpl extends AbstractImmServiceSupport
     private static final String IMAGE_SPLICING_PREFIX = "imm/image-splicing";
 
     @Override
-    public String spliceImages(SpliceImagesRequest command) throws Exception {
+    public String spliceImagesHorizontally(SpliceImagesRequest command) throws Exception {
+        return spliceImages(command, "horizontal");
+    }
+
+    @Override
+    public String spliceImagesVertically(SpliceImagesRequest command) throws Exception {
+        return spliceImages(command, "vertical");
+    }
+
+    private String spliceImages(SpliceImagesRequest command, String direction) throws Exception {
         if (command == null) {
             throw new IllegalArgumentException("图片拼接请求不能为空");
         }
@@ -41,7 +50,7 @@ public class spliceImagesServiceImpl extends AbstractImmServiceSupport
                     .setSources(sources)
                     .setTargetURI("oss://" + bucket + "/" + targetKey)
                     .setImageFormat("png")
-                    .setDirection("horizontal")
+                    .setDirection(direction)
                     .setScaleType("fit")
                     .setPadding(0L)
                     .setMargin(0L)
@@ -53,7 +62,8 @@ public class spliceImagesServiceImpl extends AbstractImmServiceSupport
                 throw new IllegalStateException("IMM图片拼接未返回任务ID");
             }
             String taskId = task.getBody().getTaskId();
-            System.out.println("已提交IMM图片拼接任务: " + taskId + ", target=" + targetKey);
+            System.out.println("已提交IMM图片" + direction + "拼接任务: " + taskId
+                    + ", target=" + targetKey);
             waitForTask(immClient, taskId, "ImageSplicing");
             return ossClient.generatePresignedUrl(
                     bucket, targetKey, Date.from(Instant.now().plus(Duration.ofHours(2)))).toString();

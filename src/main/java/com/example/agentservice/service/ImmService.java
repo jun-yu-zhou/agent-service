@@ -16,8 +16,14 @@ public interface ImmService {
     /** Extracts plain text from a Word document in OSS. */
     String extractDocumentText(String wordOssUrl, String fileExtension) throws Exception;
 
+    /** Extracts plain text from a Word document and infers its extension from the OSS URL. */
+    String extractDocumentText(String wordOssUrl) throws Exception;
+
     /** Stitches up to 10 OSS images horizontally and returns the signed output URL. */
-    String spliceImages(List<String> imageUrls) throws Exception;
+    String spliceImagesHorizontally(List<String> imageUrls) throws Exception;
+
+    /** Stitches up to 10 OSS images vertically and returns the signed output URL. */
+    String spliceImagesVertically(List<String> imageUrls) throws Exception;
 
     /** Extracts all OCR text from an OSS image. */
     String detectImageTexts(String imageUrl) throws Exception;

@@ -6,6 +6,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
+import java.util.List;
+
 /** IMM 各项能力的集成测试，后续新增功能可继续集中在此类中。 */
 @SpringBootTest
 class ImmServiceTest {
@@ -25,6 +27,24 @@ class ImmServiceTest {
         Assertions.assertNotNull(text);
         Assertions.assertFalse(text.isBlank());
         System.out.println("文档正文提取结果：\n" + normalizeLineBreaks(text));
+    }
+
+    @Test
+    void shouldExtractDocumentTextByFileExtensionInUrl() throws Exception {
+        String text = immService.extractDocumentText(WORD_DOCUMENT_URL);
+
+        Assertions.assertNotNull(text);
+        Assertions.assertFalse(text.isBlank());
+        System.out.println("自动解析后缀的文档正文提取结果：\n" + normalizeLineBreaks(text));
+    }
+
+    @Test
+    void shouldSpliceImagesVertically() throws Exception {
+        String resultUrl = immService.spliceImagesVertically(List.of(IMAGE_URL, IMAGE_URL));
+
+        Assertions.assertNotNull(resultUrl);
+        Assertions.assertFalse(resultUrl.isBlank());
+        System.out.println("图片纵向拼接结果：\n" + resultUrl);
     }
 
     @Test

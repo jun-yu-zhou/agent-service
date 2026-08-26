@@ -45,9 +45,18 @@ public class ImmGateway {
                 new ExtractDocumentTextRequest(toSourceUri(wordOssUrl), fileExtension));
     }
 
-    public String spliceImages(List<String> imageUrls) throws Exception {
+    public String extractDocumentText(String wordOssUrl) throws Exception {
+        return extractDocumentText(wordOssUrl, fileExtension(wordOssUrl));
+    }
+
+    public String spliceImagesHorizontally(List<String> imageUrls) throws Exception {
         List<String> sourceUris = imageUrls.stream().map(this::toSourceUri).toList();
-        return spliceImagesService.spliceImages(new SpliceImagesRequest(sourceUris));
+        return spliceImagesService.spliceImagesHorizontally(new SpliceImagesRequest(sourceUris));
+    }
+
+    public String spliceImagesVertically(List<String> imageUrls) throws Exception {
+        List<String> sourceUris = imageUrls.stream().map(this::toSourceUri).toList();
+        return spliceImagesService.spliceImagesVertically(new SpliceImagesRequest(sourceUris));
     }
 
     public String detectImageTexts(String imageUrl) throws Exception {
@@ -85,5 +94,15 @@ public class ImmGateway {
             throw new IllegalArgumentException("文件地址必须是带对象路径的 HTTP 或 HTTPS URL: " + url);
         }
         return URLDecoder.decode(rawPath.substring(1).replace("+", "%2B"), StandardCharsets.UTF_8);
+    }
+
+    private String fileExtension(String url) {
+        String objectKey = objectKey(url);
+        String fileName = objectKey.substring(objectKey.lastIndexOf('/') + 1);
+        int extensionStart = fileName.lastIndexOf('.');
+        if (extensionStart <= 0 || extensionStart == fileName.length() - 1) {
+            throw new IllegalArgumentException("无法从OSS URL解析文件后缀: " + url);
+        }
+        return fileName.substring(extensionStart + 1);
     }
 }

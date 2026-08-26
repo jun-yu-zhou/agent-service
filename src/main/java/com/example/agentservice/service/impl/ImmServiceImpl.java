@@ -33,8 +33,18 @@ public class ImmServiceImpl implements ImmService {
     }
 
     @Override
-    public String spliceImages(List<String> imageUrls) throws Exception {
-        return immGateway.spliceImages(imageUrls);
+    public String extractDocumentText(String wordOssUrl) throws Exception {
+        return immGateway.extractDocumentText(wordOssUrl);
+    }
+
+    @Override
+    public String spliceImagesHorizontally(List<String> imageUrls) throws Exception {
+        return immGateway.spliceImagesHorizontally(imageUrls);
+    }
+
+    @Override
+    public String spliceImagesVertically(List<String> imageUrls) throws Exception {
+        return immGateway.spliceImagesVertically(imageUrls);
     }
 
     @Override
