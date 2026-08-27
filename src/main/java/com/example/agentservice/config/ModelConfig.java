@@ -30,6 +30,7 @@ import java.util.Map;
 public class ModelConfig {
 
     public static final String QWEN37_PLUS_MODEL_NAME = "qwen3.7-plus";
+    public static final String QWEN38_FLASH_MODEL_NAME = "qwen3.8-flash";
 
     private static final String DASH_SCOPE_COMPATIBLE_BASE_URL =
             "https://dashscope.aliyuncs.com/compatible-mode/v1";
@@ -203,6 +204,19 @@ public class ModelConfig {
     @Bean
     @Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)
     public MultiModalConversation qwen37PlusMultimodalModel() {
+        return new MultiModalConversation(
+                "http",
+                DASH_SCOPE_API_BASE_URL,
+                ConnectionOptions.builder()
+                        .connectTimeout(Duration.ofSeconds(30))
+                        .writeTimeout(Duration.ofMinutes(5))
+                        .readTimeout(Duration.ofMinutes(30))
+                        .build());
+    }
+
+    @Bean
+    @Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)
+    public MultiModalConversation qwen38FlashMultimodalModel() {
         return new MultiModalConversation(
                 "http",
                 DASH_SCOPE_API_BASE_URL,

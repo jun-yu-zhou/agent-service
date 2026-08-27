@@ -21,7 +21,6 @@ import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.ConfigurableApplicationContext;
 
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -30,8 +29,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-/** IMM图片转换后的多模态审查流程。PDF转换编排通过PdfUtils完成。 */
-public class ImmBeforeReview {
+/** 使用 qwen3.8-flash 审查 IMM 转换图片，并沿用原有汇总模型的流程。 */
+public class ImmBeforeReviewBy38Flash {
 
     private static final int REVIEW_THREAD_COUNT = 6;
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
@@ -44,11 +43,7 @@ public class ImmBeforeReview {
     private final PdfUtils pdfUtils;
     private final ModelConfig modelConfig;
 
-    public ImmBeforeReview(PdfUtils pdfUtils) {
-        this(pdfUtils, ModelConfig.standalone());
-    }
-
-    public ImmBeforeReview(PdfUtils pdfUtils, ModelConfig modelConfig) {
+    public ImmBeforeReviewBy38Flash(PdfUtils pdfUtils, ModelConfig modelConfig) {
         this.pdfUtils = pdfUtils;
         this.modelConfig = modelConfig;
     }
@@ -57,11 +52,11 @@ public class ImmBeforeReview {
         SpringApplicationBuilder application = new SpringApplicationBuilder(AgentServiceApplication.class)
                 .web(WebApplicationType.NONE);
         try (ConfigurableApplicationContext context = application.run()) {
-            ImmBeforeReview review = new ImmBeforeReview(
+            ImmBeforeReviewBy38Flash review = new ImmBeforeReviewBy38Flash(
                     context.getBean(PdfUtils.class), context.getBean(ModelConfig.class));
             review.execute(args.length == 0 ? PDF_URLS : Arrays.asList(args));
         } catch (Exception exception) {
-            throw new IllegalStateException("IMM审查流程执行失败", exception);
+            throw new IllegalStateException("qwen3.8-flash IMM审查流程执行失败", exception);
         }
     }
 
@@ -69,11 +64,10 @@ public class ImmBeforeReview {
         long startNanos = System.nanoTime();
         List<ImmImagePage> imagePages = pdfUtils.pdfToImage(pdfUrls);
         System.out.println("总图片数: " + imagePages.size());
-        System.out.println("阶段2/3：开始并发执行6个多模态专项审查...");
+        System.out.println("阶段2/3：开始并发执行6个 qwen3.8-flash 多模态专项审查...");
         List<CibDimensionResult> dimensionResults = reviewDimensions(imagePages);
         System.out.println("阶段3/3：专项审查完成，开始生成汇总报告...");
-        String report = generateReport(dimensionResults);
-        System.out.println(report);
+        System.out.println(generateReport(dimensionResults));
         System.out.printf("总耗时: %.3f 秒%n", (System.nanoTime() - startNanos) / 1_000_000_000D);
     }
 
@@ -135,7 +129,7 @@ public class ImmBeforeReview {
                 .build();
         MultiModalConversationParam param = MultiModalConversationParam.builder()
                 .apiKey(AgentServiceConfig.dashScopeApiKey())
-                .model(ModelConfig.QWEN37_PLUS_MODEL_NAME)
+                .model(ModelConfig.QWEN38_FLASH_MODEL_NAME)
                 .messages(Arrays.asList(MultiModalMessage.builder()
                         .role(Role.SYSTEM.getValue())
                         .content(List.of(Map.of("text", CibReviewPrompts.promptFor(dimension))))
@@ -143,7 +137,7 @@ public class ImmBeforeReview {
                 .maxLength(4096)
                 .temperature(0.2F)
                 .build();
-        return modelConfig.qwen37PlusMultimodalModel().call(param);
+        return modelConfig.qwen38FlashMultimodalModel().call(param);
     }
 
     private String imageMapping(List<ImmImagePage> imagePages) {
@@ -194,7 +188,7 @@ public class ImmBeforeReview {
         }
     }
 
-    String generateReport(List<CibDimensionResult> dimensionResults) {
+    private String generateReport(List<CibDimensionResult> dimensionResults) {
         ReActAgent reportAgent = ReActAgent.builder()
                 .name("cib-report")
                 .sysPrompt(CibReviewPrompts.REPORT_PROMPT)
@@ -202,7 +196,8 @@ public class ImmBeforeReview {
                 .build();
         Msg request = Msg.builder()
                 .role(MsgRole.USER)
-                .textContent("以下是六个多模态专项Agent返回的JSON结果，请严格汇总：\n" + toJson(dimensionResults))
+                .textContent("以下是六个多模态专项Agent返回的JSON结果，请严格汇总：\n"
+                        + toJson(dimensionResults))
                 .build();
         Msg response = reportAgent.call(request).block();
         if (response == null || response.getTextContent().isBlank()) {
@@ -218,5 +213,4 @@ public class ImmBeforeReview {
             throw new IllegalStateException("序列化审查结果失败", exception);
         }
     }
-
 }
