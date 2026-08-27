@@ -19,7 +19,7 @@ public class extractDocumentTextServiceImpl extends AbstractImmServiceSupport
         if (command == null) {
             throw new IllegalArgumentException("文档正文提取请求不能为空");
         }
-        String sourceType = validateWordSource(command.sourceUri(), command.fileExtension());
+        String sourceType = validateDocumentSource(command.sourceUri(), command.fileExtension());
         String sourceUri = command.sourceUri();
         ExtractDocumentTextRequest request = new ExtractDocumentTextRequest()
                 .setProjectName(AgentServiceConfig.immProjectName())

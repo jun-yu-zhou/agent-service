@@ -15,6 +15,7 @@ import com.aliyun.teautil.models.RuntimeOptions;
 import java.time.Duration;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 /** IMM 服务实现共享的客户端、对象路径和任务处理逻辑。 */
 public abstract class AbstractImmServiceSupport {
@@ -68,22 +69,23 @@ public abstract class AbstractImmServiceSupport {
         throw new IllegalStateException("IMM转换任务超时: " + taskId);
     }
 
-    protected String validateWordSource(String url, String fileExtension) {
+    protected String validateDocumentSource(String url, String fileExtension) {
         if (url == null || url.isBlank()) {
-            throw new IllegalArgumentException("Word 文件地址不能为空");
+            throw new IllegalArgumentException("文档地址不能为空");
         }
         if (!url.startsWith("oss://")) {
-            throw new IllegalArgumentException("Word 文件SourceURI必须是 OSS URI: " + url);
+            throw new IllegalArgumentException("文档SourceURI必须是 OSS URI: " + url);
         }
         if (fileExtension == null || fileExtension.isBlank()) {
-            throw new IllegalArgumentException("Word 文件后缀不能为空");
+            throw new IllegalArgumentException("文档后缀不能为空");
         }
         String sourceType = fileExtension.startsWith(".")
                 ? fileExtension.substring(1)
                 : fileExtension;
         sourceType = sourceType.toLowerCase(Locale.ROOT);
-        if (!"doc".equals(sourceType) && !"docx".equals(sourceType)) {
-            throw new IllegalArgumentException("仅支持 doc 或 docx 文件后缀: " + fileExtension);
+        if (!Set.of("doc", "docx", "ppt", "pptx", "xls", "xlsx", "pdf", "txt")
+                .contains(sourceType)) {
+            throw new IllegalArgumentException("不支持的文档后缀: " + fileExtension);
         }
         return sourceType;
     }

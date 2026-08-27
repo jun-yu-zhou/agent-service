@@ -13,11 +13,11 @@ public interface ImmService {
     /** Polls one document conversion task and returns its signed image URLs. */
     List<ImmImagePage> getDocumentToImagesResult(DocumentToImgTask task) throws Exception;
 
-    /** Extracts plain text from a Word document in OSS. */
-    String extractDocumentText(String wordOssUrl, String fileExtension) throws Exception;
+    /** Extracts plain text from an OSS document with an explicit file extension. */
+    String extractDocumentText(String documentOssUrl, String fileExtension) throws Exception;
 
-    /** Extracts plain text from a Word document and infers its extension from the OSS URL. */
-    String extractDocumentText(String wordOssUrl) throws Exception;
+    /** Extracts plain text from an OSS document and infers its extension from the URL. */
+    String extractDocumentText(String documentOssUrl) throws Exception;
 
     /** Stitches up to 10 OSS images horizontally and returns the signed output URL. */
     String spliceImagesHorizontally(List<String> imageUrls) throws Exception;
