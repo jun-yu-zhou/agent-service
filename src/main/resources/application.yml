@@ -23,3 +23,7 @@ app:
   imm:
     endpoint: ${ALIYUN_IMM_ENDPOINT:imm.cn-beijing.aliyuncs.com}
     project-name: ${ALIYUN_IMM_PROJECT:pdfReview}
+  bailian:
+    knowledge-enabled: ${ALIYUN_BAILIAN_KNOWLEDGE_ENABLED:false}
+    workspace-id: ${ALIYUN_BAILIAN_WORKSPACE_ID:}
+    knowledge-base-id: ${ALIYUN_BAILIAN_KNOWLEDGE_BASE_ID:}

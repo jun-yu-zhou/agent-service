@@ -9,7 +9,7 @@ import java.util.Properties;
 
 /**
  * Loads local development settings without putting secrets in source control.
- * API credentials are read from application-local.yml only.
+ * API credentials are read from JVM properties, environment variables, or application-local.yml.
  */
 public final class AgentServiceConfig {
 
@@ -19,11 +19,11 @@ public final class AgentServiceConfig {
     }
 
     public static String dashScopeApiKey() {
-        String localValue = LOCAL_PROPERTIES.getProperty("app.dashscope.api-key");
-        if (localValue != null && !localValue.isBlank() && !localValue.startsWith("${")) {
-            return localValue;
+        String result = value("app.dashscope.api-key", "DASHSCOPE_API_KEY", "");
+        if (result.isBlank()) {
+            throw new IllegalStateException("缺少配置 app.dashscope.api-key，请在 application-local.yml 或环境变量 DASHSCOPE_API_KEY 中设置");
         }
-        throw new IllegalStateException("缺少配置 app.dashscope.api-key，请在 application-local.yml 中设置");
+        return result;
     }
 
     public static String ossEndpoint() {
@@ -54,6 +54,19 @@ public final class AgentServiceConfig {
         return value("app.imm.project-name", "ALIYUN_IMM_PROJECT", "pdfReview");
     }
 
+    public static boolean bailianKnowledgeEnabled() {
+        return Boolean.parseBoolean(value(
+                "app.bailian.knowledge-enabled", "ALIYUN_BAILIAN_KNOWLEDGE_ENABLED", "false"));
+    }
+
+    public static String bailianWorkspaceId() {
+        return required("app.bailian.workspace-id", "ALIYUN_BAILIAN_WORKSPACE_ID");
+    }
+
+    public static String bailianKnowledgeBaseId() {
+        return required("app.bailian.knowledge-base-id", "ALIYUN_BAILIAN_KNOWLEDGE_BASE_ID");
+    }
+
     public static String ruleFileUrl() {
         return required("app.documents.rule-file-url", "RULE_FILE_URL");
     }
@@ -80,12 +93,27 @@ public final class AgentServiceConfig {
         if (environmentValue != null && !environmentValue.isBlank()) {
             return environmentValue;
         }
-        String localValue = LOCAL_PROPERTIES.getProperty(propertyName);
-        if (localValue != null && !localValue.isBlank()
-                && !localValue.startsWith("${")) {
+        String localValue = resolvePlaceholder(LOCAL_PROPERTIES.getProperty(propertyName));
+        if (!localValue.isBlank()) {
             return localValue;
         }
         return defaultValue;
+    }
+
+    private static String resolvePlaceholder(String value) {
+        if (value == null || value.isBlank() || !value.startsWith("${") || !value.endsWith("}")) {
+            return value == null ? "" : value;
+        }
+        String expression = value.substring(2, value.length() - 1);
+        int separator = expression.indexOf(':');
+        String name = separator < 0 ? expression : expression.substring(0, separator);
+        String fallback = separator < 0 ? "" : expression.substring(separator + 1);
+        String systemValue = System.getProperty(name);
+        if (systemValue != null && !systemValue.isBlank()) {
+            return systemValue;
+        }
+        String environmentValue = System.getenv(name);
+        return environmentValue == null || environmentValue.isBlank() ? fallback : environmentValue;
     }
 
     private static Properties loadLocalProperties() {

@@ -16,10 +16,8 @@ import com.example.agentservice.service.DocumentToImgService;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.Date;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -48,7 +46,7 @@ public class DocumentToImgServiceImpl extends AbstractImmServiceSupport
         String taskId = response.getBody().getTaskId();
         System.out.println("已提交IMM转换任务: " + taskId + ", source=" + command.sourceUri());
         return new DocumentToImgTask(taskId, command.documentName(),
-                targetPrefixObjectKey(command.targetUriPrefix()));
+                objectKeyFromOssUri(command.targetUriPrefix()));
     }
 
     @Override
@@ -66,12 +64,10 @@ public class DocumentToImgServiceImpl extends AbstractImmServiceSupport
             }
             outputs.sort(Comparator.comparingInt((OSSObjectSummary item) -> pageNumber(item.getKey()))
                     .thenComparing(OSSObjectSummary::getKey));
-            String bucket = AgentServiceConfig.ossBucket();
             List<ImmImagePage> pages = new ArrayList<>();
             for (int index = 0; index < outputs.size(); index++) {
                 OSSObjectSummary output = outputs.get(index);
-                String imageUrl = ossClient.generatePresignedUrl(
-                        bucket, output.getKey(), Date.from(Instant.now().plus(Duration.ofHours(2)))).toString();
+                String imageUrl = generatePresignedUrl(ossClient, output.getKey());
                 int page = pageNumber(output.getKey());
                 if (page == Integer.MAX_VALUE) {
                     page = index + 1;
@@ -111,7 +107,7 @@ public class DocumentToImgServiceImpl extends AbstractImmServiceSupport
         List<OSSObjectSummary> result = new ArrayList<>();
         String marker = null;
         do {
-            var page = ossClient.listObjects(new ListObjectsRequest(AgentServiceConfig.ossBucket())
+            var page = ossClient.listObjects(new ListObjectsRequest(ossBucket())
                     .withPrefix(prefix).withMarker(marker));
             result.addAll(page.getObjectSummaries().stream()
                     .filter(item -> item.getKey().endsWith(".png"))
@@ -137,14 +133,6 @@ public class DocumentToImgServiceImpl extends AbstractImmServiceSupport
             }
             return Integer.MAX_VALUE;
         }
-    }
-
-    private String targetPrefixObjectKey(String uri) {
-        String prefix = "oss://" + AgentServiceConfig.ossBucket() + "/";
-        if (!uri.startsWith(prefix) || uri.length() <= prefix.length()) {
-            throw new IllegalArgumentException("IMM目标URI不合法: " + uri);
-        }
-        return uri.substring(prefix.length());
     }
 
     private void validate(DocumentToImgRequest command) {

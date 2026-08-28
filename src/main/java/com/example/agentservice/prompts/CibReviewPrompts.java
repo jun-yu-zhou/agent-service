@@ -8,6 +8,9 @@ public final class CibReviewPrompts {
             new Dimension("BASIC_INFO", "基础信息雷同分析", """
                     先逐份识别文件对应的真实投标人和报价轮次，再核验公司名称、地址、法定代表人、联系人、电话、邮箱、银行账户等基础信息。
                     二次报价文件必须归并到原投标人，不得作为新投标人；同一投标人的首次报价和二次报价相同不属于跨投标人雷同。
+                    账户比较必须先记录字段标签和语义类型（基本账户、结算账户、收款账户、合同付款账户、保证金账户或未知）。
+                    只有双方文件明确将账号归属于各自投标人且字段语义相同，才能作为基础信息雷同；合同中的收款方、付款方或第三方账号不得推定为投标人账户。
+                    仅出现相同账号字符串不等于账户关联，必须保留双方字段名称、账户归属和原文摘录；无法确认归属时不得生成账户雷同finding。
                     提取“首次报价/第一次响应报价/报价总价”和“二次报价/最终报价”的原文数值。
                     严格排除采购预算、最高限价、项目估算价、分项小计、保证金、报价得分和其他投标人的金额。
                     每个金额必须同时给出原文位置和包含金额的短摘录；没有明确出现的数值必须为null，不得用首次报价代替最终报价。
@@ -50,12 +53,19 @@ public final class CibReviewPrompts {
             new Dimension("COLLUSION_RISK", "围标串标综合风险分析", """
                     本专项只负责跨投标人的报价、身份和其他直接关联线索复核，不重复评价文本相似、排版、页码和错别字专项。
                     重点核查相同分项单价与工程量、异常一致的报价结构、联系人或账户等基础信息，以及文件中明确写出的共同来源。
+                    账户线索必须执行以下语义校验：先识别账号在原文中的字段标签和角色（基本账户、结算账户、收款账户、合同付款账户、保证金账户或未知）；
+                    仅比较语义相同且明确归属于不同投标人的账号。一个投标人的基本账户与另一个投标人业绩合同中的收款账户，即使字符串相同，也不得认定为账户关联。
+                    业绩合同、发票、证明材料中的付款方或收款方账号默认属于合同相对方，除非原文明确写明属于投标人；账号只在同一投标人的多份文件中重复出现，属于内部一致，不是跨投标人线索。
+                    单一账号、联系人或报价线索只能作为待核实的低/中风险线索；本专项riskLevel最高为MEDIUM，整体HIGH必须由汇总阶段依据至少两个独立专项共同印证。
+                    每一条通过证据核验的finding都必须生成一条一一对应的riskFactor；riskFactor.evidence必须复用该finding的双方证据，不能另造证据。若事实线索成立但法律依据检索没有匹配结果，legalBasis填写“需人工复核”，不得因此省略riskFactor。
                     每个报价结论必须在双方证据中同时出现比较所需的数值；一方缺少工程量或单价时不得写成完全一致。
                     IP地址、保证金账户、工商股权、关键人员任职和文档元数据未提供时，只能列入recommendations，不得作为事实或提高风险等级。
-                    只要发现报价或身份关联线索，就必须为每条线索生成riskFactors；riskFactors的legalBasis必须填写原始依据，无法确认准确条款时填写“需人工复核”，不得留空。单一弱线索不得评为高风险；confidence只能为HIGH、MEDIUM或LOW。
+                    只有完成字段语义和跨投标人归属核验后，才为线索生成riskFactors；legalBasis只能引用系统提供的法律依据检索参考或投标文件中明确出现的条款原文，必须保留法律文件名称和条款号。检索不到匹配依据时填写“需人工复核”，不得凭常识自行引用法律条款。法律依据检索参考只能用于填写legalBasis，不能作为投标人事实证据。单一弱线索不得评为高风险；confidence只能为HIGH、MEDIUM或LOW。
+                    法律依据检索参考可用时，无论findings是否为空，legalReferences都必须列出本次实际使用的法律文件、条款和适用范围，作为审查基线；仅列出与围标串标、投标人关联、报价关联或电子投标行为直接相关的条款。没有异常时，applicability必须表述为“用于人工复核，不表示已违反该条款”。检索参考不可用或无匹配条款时返回空数组，不得编造法律文件。
                     """, """
-                    ,"riskFactors":{"type":"array","items":{"type":"object","additionalProperties":false,"required":["type","bidders","description","legalBasis","confidence"],"properties":{"type":{"type":"string"},"bidders":{"type":"array","minItems":2,"items":{"type":"string"}},"description":{"type":"string"},"legalBasis":{"type":"string"},"confidence":{"type":"string","enum":["HIGH","MEDIUM","LOW"]}}}}
-                    """, ",\"riskFactors\"")
+                    ,"riskFactors":{"type":"array","items":{"type":"object","additionalProperties":false,"required":["type","bidders","description","evidence","legalBasis","confidence"],"properties":{"type":{"type":"string"},"bidders":{"type":"array","minItems":2,"items":{"type":"string"}},"description":{"type":"string"},"evidence":{"type":"array","minItems":2,"items":{"type":"object","additionalProperties":false,"required":["bidder","document","location","excerpt"],"properties":{"bidder":{"type":"string"},"document":{"type":"string"},"location":{"type":"string"},"excerpt":{"type":"string","maxLength":160}}}},"legalBasis":{"type":"string"},"confidence":{"type":"string","enum":["HIGH","MEDIUM","LOW"]}}}},
+                    "legalReferences":{"type":"array","maxItems":6,"items":{"type":"object","additionalProperties":false,"required":["document","article","summary","applicability"],"properties":{"document":{"type":"string"},"article":{"type":"string"},"summary":{"type":"string","maxLength":500},"applicability":{"type":"string","maxLength":300}}}}
+                    """, ",\"riskFactors\",\"legalReferences\"")
     );
 
     public static final String REPORT_PROMPT = """
@@ -63,17 +73,18 @@ public final class CibReviewPrompts {
 
             汇总规则：
             1. 只能使用专项JSON中的事实，不读取原始文件，不新增证据、金额、投标人、页码、相似度或法律条款。
-            2. 合并重复发现，但保留涉及投标人、位置和原文证据；专项失败或数据不足时明确说明“证据不足”或“未发现明确异常”。
+            2. 合并重复发现，但保留涉及投标人、位置和原文证据；riskFactors优先使用自身evidence，缺失时只能标注“证据不足”，不得从其他投标人的材料拼接证据；专项失败或数据不足时明确说明“证据不足”或“未发现明确异常”。
             3. 风险等级和置信度只能输出“高”“中”“低”：HIGH=高、MEDIUM=中、LOW=低。风险等级和置信度禁止输出“未识别”；专项失败或证据不足时，按现有证据填写“低”，并在说明中注明证据不足。
-            4. 高风险必须有多个独立维度相互印证；不同专项结论冲突时采取较保守等级并说明需人工复核。
+            4. 高风险必须有至少两个独立专项维度、分别指向同一组投标人且各自具备双方原文证据；单个专项、单个riskFactor、单个账号或单段文本相似不得评为高风险。COLLUSION_RISK单独最多只能支持“中”风险。
             5. 二次报价文件归并到原投标人，不作为独立投标人。
             6. 只输出Markdown，不输出JSON、代码块、分析过程或开场白。
-            7. 严格输出以下8张表。每个二级标题（`##`）后必须先输出一个空行，再输出表头；每张表至少一行，无有效数据时填写“未发现明确异常”；风险等级和置信度仍只能填写“高”“中”“低”。
-            8. 第三张表把投标人占位列替换为真实投标人名称，按实际投标人数量增减，顺序与第一张表一致。
-            9. 报价只允许使用BASIC_INFO中有原文位置和摘录支持的金额；采购预算、最高限价、分项金额不得当作投标总价。
-            10. 异常表的置信度优先使用finding.confidence，其次使用riskFactors.confidence，翻译为高/中/低；缺失、UNKNOWN或明确无法判断时填写“低”，并在具体说明中写明证据不足。没有异常时写“未发现明确异常”，不要整表填“未识别”。
-            11. 第六张“法律条款依据摘要”是强制数据表，不得留空。先遍历所有专项JSON的riskFactors，再生成该表：每个riskFactor至少对应一行；法律文件和条款必须直接使用legalBasis中的原文，不得自行编造具体法条。若legalBasis为“需人工复核”，法律文件填“需人工复核”，条款填“未明确”，内容摘要使用riskFactor.description，适用情形使用riskFactor.type及涉及投标人。
-            12. 如果所有专项JSON都没有riskFactors，第六张表仍保留一行：法律文件“未发现明确法律依据”、条款“未明确”、内容摘要“专项结果未提供可直接引用的法律依据”、适用情形“需结合人工复核”。其他表同样不得因为字段为空而省略表头或整张表。
+            7. 最终报告不得出现或暗示内部维度代码（如BASIC_INFO）、专项Agent、模型名称、JSON、findings、阶段、调用状态等过程信息。无异常时不要逐项罗列“某某专项无findings”，只在对应业务表中填写“未发现明确异常”或“证据不足”。
+            8. 严格输出以下8张表。每个二级标题（`##`）后必须先输出一个空行，再输出表头；每张表至少一行，无有效数据时填写“未发现明确异常”；风险等级和置信度仍只能填写“高”“中”“低”。
+            9. 第三张表把投标人占位列替换为真实投标人名称，按实际投标人数量增减，顺序与第一张表一致。
+            10. 报价只允许使用BASIC_INFO中有原文位置和摘录支持的金额；采购预算、最高限价、分项金额不得当作投标总价。不同报价轮次必须保留轮次标签，不能把同一投标人的不同文件当成两个投标人比较。
+            11. 异常表的置信度优先使用finding.confidence，其次使用riskFactors.confidence，翻译为高/中/低；缺失、UNKNOWN或明确无法判断时填写“低”，并在具体说明中写明证据不足。没有异常时写“未发现明确异常”，不要整表填“未识别”。
+            12. 第六张“法律条款依据摘要”是强制数据表，不得留空。优先遍历COLLUSION_RISK专项的legalReferences，每条直接输出一行；即使没有异常也必须保留，并在适用情形中如实说明“用于人工复核，不表示已违反该条款”。再遍历所有专项JSON的riskFactors，补充未被legalReferences覆盖的具体依据：每个riskFactor至少对应一行；法律文件和条款必须直接使用legalBasis中的原文，不得自行补充、改写或编造具体法条。若legalBasis不是文件中明确给出的法律依据，或仅是模型推断，统一按“需人工复核”处理：法律文件填“需人工复核”，条款填“未明确”，内容摘要使用riskFactor.description，适用情形使用riskFactor.type及涉及投标人。riskFactor.evidence只能用于核对事实，不得把证据摘录改写成法律依据。
+            13. 仅当COLLUSION_RISK专项没有legalReferences、所有专项JSON都没有riskFactors且没有任何有效finding时，第六张表才保留一行：法律文件“未发现明确法律依据”、条款“未明确”、内容摘要“专项结果未提供可直接引用的法律依据”、适用情形“需结合人工复核”。如果存在有效finding但对应riskFactor缺失，必须为该finding在第六张表补一行“需人工复核/未明确”，不得表述为“未发现明确法律依据”。其他表同样不得因为字段为空而省略表头或整张表。
 
             ## 一、投标人基本情况
 
@@ -137,10 +148,11 @@ public final class CibReviewPrompts {
                 "required":["dimension","summary","riskLevel","findings","recommendations"%s],"properties":{
                 "dimension":{"type":"string","const":"%s"},
                 "summary":{"type":"string","maxLength":500},
-                "riskLevel":{"type":"string","enum":["HIGH","MEDIUM","LOW","UNKNOWN"]},
+                "riskLevel":{"type":"string","enum":[%s]},
                 "findings":{"type":"array","maxItems":8,"items":%s},
                 "recommendations":{"type":"array","maxItems":8,"items":{"type":"string","maxLength":300}}%s}}
-                """.formatted(dimension.requiredFields(), dimension.code(), FINDING_SCHEMA, dimension.properties())
+                """.formatted(dimension.requiredFields(), dimension.code(), allowedRiskLevels(dimension), FINDING_SCHEMA,
+                        dimension.properties())
                 .replaceAll("\\s+", "");
 
         return """
@@ -154,12 +166,14 @@ public final class CibReviewPrompts {
             - 对每个候选异常建立证据账本：双方投标人、文件名称、页码/章节/表名、双方原文摘录。只有证据账本完整才允许输出finding。
             - 区分“明确未发现”和“无法确认”：完整检查后无异常才用LOW；页面、视觉、原文或位置无法确认时用UNKNOWN并在summary中说明。
             - 输出前复核每个finding：bidders至少两个不同投标人，evidence至少两条且每个投标人至少一条，assessment不得超出excerpt支持的事实。
+            - 若输出riskFactors，每条riskFactor的evidence必须与该因素一一对应，至少包含涉及的每个投标人的原文证据；riskFactor不得只根据summary或主观推断生成。
 
             证据要求：
             - 只依据已上传文件中的明确内容，不使用外部知识补充事实。
             - 共同异常必须涉及至少两个真实投标人。同一投标人的主文件和二次报价文件不构成跨投标人雷同。
             - 每条finding至少提供双方证据，写明投标人、文件类型、页码/章节/表名和原文短句；无法定位的内容不得作为finding。
             - 招标文件原文、法定格式、统一模板、法规原文和行业通用表述不得单独作为异常。
+            - 若系统提供“法律依据检索参考”，该内容只允许用于填写legalBasis或本专项定义的法律依据字段，不得作为投标文件事实、双方证据或风险因素本身；检索不到匹配条款时填写“需人工复核”。
             - 没有明确异常时findings返回空数组，riskLevel使用LOW或UNKNOWN，不得为了填充结果而编造证据。
             - 不要根据summary中的概括替代证据，不要将“可能、疑似、看起来”改写成已经确认的事实。
 
@@ -168,6 +182,13 @@ public final class CibReviewPrompts {
 
                 %s
                 """.formatted(dimension.name(), dimension.focus(), schema);
+    }
+
+    private static String allowedRiskLevels(Dimension dimension) {
+        if ("COLLUSION_RISK".equals(dimension.code())) {
+            return "\"MEDIUM\",\"LOW\",\"UNKNOWN\"";
+        }
+        return "\"HIGH\",\"MEDIUM\",\"LOW\",\"UNKNOWN\"";
     }
 
     public record Dimension(

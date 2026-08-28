@@ -11,6 +11,8 @@ import io.agentscope.core.model.GenerateOptions;
 import io.agentscope.core.model.OpenAIChatModel;
 import io.agentscope.core.model.transport.HttpTransportConfig;
 import io.agentscope.core.model.transport.JdkHttpTransport;
+import io.agentscope.core.rag.integration.bailian.BailianConfig;
+import io.agentscope.core.rag.integration.bailian.BailianKnowledge;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.Bean;
@@ -181,6 +183,24 @@ public class ModelConfig {
 
     @Bean
     @Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)
+    public OpenAIChatModel qwen38FlashReportModel() {
+        return OpenAIChatModel.builder()
+                .apiKey(AgentServiceConfig.dashScopeApiKey())
+                .modelName(QWEN38_FLASH_MODEL_NAME)
+                .baseUrl(DASH_SCOPE_COMPATIBLE_BASE_URL)
+                .endpointPath("/chat/completions")
+                .httpTransport(newHttpTransport())
+                .stream(true)
+                .generateOptions(GenerateOptions.builder()
+                        .maxTokens(8192)
+                        .temperature(0.15D)
+                        .executionConfig(longExecutionConfig())
+                        .build())
+                .build();
+    }
+
+    @Bean
+    @Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)
     public OpenAIChatModel qwen37PlusBidControlReportModel() {
         return OpenAIChatModel.builder()
                 .apiKey(AgentServiceConfig.dashScopeApiKey())
@@ -225,6 +245,23 @@ public class ModelConfig {
                         .writeTimeout(Duration.ofMinutes(5))
                         .readTimeout(Duration.ofMinutes(30))
                         .build());
+    }
+
+    @Bean
+    @Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)
+    public BailianKnowledge bailianLegalKnowledge() throws Exception {
+        return BailianKnowledge.builder()
+                .config(BailianConfig.builder()
+                        .accessKeyId(AgentServiceConfig.ossAccessKeyId())
+                        .accessKeySecret(AgentServiceConfig.ossAccessKeySecret())
+                        .workspaceId(AgentServiceConfig.bailianWorkspaceId())
+                        .indexId(AgentServiceConfig.bailianKnowledgeBaseId())
+                        .endpoint("bailian.cn-beijing.aliyuncs.com")
+                        .denseSimilarityTopK(8)
+                        .sparseSimilarityTopK(8)
+                        .enableReranking(true)
+                        .build())
+                .build();
     }
 
     private JdkHttpTransport newHttpTransport() {

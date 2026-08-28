@@ -12,3 +12,7 @@ app:
   imm:
     endpoint: "imm.cn-beijing.aliyuncs.com"
     project-name: "pdfReview"
+  bailian:
+    knowledge-enabled: true
+    workspace-id: ""
+    knowledge-base-id: ""

@@ -17,6 +17,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.agentscope.core.ReActAgent;
 import io.agentscope.core.message.Msg;
 import io.agentscope.core.message.MsgRole;
+import io.agentscope.core.rag.integration.bailian.BailianKnowledge;
+import io.agentscope.core.rag.model.Document;
+import io.agentscope.core.rag.model.RetrieveConfig;
 import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.ConfigurableApplicationContext;
@@ -29,16 +32,12 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-/** 使用 qwen3.8-flash 审查 IMM 转换图片，并沿用原有汇总模型的流程。 */
+/** 使用 qwen3.8-flash 与 qwen3.7-plus 分工审查 IMM 转换图片并生成汇总报告。 */
 public class ImmBeforeReviewBy38Flash {
 
     private static final int REVIEW_THREAD_COUNT = 6;
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-    private static final List<String> PDF_URLS = List.of(
-            "https://javawebemp.oss-cn-beijing.aliyuncs.com/Scan-%E5%AE%9C%E6%98%8C%E5%87%A0%E4%BD%95%E6%B5%8B%E7%BB%98%E7%A7%91%E6%8A%80%E6%9C%89%E9%99%90%E5%85%AC%E5%8F%B88960772218806061282.pdf",
-            "https://javawebemp.oss-cn-beijing.aliyuncs.com/2%E8%BD%AE%E6%8A%A5%E4%BB%B7--%E4%B8%89%E5%B3%A1%E5%A4%A7%E5%AD%A6%E6%96%B0%E5%BB%BA%E5%AD%A6%E7%94%9F%E5%85%AC%E5%AF%93%E9%A1%B9%E7%9B%AE%E5%A4%9A%E6%B5%8B%E5%90%88%E4%B8%80-%E6%B9%96%E5%8C%97%E6%8D%B7%E5%B8%86%E7%A7%91%E6%8A%80%E6%9C%89%E9%99%90%E5%85%AC%E5%8F%B83512886208567055417.pdf",
-            "https://javawebemp.oss-cn-beijing.aliyuncs.com/%E4%B8%89%E5%B3%A1%E5%A4%A7%E5%AD%A6%E6%96%B0%E5%BB%BA%E5%AD%A6%E7%94%9F%E5%85%AC%E5%AF%93%E9%A1%B9%E7%9B%AE%E5%A4%9A%E6%B5%8B%E5%90%88%E4%B8%80%E7%AB%9E%E4%BA%89%E6%80%A7%E7%A3%8B%E5%95%86%E5%93%8D%E5%BA%94%E6%96%87%E4%BB%B6%EF%BC%88%E6%8A%95%E6%A0%87%E6%96%87%E4%BB%B6%EF%BC%89--%E6%B9%96%E5%8C%97%E6%8D%B7%E5%B8%86%E7%A7%91%E6%8A%80%E6%9C%89%E9%99%90%E5%85%AC%E5%8F%B8-%E6%B9%96%E5%8C%97%E6%8D%B7%E5%B8%86%E7%A7%91%E6%8A%80%E6%9C%89%E9%99%90%E5%85%AC%E5%8F%B85201011215828763487.pdf",
-            "https://javawebemp.oss-cn-beijing.aliyuncs.com/%E4%BA%8C%E8%BD%AE%E6%8A%A5%E4%BB%B7%281%29-%E5%AE%9C%E6%98%8C%E5%87%A0%E4%BD%95%E6%B5%8B%E7%BB%98%E7%A7%91%E6%8A%80%E6%9C%89%E9%99%90%E5%85%AC%E5%8F%B81732505438540525103.pdf");
+    private static final List<String> PDF_URLS = List.of();
 
     private final PdfUtils pdfUtils;
     private final ModelConfig modelConfig;
@@ -56,15 +55,24 @@ public class ImmBeforeReviewBy38Flash {
                     context.getBean(PdfUtils.class), context.getBean(ModelConfig.class));
             review.execute(args.length == 0 ? PDF_URLS : Arrays.asList(args));
         } catch (Exception exception) {
-            throw new IllegalStateException("qwen3.8-flash IMM审查流程执行失败", exception);
+            throw new IllegalStateException("IMM审查流程执行失败: "
+                    + rootCauseMessage(exception), exception);
         }
+    }
+
+    private static String rootCauseMessage(Throwable exception) {
+        Throwable root = exception;
+        while (root.getCause() != null) {
+            root = root.getCause();
+        }
+        return root.getMessage() == null ? root.getClass().getSimpleName() : root.getMessage();
     }
 
     public void execute(List<String> pdfUrls) throws Exception {
         long startNanos = System.nanoTime();
         List<ImmImagePage> imagePages = pdfUtils.pdfToImage(pdfUrls);
         System.out.println("总图片数: " + imagePages.size());
-        System.out.println("阶段2/3：开始并发执行6个 qwen3.8-flash 多模态专项审查...");
+        System.out.println("阶段2/3：开始并发执行6个多模态专项审查（按专项路由 qwen3.8-flash/qwen3.7-plus）...");
         List<CibDimensionResult> dimensionResults = reviewDimensions(imagePages);
         System.out.println("阶段3/3：专项审查完成，开始生成汇总报告...");
         System.out.println(generateReport(dimensionResults));
@@ -119,6 +127,12 @@ public class ImmBeforeReviewBy38Flash {
         for (ImmImagePage imagePage : imagePages) {
             content.add(Map.of("image", imagePage.url()));
         }
+        if ("COLLUSION_RISK".equals(dimension.code()) && AgentServiceConfig.bailianKnowledgeEnabled()) {
+            String legalContext = retrieveLegalContext();
+            if (!legalContext.isBlank()) {
+                content.add(Map.of("text", legalContext));
+            }
+        }
         content.add(Map.of("text", "图片顺序与证据来源映射：\n" + imageMapping(imagePages)
                 + "\n\n请完整查看以上全部PDF页面，只执行“" + dimension.name()
                 + "”专项审查。输出必须严格符合系统提示词中的JSON Schema。"
@@ -127,9 +141,10 @@ public class ImmBeforeReviewBy38Flash {
                 .role(Role.USER.getValue())
                 .content(content)
                 .build();
+        boolean usePlus = usesQwen37Plus(dimension);
         MultiModalConversationParam param = MultiModalConversationParam.builder()
                 .apiKey(AgentServiceConfig.dashScopeApiKey())
-                .model(ModelConfig.QWEN38_FLASH_MODEL_NAME)
+                .model(usePlus ? ModelConfig.QWEN37_PLUS_MODEL_NAME : ModelConfig.QWEN38_FLASH_MODEL_NAME)
                 .messages(Arrays.asList(MultiModalMessage.builder()
                         .role(Role.SYSTEM.getValue())
                         .content(List.of(Map.of("text", CibReviewPrompts.promptFor(dimension))))
@@ -137,7 +152,53 @@ public class ImmBeforeReviewBy38Flash {
                 .maxLength(4096)
                 .temperature(0.2F)
                 .build();
-        return modelConfig.qwen38FlashMultimodalModel().call(param);
+        MultiModalConversation model = usePlus
+                ? modelConfig.qwen37PlusMultimodalModel()
+                : modelConfig.qwen38FlashMultimodalModel();
+        return model.call(param);
+    }
+
+    private String retrieveLegalContext() {
+        try {
+            BailianKnowledge knowledge = modelConfig.bailianLegalKnowledge();
+            List<Document> documents = knowledge.retrieve(
+                    "政府采购中投标人账户、报价、联系人或共同来源与串通投标、围标串标认定相关的现行法律法规、条款及适用条件",
+                    RetrieveConfig.builder()
+                            .limit(6)
+                            .scoreThreshold(0.25D)
+                            .build())
+                    .block();
+            if (documents == null || documents.isEmpty()) {
+                return "法律依据检索结果：未检索到相关条款。只能填写‘需人工复核’，不得自行引用法条。";
+            }
+            StringBuilder context = new StringBuilder("法律依据检索参考（仅用于填写legalBasis，不得作为投标文件事实或证据）：\n");
+            for (int index = 0; index < documents.size(); index++) {
+                Document document = documents.get(index);
+                var metadata = document.getMetadata();
+                String text = metadata == null ? "" : metadata.getContentText();
+                if (text == null || text.isBlank()) {
+                    continue;
+                }
+                Object title = metadata.getPayloadValue("title");
+                if (title == null) {
+                    title = metadata.getPayloadValue("doc_name");
+                }
+                context.append("[条款参考").append(index + 1).append("] 文档=")
+                        .append(title == null ? "未提供" : title).append("；")
+                        .append(text.trim()).append('\n');
+            }
+            return context.toString();
+        } catch (Exception exception) {
+            System.err.println("百炼法律知识库检索失败，继续执行专项审查：" + exception.getMessage());
+            return "法律依据检索不可用：legalBasis必须填写‘需人工复核’，不得自行引用法条。";
+        }
+    }
+
+    private boolean usesQwen37Plus(CibReviewPrompts.Dimension dimension) {
+        return switch (dimension.code()) {
+            case "TEXT_SIMILARITY", "TYPO_SIMILARITY", "COLLUSION_RISK" -> true;
+            default -> false;
+        };
     }
 
     private String imageMapping(List<ImmImagePage> imagePages) {
@@ -192,11 +253,11 @@ public class ImmBeforeReviewBy38Flash {
         ReActAgent reportAgent = ReActAgent.builder()
                 .name("cib-report")
                 .sysPrompt(CibReviewPrompts.REPORT_PROMPT)
-                .model(modelConfig.qwen37PlusReportModel())
+                .model(modelConfig.qwen38FlashReportModel())
                 .build();
         Msg request = Msg.builder()
                 .role(MsgRole.USER)
-                .textContent("以下是六个多模态专项Agent返回的JSON结果，请严格汇总：\n"
+                .textContent("以下是内部审查数据，请严格按照系统要求生成最终业务报告，不要输出内部处理信息：\n"
                         + toJson(dimensionResults))
                 .build();
         Msg response = reportAgent.call(request).block();

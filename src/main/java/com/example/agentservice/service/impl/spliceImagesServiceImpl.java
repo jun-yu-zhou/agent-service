@@ -11,10 +11,6 @@ import com.example.agentservice.imm.support.AbstractImmServiceSupport;
 import com.example.agentservice.service.spliceImagesService;
 import org.springframework.stereotype.Service;
 
-import java.time.Duration;
-import java.time.Instant;
-import java.util.Date;
-
 @Service
 public class spliceImagesServiceImpl extends AbstractImmServiceSupport
         implements spliceImagesService {
@@ -39,7 +35,6 @@ public class spliceImagesServiceImpl extends AbstractImmServiceSupport
         OSS ossClient = createOssClient();
         try {
             Client immClient = createImmClient();
-            String bucket = AgentServiceConfig.ossBucket();
             String targetKey = IMAGE_SPLICING_PREFIX + "/" + java.util.UUID.randomUUID() + ".png";
             var sources = command.sourceUris().stream()
                     .map(sourceUri -> new CreateImageSplicingTaskRequest.CreateImageSplicingTaskRequestSources()
@@ -48,7 +43,7 @@ public class spliceImagesServiceImpl extends AbstractImmServiceSupport
             CreateImageSplicingTaskRequest request = new CreateImageSplicingTaskRequest()
                     .setProjectName(AgentServiceConfig.immProjectName())
                     .setSources(sources)
-                    .setTargetURI("oss://" + bucket + "/" + targetKey)
+                    .setTargetURI(ossUri(targetKey))
                     .setImageFormat("png")
                     .setDirection(direction)
                     .setScaleType("fit")
@@ -65,8 +60,7 @@ public class spliceImagesServiceImpl extends AbstractImmServiceSupport
             System.out.println("已提交IMM图片" + direction + "拼接任务: " + taskId
                     + ", target=" + targetKey);
             waitForTask(immClient, taskId, "ImageSplicing");
-            return ossClient.generatePresignedUrl(
-                    bucket, targetKey, Date.from(Instant.now().plus(Duration.ofHours(2)))).toString();
+            return generatePresignedUrl(ossClient, targetKey);
         } finally {
             ossClient.shutdown();
         }

@@ -21,6 +21,7 @@ public class CibDimensionResult {
     private List<TypoMetric> typoMetrics = new ArrayList<>();
     private List<SimilarTypo> similarTypos = new ArrayList<>();
     private List<RiskFactor> riskFactors = new ArrayList<>();
+    private List<LegalReference> legalReferences = new ArrayList<>();
 
     private boolean success = true;
 
@@ -102,7 +103,16 @@ public class CibDimensionResult {
         private String type;
         private List<String> bidders = new ArrayList<>();
         private String description;
+        private List<Evidence> evidence = new ArrayList<>();
         private String legalBasis;
         private String confidence;
+    }
+
+    @Data
+    public static class LegalReference {
+        private String document;
+        private String article;
+        private String summary;
+        private String applicability;
     }
 }

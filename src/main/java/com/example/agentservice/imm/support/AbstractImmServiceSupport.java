@@ -13,6 +13,8 @@ import com.aliyun.teaopenapi.models.Config;
 import com.aliyun.teautil.models.RuntimeOptions;
 
 import java.time.Duration;
+import java.time.Instant;
+import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
@@ -22,17 +24,45 @@ public abstract class AbstractImmServiceSupport {
 
     protected static final int OUTPUT_WAIT_SECONDS = 600;
 
+    protected String ossBucket() {
+        return AgentServiceConfig.ossBucket();
+    }
+
+    protected String ossUri(String objectKey) {
+        return ImmOssPath.uri(objectKey);
+    }
+
+    protected String objectKeyFromOssUri(String uri) {
+        return ImmOssPath.objectKey(uri);
+    }
+
+    protected String generatePresignedUrl(OSS ossClient, String objectKey) {
+        return ossClient.generatePresignedUrl(
+                ossBucket(), objectKey, Date.from(Instant.now().plus(Duration.ofHours(2))))
+                .toString();
+    }
+
     protected OSS createOssClient() {
         DefaultCredentialProvider credentialsProvider = new DefaultCredentialProvider(
                 AgentServiceConfig.ossAccessKeyId(), AgentServiceConfig.ossAccessKeySecret());
         ClientBuilderConfiguration configuration = new ClientBuilderConfiguration();
         configuration.setSignatureVersion(SignVersion.V4);
+        String endpoint = AgentServiceConfig.ossEndpoint();
+        if (!isAliyunEndpoint(endpoint)) {
+            // 自定义 CNAME 已经指向目标 bucket，禁止 SDK 再拼接 bucket 子域名。
+            configuration.setSupportCname(true);
+        }
         return OSSClientBuilder.create()
-                .endpoint(AgentServiceConfig.ossEndpoint())
+                .endpoint(endpoint)
                 .region(AgentServiceConfig.ossRegion())
                 .credentialsProvider(credentialsProvider)
                 .clientConfiguration(configuration)
                 .build();
+    }
+
+    private boolean isAliyunEndpoint(String endpoint) {
+        String normalized = endpoint == null ? "" : endpoint.toLowerCase(Locale.ROOT);
+        return normalized.contains(".aliyuncs.com") || normalized.contains(".aliyun-inc.com");
     }
 
     protected Client createImmClient() throws Exception {

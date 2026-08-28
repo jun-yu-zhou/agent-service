@@ -1,6 +1,5 @@
 package com.example.agentservice.imm.gateway;
 
-import com.example.agentservice.config.AgentServiceConfig;
 import com.example.agentservice.imm.task.DocumentToImgTask;
 import com.example.agentservice.entity.ImmImagePage;
 import com.example.agentservice.imm.request.DocumentToImgRequest;
@@ -11,6 +10,7 @@ import com.example.agentservice.service.DocumentToImgService;
 import com.example.agentservice.service.detectImageTextsService;
 import com.example.agentservice.service.extractDocumentTextService;
 import com.example.agentservice.service.spliceImagesService;
+import com.example.agentservice.imm.support.ImmOssPath;
 import org.springframework.stereotype.Component;
 
 import java.net.URI;
@@ -69,7 +69,7 @@ public class ImmGateway {
         String sourceKey = objectKey(pdfUrl);
         String documentName = sourceKey.substring(sourceKey.lastIndexOf('/') + 1);
         String outputPrefix = "imm-review/" + documentName + "/";
-        String targetUriPrefix = "oss://" + AgentServiceConfig.ossBucket() + "/" + outputPrefix;
+        String targetUriPrefix = ImmOssPath.uri(outputPrefix);
         return documentToImgService.convertDocumentToImages(
                 new DocumentToImgRequest(sourceUri, targetUriPrefix, documentName));
     }
@@ -79,7 +79,7 @@ public class ImmGateway {
     }
 
     private String toSourceUri(String url) {
-        return "oss://" + AgentServiceConfig.ossBucket() + "/" + objectKey(url);
+        return ImmOssPath.uri(objectKey(url));
     }
 
     private String objectKey(String url) {
