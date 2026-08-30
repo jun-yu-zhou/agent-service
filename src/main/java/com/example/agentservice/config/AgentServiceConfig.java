@@ -26,6 +26,11 @@ public final class AgentServiceConfig {
         throw new IllegalStateException("缺少配置 app.dashscope.api-key，请在 application-local.yml 中设置");
     }
 
+    public static String dashScopeBaseUrl() {
+        return value("app.dashscope.base-url", "DASHSCOPE_BASE_URL",
+                "https://dashscope.aliyuncs.com");
+    }
+
     public static String ossEndpoint() {
         return value("app.oss.endpoint", "ALIYUN_OSS_ENDPOINT", "https://oss-cn-beijing.aliyuncs.com");
     }

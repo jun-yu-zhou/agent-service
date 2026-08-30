@@ -201,6 +201,42 @@ public class ModelConfig {
                 .build();
     }
 
+    /** 使用 AgentScope 默认 HTTP 配置执行 qwen3.8-flash 全量图片流式审查。 */
+    @Bean
+    @Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)
+    public OpenAIChatModel qwen38FlashStreamingReviewModel() {
+        return OpenAIChatModel.builder()
+                .apiKey(AgentServiceConfig.dashScopeApiKey())
+                .modelName(QWEN38_FLASH_MODEL_NAME)
+                .baseUrl(DASH_SCOPE_COMPATIBLE_BASE_URL)
+                .endpointPath("/chat/completions")
+                .stream(true)
+                .generateOptions(GenerateOptions.builder()
+                        .maxTokens(8192)
+                        .temperature(0.2D)
+                        .additionalBodyParam("enable_thinking", false)
+                        .build())
+                .build();
+    }
+
+    /** 使用 AgentScope 默认 HTTP 配置，由 qwen3.8-flash 生成最终报告。 */
+    @Bean
+    @Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)
+    public DashScopeChatModel qwen38FlashDefaultReportModel() {
+        return DashScopeChatModel.builder()
+                .apiKey(AgentServiceConfig.dashScopeApiKey())
+                .modelName(QWEN38_FLASH_MODEL_NAME)
+                .baseUrl(AgentServiceConfig.dashScopeBaseUrl())
+                .endpointType(EndpointType.MULTIMODAL)
+                .stream(false)
+                .enableThinking(false)
+                .defaultOptions(GenerateOptions.builder()
+                        .maxTokens(8192)
+                        .temperature(0.15D)
+                        .build())
+                .build();
+    }
+
     @Bean
     @Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)
     public MultiModalConversation qwen37PlusMultimodalModel() {
