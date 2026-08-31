@@ -32,6 +32,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
@@ -55,7 +56,6 @@ public class ImmBatchBasicInfoReviewBy37Plus {
             "http://oss1.easyjcx.com/co-order/2026/08/31/a8974b5bc67f4abd86102b1fd6b9fdad691476349652533877.pdf",
             "http://oss1.easyjcx.com/co-order/2026/08/31/7c7dd732604144e6bf1876911b07180e7242434849769595335.pdf",
             "http://oss1.easyjcx.com/co-order/2026/08/31/9827b7322c344a81ab6ff2ec7cce25675852779963543401812.pdf");
-
     private final PdfUtils pdfUtils;
     private final ModelConfig modelConfig;
     private final Knowledge reportKnowledge;
@@ -168,10 +168,7 @@ public class ImmBatchBasicInfoReviewBy37Plus {
                     .model(modelConfig.qwen37PlusStreamingReviewModel())
                     .build();
             StreamResult result = stream(agent, buildExtractionRequest(task), label);
-            if (result.usage() != null) {
-                System.out.println("基础信息抽取输入Token[" + label + "]: "
-                        + result.usage().getInputTokens());
-            }
+            printTokenUsage("基础信息抽取", label, result.usage());
             try {
                 CibBasicInfoFacts facts = QwenDocResponseParser.parse(
                         result.text(), CibBasicInfoFacts.class);
@@ -259,22 +256,45 @@ public class ImmBatchBasicInfoReviewBy37Plus {
                 .build();
         Msg response = agent.call(buildComparisonRequest(outputs, legalReferences)).block();
         String report = requireReportContent(response);
-        if (response.getChatUsage() != null) {
-            System.out.println("基础信息雷同比对输入Token: "
-                    + response.getChatUsage().getInputTokens());
-        }
+        printTokenUsage("基础信息雷同比对", "最终汇总", response.getChatUsage());
         return report;
     }
 
+    private void printTokenUsage(String stage, String label, ChatUsage usage) {
+        if (usage == null) {
+            System.out.println(stage + "Token使用量[" + label + "]：模型未返回usage");
+            return;
+        }
+        System.out.println(stage + "输入Token[" + label + "]: " + usage.getInputTokens());
+        System.out.println(stage + "输出Token[" + label + "]: " + usage.getOutputTokens());
+    }
+
     private Msg buildComparisonRequest(List<ExtractionOutput> outputs, String legalReferences) {
+        List<String> suppliers = identifiedSuppliers(outputs);
         String content = """
+                本次已识别的真实投标人名单（共%d名，顺序固定）：%s
+                第一张和第三张表必须完整保留名单中的每一名投标人。第三张表的表头必须为“分项项目”加上述每名投标人的报价列及“报价分布特征”；
+                即使某投标人缺少某一分项报价，也不得省略该投标人列，应填写“未发现明确报价”。
+
                 以下是所有文件批次的事实材料。JSON解析失败的批次保留原始响应：
                 %s
 
                 以下是法律文件知识库检索结果，仅用于报告中的法律条款依据：
                 %s
-                """.formatted(comparisonMaterials(outputs), legalReferences);
+                """.formatted(suppliers.size(), String.join("、", suppliers),
+                comparisonMaterials(outputs), legalReferences);
         return Msg.builder().role(MsgRole.USER).textContent(content).build();
+    }
+
+    private List<String> identifiedSuppliers(List<ExtractionOutput> outputs) {
+        return outputs.stream()
+                .map(ExtractionOutput::facts)
+                .filter(Objects::nonNull)
+                .map(CibBasicInfoFacts::supplierName)
+                .filter(name -> name != null && !name.isBlank() && !"UNKNOWN".equalsIgnoreCase(name))
+                .map(String::trim)
+                .distinct()
+                .toList();
     }
 
     private String requireReportContent(Msg response) {
