@@ -26,6 +26,11 @@ public final class AgentServiceConfig {
         return result;
     }
 
+    public static String dashScopeBaseUrl() {
+        return value("app.dashscope.base-url", "DASHSCOPE_BASE_URL",
+                "https://dashscope.aliyuncs.com");
+    }
+
     public static String ossEndpoint() {
         return value("app.oss.endpoint", "ALIYUN_OSS_ENDPOINT", "https://oss-cn-beijing.aliyuncs.com");
     }
