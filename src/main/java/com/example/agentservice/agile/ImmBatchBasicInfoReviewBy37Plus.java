@@ -6,7 +6,6 @@ import com.example.agentservice.config.ModelConfig;
 import com.example.agentservice.entity.CibBasicInfoFacts;
 import com.example.agentservice.entity.ImmImagePage;
 import com.example.agentservice.prompts.ImmBatchBasicInfoReviewPrompts;
-import com.example.agentservice.service.ImmService;
 import com.example.agentservice.utils.PdfUtils;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -34,16 +33,15 @@ import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
-import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.IntStream;
 
-/** IMM 正文与页面图片分批抽取基础信息，再由 qwen3.8-flash 执行纯文本雷同比对。 */
-public class ImmBatchBasicInfoReviewBy38Flash {
+/** IMM 页面图片分批抽取基础信息，再由 qwen3.7-plus 执行纯文本雷同比对。 */
+public class ImmBatchBasicInfoReviewBy37Plus {
 
     private static final int IMAGE_BATCH_SIZE = 180;
     private static final int EXTRACTION_THREAD_COUNT = 6;
@@ -59,14 +57,11 @@ public class ImmBatchBasicInfoReviewBy38Flash {
             "http://oss1.easyjcx.com/co-order/2026/08/31/9827b7322c344a81ab6ff2ec7cce25675852779963543401812.pdf");
 
     private final PdfUtils pdfUtils;
-    private final ImmService immService;
     private final ModelConfig modelConfig;
     private final Knowledge reportKnowledge;
 
-    public ImmBatchBasicInfoReviewBy38Flash(
-            PdfUtils pdfUtils, ImmService immService, ModelConfig modelConfig) {
+    public ImmBatchBasicInfoReviewBy37Plus(PdfUtils pdfUtils, ModelConfig modelConfig) {
         this.pdfUtils = pdfUtils;
-        this.immService = immService;
         this.modelConfig = modelConfig;
         this.reportKnowledge = createReportKnowledge();
     }
@@ -75,9 +70,8 @@ public class ImmBatchBasicInfoReviewBy38Flash {
         SpringApplicationBuilder application = new SpringApplicationBuilder(AgentServiceApplication.class)
                 .web(WebApplicationType.NONE);
         try (ConfigurableApplicationContext context = application.run()) {
-            ImmBatchBasicInfoReviewBy38Flash review = new ImmBatchBasicInfoReviewBy38Flash(
+            ImmBatchBasicInfoReviewBy37Plus review = new ImmBatchBasicInfoReviewBy37Plus(
                     context.getBean(PdfUtils.class),
-                    context.getBean(ImmService.class),
                     context.getBean(ModelConfig.class));
             review.execute(args.length == 0 ? PDF_URLS : Arrays.asList(args));
         } catch (Exception exception) {
@@ -85,10 +79,11 @@ public class ImmBatchBasicInfoReviewBy38Flash {
         }
     }
 
+    /** 按“转图片、分批抽取、跨文件汇总”三个阶段执行基础信息审查。 */
     public void execute(List<String> pdfUrls) throws Exception {
         validateUrls(pdfUrls);
         long startNanos = System.nanoTime();
-        System.out.println("阶段1/3：并发提取正文并将PDF转为页面图片...");
+        System.out.println("阶段1/3：将PDF转为页面图片...");
         List<DocumentMaterial> materials = loadMaterials(pdfUrls);
         int imageCount = materials.stream().mapToInt(item -> item.pages().size()).sum();
         System.out.println("文件数=" + materials.size() + "，总图片数=" + imageCount);
@@ -101,21 +96,22 @@ public class ImmBatchBasicInfoReviewBy38Flash {
             throw new IllegalStateException("所有基础信息抽取批次均未返回内容，终止报告生成");
         }
 
-        System.out.println("阶段3/3：使用 qwen3.8-flash 对全部供应商事实执行纯文本比对...");
+        System.out.println("阶段3/3：使用 qwen3.7-plus 对全部供应商事实执行纯文本比对...");
         System.out.println(compareFacts(outputs));
         System.out.printf("总耗时: %.3f 秒%n", elapsedSeconds(startNanos));
     }
 
+    /** 为每个输入文件分配稳定 documentId，后续模型不得改变该文件归属。 */
     private List<DocumentMaterial> loadMaterials(List<String> pdfUrls) throws Exception {
-        ExecutorService executor = Executors.newFixedThreadPool(pdfUrls.size() * 2);
+        ExecutorService executor = Executors.newFixedThreadPool(Math.max(1, pdfUrls.size()));
         try {
-            List<CompletableFuture<DocumentMaterial>> futures = pdfUrls.stream().map(url -> {
-                CompletableFuture<String> text = CompletableFuture.supplyAsync(() -> extractText(url), executor);
-                CompletableFuture<List<ImmImagePage>> pages = CompletableFuture.supplyAsync(
-                        () -> convertPages(url), executor);
-                return text.thenCombine(pages, (documentText, imagePages) ->
-                        new DocumentMaterial(url, documentName(url, imagePages), documentText, imagePages));
-            }).toList();
+            List<CompletableFuture<DocumentMaterial>> futures = IntStream.range(0, pdfUrls.size())
+                    .mapToObj(index -> CompletableFuture.supplyAsync(() -> {
+                        String url = pdfUrls.get(index);
+                        List<ImmImagePage> pages = convertPages(url);
+                        return new DocumentMaterial("文件" + (index + 1), pages);
+                    }, executor))
+                    .toList();
             List<DocumentMaterial> result = new ArrayList<>();
             for (CompletableFuture<DocumentMaterial> future : futures) {
                 result.add(await(future));
@@ -126,25 +122,6 @@ public class ImmBatchBasicInfoReviewBy38Flash {
         }
     }
 
-    private String extractText(String url) {
-        try {
-            String documentText = immService.extractDocumentText(url);
-            if (documentText == null || documentText.isBlank()) {
-                System.out.println("IMM未提取到文档正文，按扫描件处理并以页面图片为准："
-                        + documentNameFromUrl(url));
-                return "[IMM未提取到正文，该文件可能是扫描件。此提示不是文件内容，请完全依据页面图片抽取事实。]";
-            }
-            return documentText;
-        } catch (Exception exception) {
-            throw new CompletionException("文档正文提取失败: " + url, exception);
-        }
-    }
-
-    private String documentNameFromUrl(String url) {
-        String path = url.substring(0, url.indexOf('?') >= 0 ? url.indexOf('?') : url.length());
-        return path.substring(path.lastIndexOf('/') + 1);
-    }
-
     private List<ImmImagePage> convertPages(String url) {
         try {
             return pdfUtils.pdfToImage(url);
@@ -153,6 +130,7 @@ public class ImmBatchBasicInfoReviewBy38Flash {
         }
     }
 
+    /** 按页分批并发抽取，批次边界同时作为最终证据的页码映射。 */
     private List<ExtractionOutput> extractFacts(List<DocumentMaterial> materials) {
         List<ExtractionTask> tasks = new ArrayList<>();
         for (DocumentMaterial material : materials) {
@@ -180,13 +158,14 @@ public class ImmBatchBasicInfoReviewBy38Flash {
         }
     }
 
+    /** 单批图片仅抽取页面事实；解析失败时保留原始响应供最终阶段参考。 */
     private List<ExtractionOutput> extractBatch(ExtractionTask task) {
         String label = extractionLabel(task);
         try {
             ReActAgent agent = ReActAgent.builder()
                     .name("basic-info-extractor-" + task.batchNumber())
-                    .sysPrompt(ImmBatchBasicInfoReviewPrompts.EXTRACTION_PROMPT)
-                    .model(modelConfig.qwen38FlashStreamingReviewModel())
+                    .sysPrompt(ImmBatchBasicInfoReviewPrompts.extractionPrompt())
+                    .model(modelConfig.qwen37PlusStreamingReviewModel())
                     .build();
             StreamResult result = stream(agent, buildExtractionRequest(task), label);
             if (result.usage() != null) {
@@ -196,27 +175,18 @@ public class ImmBatchBasicInfoReviewBy38Flash {
             try {
                 CibBasicInfoFacts facts = QwenDocResponseParser.parse(
                         result.text(), CibBasicInfoFacts.class);
-                return List.of(new ExtractionOutput(label, facts, result.text()));
+                return List.of(extractionOutput(task, facts, result.text()));
             } catch (IllegalArgumentException parseException) {
                 System.err.println("基础信息JSON解析失败[" + label + "]："
                         + parseException.getMessage());
+                System.err.println("原始响应字符数[" + label + "]：" + result.text().length()
+                        + "，末尾片段：" + responseTail(result.text()));
                 System.err.println("----- 原始响应开始[" + label + "] -----");
                 System.err.println(result.text());
                 System.err.println("----- 原始响应结束[" + label + "] -----");
-                return List.of(new ExtractionOutput(label, null, result.text()));
+                return List.of(extractionOutput(task, null, result.text()));
             }
         } catch (Exception exception) {
-            if (isModelTimeout(exception) && task.pages().size() > 1) {
-                int middle = task.pages().size() / 2;
-                System.err.println("基础信息抽取超时[" + label + "]，自动拆分为"
-                        + middle + "页和" + (task.pages().size() - middle) + "页重试");
-                List<ExtractionOutput> outputs = new ArrayList<>();
-                outputs.addAll(extractBatch(new ExtractionTask(task.material(), task.batchNumber(),
-                        task.pages().subList(0, middle))));
-                outputs.addAll(extractBatch(new ExtractionTask(task.material(), task.batchNumber(),
-                        task.pages().subList(middle, task.pages().size()))));
-                return outputs;
-            }
             System.err.println("基础信息抽取失败[" + label + "]：" + exception.getMessage());
             return List.of();
         }
@@ -224,22 +194,11 @@ public class ImmBatchBasicInfoReviewBy38Flash {
 
     private String extractionLabel(ExtractionTask task) {
         if (task.pages().isEmpty()) {
-            return task.material().documentName() + "#批次" + task.batchNumber() + "#无图片";
+            return task.material().documentId() + "#批次" + task.batchNumber() + "#无图片";
         }
-        return task.material().documentName() + "#批次" + task.batchNumber() + "#第"
+        return task.material().documentId() + "#批次" + task.batchNumber() + "#第"
                 + task.pages().get(0).page() + "-"
                 + task.pages().get(task.pages().size() - 1).page() + "页";
-    }
-
-    private boolean isModelTimeout(Throwable throwable) {
-        for (Throwable current = throwable; current != null; current = current.getCause()) {
-            String message = current.getMessage();
-            if (message != null && (message.contains("Model request timeout")
-                    || message.contains("PT5M"))) {
-                return true;
-            }
-        }
-        return false;
     }
 
     private Msg buildExtractionRequest(ExtractionTask task) {
@@ -253,20 +212,17 @@ public class ImmBatchBasicInfoReviewBy38Flash {
                 : "PDF第" + task.pages().get(0).page() + "页至第"
                         + task.pages().get(task.pages().size() - 1).page() + "页";
         content.add(TextBlock.builder().text("""
-                文件名：%s
+                文件编号：%s
                 当前图片范围：%s
                 当前为该文件第%d个图片批次。图片顺序与PDF页码一致。
-                审查基准日期：%s（早于或等于该日期的落款日期不属于未来日期）。
 
-                文件正文：
-                %s
-
-                请综合正文和当前批次页面图片抽取基础信息事实。
-                """.formatted(task.material().documentName(), pageRange,
-                task.batchNumber(), reviewDate(), task.material().documentText())).build());
+                请仅依据当前批次页面图片抽取基础信息事实。
+                """.formatted(task.material().documentId(), pageRange,
+                task.batchNumber())).build());
         return Msg.builder().role(MsgRole.USER).content(content).build();
     }
 
+    /** 聚合流式文本和响应使用量，避免遗漏最后一条 ChatUsage。 */
     private StreamResult stream(ReActAgent agent, Msg request, String label) {
         StringBuilder text = new StringBuilder();
         AtomicReference<ChatUsage> usage = new AtomicReference<>();
@@ -293,51 +249,76 @@ public class ImmBatchBasicInfoReviewBy38Flash {
         return new StreamResult(text.toString(), usage.get());
     }
 
+    /** 将带不可变来源元数据的批次事实交由 3.7 Plus 生成最终报告。 */
     private String compareFacts(List<ExtractionOutput> outputs) {
         String legalReferences = retrieveLegalReferences(outputs);
         ReActAgent agent = ReActAgent.builder()
                 .name("basic-info-similarity-report")
                 .sysPrompt(ImmBatchBasicInfoReviewPrompts.REPORT_PROMPT)
-                .model(modelConfig.qwen38FlashDefaultReportModel())
+                .model(modelConfig.qwen37PlusDefaultReportModel())
                 .build();
-        Msg response = agent.call(Msg.builder()
-                .role(MsgRole.USER)
-                .textContent("审查基准日期：" + reviewDate()
-                        + "。早于或等于该日期的落款日期不得认定为未来日期。\n\n"
-                        + "以下是所有文件批次的事实材料。JSON解析失败的批次保留原始响应：\n"
-                        + comparisonMaterials(outputs)
-                        + "\n\n以下是法律文件知识库检索结果，仅用于报告中的法律条款依据：\n"
-                        + legalReferences)
-                .build()).block();
+        Msg response = agent.call(buildComparisonRequest(outputs, legalReferences)).block();
+        String report = requireReportContent(response);
+        if (response.getChatUsage() != null) {
+            System.out.println("基础信息雷同比对输入Token: "
+                    + response.getChatUsage().getInputTokens());
+        }
+        return report;
+    }
+
+    private Msg buildComparisonRequest(List<ExtractionOutput> outputs, String legalReferences) {
+        String content = """
+                以下是所有文件批次的事实材料。JSON解析失败的批次保留原始响应：
+                %s
+
+                以下是法律文件知识库检索结果，仅用于报告中的法律条款依据：
+                %s
+                """.formatted(comparisonMaterials(outputs), legalReferences);
+        return Msg.builder().role(MsgRole.USER).textContent(content).build();
+    }
+
+    private String requireReportContent(Msg response) {
         if (response == null || response.getTextContent().isBlank()) {
             throw new IllegalStateException("基础信息雷同比对未返回报告");
         }
         return response.getTextContent();
     }
 
+    /** 仅对页面事实给出的法律线索检索知识库，不进行通用兜底检索。 */
     private String retrieveLegalReferences(List<ExtractionOutput> outputs) {
-        String query = buildLegalRetrievalQuery(outputs);
-        System.out.println("法律知识库检索条件：" + query);
+        List<String> clues = buildLegalRetrievalClues(outputs);
+        StringBuilder references = new StringBuilder();
+        Set<String> referencedContents = new LinkedHashSet<>();
+        for (String clue : clues) {
+            String query = "投标采购围标串标审查法律依据、认定规则与法律责任：" + clue;
+            appendLegalReferences(references, referencedContents, "检索线索：" + clue, query);
+        }
+        return references.isEmpty() ? "法律文件知识库未检索到相关条款。"
+                : references.toString();
+    }
+
+    private void appendLegalReferences(
+            StringBuilder references, Set<String> referencedContents, String label, String query) {
+        System.out.println("法律知识库检索：" + label);
         List<Document> documents = reportKnowledge.retrieve(
                 query,
                 RetrieveConfig.builder()
-                        .limit(10)
-                        .scoreThreshold(0D)
+                        .limit(3)
                         .build())
                 .block();
         if (documents == null || documents.isEmpty()) {
-            return "法律文件知识库未检索到相关条款。";
+            return;
         }
-        StringBuilder references = new StringBuilder();
-        for (int index = 0; index < documents.size(); index++) {
-            Document document = documents.get(index);
-            references.append("\n[法律资料").append(index + 1).append("]\n")
-                    .append(document.getMetadata().getContentText()).append('\n');
+        references.append('\n').append('[').append(label).append("]\n");
+        for (Document document : documents) {
+            String content = document.getMetadata().getContentText();
+            if (content != null && referencedContents.add(content)) {
+                references.append("[法律资料]\n").append(content).append('\n');
+            }
         }
-        return references.toString();
     }
 
-    private String buildLegalRetrievalQuery(List<ExtractionOutput> outputs) {
+    private List<String> buildLegalRetrievalClues(List<ExtractionOutput> outputs) {
         Set<String> clues = new LinkedHashSet<>();
         for (ExtractionOutput output : outputs) {
             if (output.facts() == null || output.facts().legalRetrievalClues() == null) {
@@ -352,28 +333,13 @@ public class ImmBatchBasicInfoReviewBy38Flash {
                 }
             }
         }
-        String prefix = "投标采购围标串标审查法律依据、认定规则与法律责任：";
-        if (clues.isEmpty()) {
-            return prefix + "基础信息雷同、报价异常、串通投标";
-        }
-        StringBuilder query = new StringBuilder(prefix);
-        for (String clue : clues) {
-            if (query.length() + clue.length() + 1 > 500) {
-                break;
-            }
-            query.append(' ').append(clue);
-        }
-        return query.toString();
+        return new ArrayList<>(clues);
     }
 
     private List<String> nonBlankParts(String... values) {
         return Arrays.stream(values)
                 .filter(value -> value != null && !value.isBlank())
                 .toList();
-    }
-
-    private LocalDate reviewDate() {
-        return LocalDate.now(ZoneId.of("Asia/Shanghai"));
     }
 
     private Knowledge createReportKnowledge() {
@@ -393,25 +359,29 @@ public class ImmBatchBasicInfoReviewBy38Flash {
                 .build();
     }
 
+    /** 将文件、批次和页码与抽取事实一并序列化，防止最终模型发生归属漂移。 */
     private String comparisonMaterials(List<ExtractionOutput> outputs) {
         StringBuilder materials = new StringBuilder();
         for (ExtractionOutput output : outputs) {
-            materials.append("\n\n### ").append(output.label()).append('\n');
-            if (output.facts() != null) {
-                materials.append(toJson(output.facts()));
-            } else {
-                materials.append(output.rawText());
-            }
+            materials.append('\n').append(toJson(new ComparisonMaterial(
+                    output.documentId(),
+                    output.batchNumber(),
+                    output.pageStart(),
+                    output.pageEnd(),
+                    output.facts(),
+                    output.facts() == null ? output.rawText() : null)));
         }
         return materials.toString();
     }
 
-    private String documentName(String url, List<ImmImagePage> pages) {
-        if (!pages.isEmpty() && pages.get(0).document() != null
-                && !pages.get(0).document().isBlank()) {
-            return pages.get(0).document();
-        }
-        return documentNameFromUrl(url);
+    /** 从代码侧任务生成来源元数据，不采信模型返回的文件名或供应商名。 */
+    private ExtractionOutput extractionOutput(
+            ExtractionTask task, CibBasicInfoFacts facts, String rawText) {
+        Integer pageStart = task.pages().isEmpty() ? null : task.pages().get(0).page();
+        Integer pageEnd = task.pages().isEmpty() ? null
+                : task.pages().get(task.pages().size() - 1).page();
+        return new ExtractionOutput(task.material().documentId(), task.batchNumber(),
+                pageStart, pageEnd, facts, rawText);
     }
 
     private void validateUrls(List<String> urls) {
@@ -446,9 +416,7 @@ public class ImmBatchBasicInfoReviewBy38Flash {
     }
 
     private record DocumentMaterial(
-            String sourceUrl,
-            String documentName,
-            String documentText,
+            String documentId,
             List<ImmImagePage> pages) {
     }
 
@@ -462,7 +430,25 @@ public class ImmBatchBasicInfoReviewBy38Flash {
     }
 
     private record ExtractionOutput(
-            String label,
+            String documentId,
+            int batchNumber,
+            Integer pageStart,
+            Integer pageEnd,
+            CibBasicInfoFacts facts,
+            String rawText) {
+    }
+
+    private String responseTail(String response) {
+        int start = Math.max(0, response.length() - 200);
+        return response.substring(start).replaceAll("[\\r\\n]+", " ");
+    }
+
+    /** 汇总模型的批次输入，来源映射仅以这里的流程元数据为准。 */
+    private record ComparisonMaterial(
+            String documentId,
+            int batchNumber,
+            Integer pageStart,
+            Integer pageEnd,
             CibBasicInfoFacts facts,
             String rawText) {
     }

@@ -11,6 +11,8 @@ import com.fasterxml.jackson.databind.ObjectReader;
 public final class QwenDocResponseParser {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final ObjectMapper LENIENT_OBJECT_MAPPER = new ObjectMapper()
+            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     private static final ObjectReader JSON_READER = OBJECT_MAPPER.readerFor(JsonNode.class)
             .with(DeserializationFeature.FAIL_ON_TRAILING_TOKENS);
 
@@ -27,9 +29,9 @@ public final class QwenDocResponseParser {
             if (root == null || !root.isObject()) {
                 throw new IllegalArgumentException("模型响应必须是JSON对象");
             }
-            return OBJECT_MAPPER.treeToValue(root, targetType);
+            return LENIENT_OBJECT_MAPPER.treeToValue(root, targetType);
         } catch (JsonProcessingException exception) {
-            throw new IllegalArgumentException("模型返回的JSON无效，原始响应未纳入后续阶段", exception);
+            throw new IllegalArgumentException("模型JSON解析失败：" + exception.getOriginalMessage(), exception);
         }
     }
 

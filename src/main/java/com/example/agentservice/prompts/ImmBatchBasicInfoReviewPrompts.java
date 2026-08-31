@@ -1,62 +1,51 @@
 package com.example.agentservice.prompts;
 
+import com.example.agentservice.entity.CibBasicInfoFacts;
+import com.example.agentservice.utils.JsonSchemaPromptUtils;
+
 /** IMM 分批基础信息审查实验专用提示词。 */
 public final class ImmBatchBasicInfoReviewPrompts {
 
-    public static final String EXTRACTION_PROMPT = """
-            你是投标文件基础信息事实抽取专家。用户会同时提供同一份文件的正文和部分页面图片。
+    private static final String EXTRACTION_PROMPT_TEMPLATE = """
+            你是投标文件基础信息事实抽取专家。用户会提供同一份文件的部分页面图片。
             只提取文件中明确出现的事实，不做跨供应商比较，不判断围标串标，不补充外部信息。
             同一字段在不同位置出现时全部保留；无法确认的内容使用null或空数组，不得编造。
             location必须写PDF页码、章节、表名或正文位置，excerpt必须是支持该事实的原文短摘录。
             sourceDocument使用用户给出的文件名。supplierName填写该文件实际所属供应商；无法确定时填写UNKNOWN。
             abnormalExpressions记录非通用、明显不自然或疑似复制残留的表述；commonErrors记录错别字、异常标点、错误名称或编号。
-            用户会提供审查基准日期。判断日期先后时必须与该日期逐年、逐月、逐日比较；早于或等于基准日期的日期绝不是未来日期。
             印章、个人名章、电子签章和手写签名只按页面可见形式客观记录；除非文件明确给出签署形式要求及违反证据，否则不得判断签署无效或异常。
 
-            只输出一个JSON对象，不输出Markdown、代码围栏或解释。对象必须包含以下全部字段：
-            sourceDocument, supplierName, enterpriseNames, legalRepresentatives,
-            authorizedRepresentatives, contacts, addresses, projectPersonnel,
-            qualificationCertificates, bankAccounts, quotes, priceItems, equipment,
-            achievements, abnormalExpressions, commonErrors, legalRetrievalClues, legalBases。
-
-            enterpriseNames、addresses、equipment元素：value, location, excerpt。
-            legalRepresentatives、authorizedRepresentatives、projectPersonnel元素：
-            name, role, certificateNumber, phone, location, excerpt。
-            contacts元素：name, phone, email, location, excerpt。
-            qualificationCertificates元素：certificateName, certificateNumber, holder, location, excerpt。
-            bankAccounts元素：bankName, accountName, accountNumber, location, excerpt。
-            quotes元素：quoteType, amount, currency, location, excerpt。quoteType只能根据原文填写首次报价、二次报价、最终报价或其他报价。
+            只输出一个符合末尾JSON Schema的JSON对象，不输出Markdown、代码围栏或解释；不得新增、改名或省略Schema字段。
+            quoteType只能根据原文填写首次报价、二次报价、最终报价或其他报价。
             报价金额必须是投标总价，不得把预算、最高限价、保证金、分项小计当作投标总价。
-            priceItems元素：itemName, specification, unit, quantity, unitPrice, totalPrice, location, excerpt。
-            achievements元素：projectName, client, amount, date, location, excerpt。
-            abnormalExpressions、commonErrors元素：text, type, location, excerpt。
-            legalRetrievalClues元素：riskCategory, observedIssue, applicableScenario, keywords。
+            contextType只能为BIDDER_SELF、ATTACHMENT_CONTRACT、PROJECT_COMMON或OTHER：
+            BIDDER_SELF表示明确属于当前投标人自身的内容；ATTACHMENT_CONTRACT表示业绩合同、验收材料等附件中的甲乙方、账户或项目事实；
+            PROJECT_COMMON表示采购项目名称、采购人、履行地点、采购编号、统一响应条款等同一项目的共用内容；无法判断时填OTHER。
+            报价或分项价格只有在文件明确表明为当前投标人报价表、报价函或最终报价时才标记为BIDDER_SELF；采购预算、最高限价、工程量清单、采购需求、控制价、参考价及统一报价模板标记为PROJECT_COMMON。
             该字段只归纳与政府采购、串通投标认定直接相关的风险类别、已观察事实、可能适用场景和关键词。
-            单个投标人的普通错别字、排版质量、网址格式、签章外观和未违反基准日期的落款日期不得生成法律检索线索。
-            keywords必须输出JSON字符串数组，即使只有一个关键词也必须使用数组，不得输出逗号分隔的单个字符串。
+            单个投标人的普通错别字、排版质量、网址格式、签章外观、落款日期、附件合同内容及项目共用内容不得生成法律检索线索。
             不得填写具体法律名称、条款，不得直接作出违法认定；无相关线索则返回空数组。
-            legalBases元素：lawName, article, contentSummary, applicableScenario, location, excerpt；只提取文件明确引用的法律依据，没有则返回空数组。
+
+            JSON Schema：
+            %s
             """;
 
+    public static String extractionPrompt() {
+        return EXTRACTION_PROMPT_TEMPLATE.formatted(JsonSchemaPromptUtils.schemaFor(CibBasicInfoFacts.class));
+    }
+
     public static final String REPORT_PROMPT = """
-            你是围标串标审查报告汇总专家。用户会提供各投标文件的结构化事实、解析失败批次的原始响应、审查基准日期和法律知识库检索结果。
+            你是围标串标审查报告汇总专家。用户会提供各投标文件的结构化事实、解析失败批次的原始响应和法律知识库检索结果。
 
             汇总规则：
-            1. 只能使用用户提供的结构化事实和原始响应中的文件事实；法律条款只能使用法律知识库检索结果，不新增证据、金额、投标人、页码、相似度或法条。
-            2. 合并重复发现，但保留涉及投标人、位置和原文证据；专项失败或数据不足时明确说明“证据不足”或“未发现明确异常”。
-            3. 风险等级和置信度只能输出“高”“中”“低”：HIGH=高、MEDIUM=中、LOW=低。风险等级和置信度禁止输出“未识别”；专项失败或证据不足时，按现有证据填写“低”，并在说明中注明证据不足。
-            4. 高风险必须有多个独立维度相互印证；不同材料冲突时采用较保守等级，并客观写明冲突内容。
-            5. 二次报价文件归并到原投标人，不作为独立投标人。
-            6. 只输出Markdown，不输出JSON、代码块、分析过程或开场白。
-            7. 严格输出以下8张表。每个二级标题（`##`）后必须先输出一个空行，再输出表头；每张表至少一行，无有效数据时填写“未发现明确异常”；风险等级和置信度仍只能填写“高”“中”“低”。
-            8. 第三张表把投标人占位列替换为真实投标人名称，按实际投标人数量增减，顺序与第一张表一致。
-            9. 报价只允许使用BASIC_INFO中有原文位置和摘录支持的金额；采购预算、最高限价、分项金额不得当作投标总价。
-            10. 异常表的置信度优先使用finding.confidence，其次使用riskFactors.confidence，翻译为高/中/低；缺失、UNKNOWN或明确无法判断时填写“低”，并在具体说明中写明证据不足。没有异常时写“未发现明确异常”，不要整表填“未识别”。
-            11. 审查基准日期由用户明确提供。任何早于或等于该日期的落款日期都不得描述为未来日期；必须先完成日期先后校验再写入报告。
-            12. 个人名章、印章、电子签章或非手写签名本身不构成异常。只有材料中存在明确签署形式要求、明确违反事实，且知识库存在可直接适用条款时，才可列入异常和法律表。
-            13. 单个投标人的错别字、标题倒置、网址格式、排版粗糙或制作水平问题，不属于跨投标人围标串标证据，不得写成可能影响商务分、未实质性响应或法律风险。
-            14. 第六张“法律条款依据摘要”只能填写法律知识库结果中明确出现的法律文件、具体条款、内容和适用情形。不得把文档质量问题硬套法律依据，不得编造法律文件或条款。
-            15. 全文禁止出现“需人工复核”和“未明确”两个词。某项异常没有可直接适用的具体法条时，不把该异常写入法律表；如果没有任何可引用条款，法律表保留一行：“本次审查无直接适用条款 | 不适用 | 未形成需要援引具体条款的异常结论 | 无”。
+            1. 证据来源以documentId、pageStart、pageEnd为准，facts中的名称不能改变其文件或页码归属；只使用输入事实和知识库资料，不编造。
+            2. 合并重复发现，保留原文、位置和涉及主体；高风险须有多个独立证据，冲突或不足时采用低风险并注明证据不足。
+            3. 账户只比较BIDDER_SELF；附件合同账户、甲乙方信息不得认定主体关联或混装。PROJECT_COMMON的项目名称、履行地点、采购编号、统一条款及价格排除出风险。
+            4. 报价只比较BIDDER_SELF的quotes和priceItems；相同分项报价本身不足以定风险，采购清单、控制价和参考价不得写入异常表。
+            5. 单文件残留、错别字、排版或签章外观仅记录事实；只有不同documentId出现相同非共用内容时才可作为雷同风险。
+            6. 法律资料仅用于其对应检索线索已经被事实支持的结论，不能反向制造或升级风险。第2表“法律依据”无直接条款时写“无直接适用条款”；仅第6表可写兜底行“无直接适用法律条款 | - | 本次发现未形成违法认定 | -”。
+            7. 仅输出Markdown和以下8张表；每个标题后空一行，每表至少一行。风险等级、置信度只能为高/中/低；无异常写“未发现明确异常”。投标人无法确认时使用“文件N”，不得输出OSS路径、UUID对象名或批次标识。
+            8. 第三张表按实际投标人替换占位列；第六张表仅引用知识库返回的具体法律文件和条款。全文禁止“需人工复核”“未明确”。
 
             ## 一、投标人基本情况
 
