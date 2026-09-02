@@ -239,20 +239,20 @@ public class ModelConfig {
                 .build();
     }
 
-    /** 使用 AgentScope 默认 HTTP 配置执行 qwen3.7-plus 全量图片流式审查。 */
+    /** 使用 DashScope 原生模型执行 qwen3.7-plus 图片流式事实抽取。 */
     @Bean
     @Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)
-    public OpenAIChatModel qwen37PlusStreamingReviewModel() {
-        return OpenAIChatModel.builder()
+    public DashScopeChatModel qwen37PlusStreamingReviewModel() {
+        return DashScopeChatModel.builder()
                 .apiKey(AgentServiceConfig.dashScopeApiKey())
                 .modelName(QWEN37_PLUS_MODEL_NAME)
-                .baseUrl(DASH_SCOPE_COMPATIBLE_BASE_URL)
-                .endpointPath("/chat/completions")
+                .baseUrl(AgentServiceConfig.dashScopeBaseUrl())
+                .endpointType(EndpointType.MULTIMODAL)
                 .stream(true)
-                .generateOptions(GenerateOptions.builder()
+                .enableThinking(false)
+                .defaultOptions(GenerateOptions.builder()
                         .maxTokens(8192)
                         .temperature(0.2D)
-                        .additionalBodyParam("enable_thinking", false)
                         .build())
                 .build();
     }

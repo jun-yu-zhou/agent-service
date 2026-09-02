@@ -1,9 +1,12 @@
 package com.example.agentservice.agile;
 
+
 import com.example.agentservice.AgentServiceApplication;
 import com.example.agentservice.config.AgentServiceConfig;
 import com.example.agentservice.config.ModelConfig;
 import com.example.agentservice.entity.CibBasicInfoFacts;
+import com.example.agentservice.entity.CibCollusionReviewData;
+import com.example.agentservice.entity.CibCollusionReviewResult;
 import com.example.agentservice.entity.ImmImagePage;
 import com.example.agentservice.prompts.ImmBatchBasicInfoReviewPrompts;
 import com.example.agentservice.utils.PdfUtils;
@@ -30,6 +33,8 @@ import org.springframework.context.ConfigurableApplicationContext;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
@@ -39,23 +44,18 @@ import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
 import java.util.stream.IntStream;
 
-/** IMM 页面图片分批抽取基础信息，再由 qwen3.7-plus 执行纯文本雷同比对。 */
+/** IMM 页面图片分批抽取、归并事实、专项审查后再生成围标串标报告。 */
 public class ImmBatchBasicInfoReviewBy37Plus {
 
-    private static final int IMAGE_BATCH_SIZE = 180;
+    private static final int IMAGE_BATCH_SIZE = 256;
     private static final int EXTRACTION_THREAD_COUNT = 6;
     private static final String BAILIAN_WORKSPACE_ID = "llm-2c213fyvomyxzuc9";
     private static final String BAILIAN_KNOWLEDGE_INDEX_ID = "94kvimrfoy";
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-    private static final List<String> PDF_URLS = List.of(
-            "http://oss1.easyjcx.com/co-order/2026/08/31/0e0abeab14294f35afc315230a16cee58458345289706990841.pdf",
-            "http://oss1.easyjcx.com/co-order/2026/08/31/ac7fa88168994d84a379f6cc91223d473481530127675841490.pdf",
-            "http://oss1.easyjcx.com/co-order/2026/08/31/6687c758aa79464cbe8920e1090045c71760585613030349238.pdf",
-            "http://oss1.easyjcx.com/co-order/2026/08/31/a8974b5bc67f4abd86102b1fd6b9fdad691476349652533877.pdf",
-            "http://oss1.easyjcx.com/co-order/2026/08/31/7c7dd732604144e6bf1876911b07180e7242434849769595335.pdf",
-            "http://oss1.easyjcx.com/co-order/2026/08/31/9827b7322c344a81ab6ff2ec7cce25675852779963543401812.pdf");
+    private static final List<String> PDF_URLS = List.of();
     private final PdfUtils pdfUtils;
     private final ModelConfig modelConfig;
     private final Knowledge reportKnowledge;
@@ -63,7 +63,20 @@ public class ImmBatchBasicInfoReviewBy37Plus {
     public ImmBatchBasicInfoReviewBy37Plus(PdfUtils pdfUtils, ModelConfig modelConfig) {
         this.pdfUtils = pdfUtils;
         this.modelConfig = modelConfig;
-        this.reportKnowledge = createReportKnowledge();
+        BailianConfig config = BailianConfig.builder()
+                .accessKeyId(AgentServiceConfig.ossAccessKeyId())
+                .accessKeySecret(AgentServiceConfig.ossAccessKeySecret())
+                .workspaceId(BAILIAN_WORKSPACE_ID)
+                .indexId(BAILIAN_KNOWLEDGE_INDEX_ID)
+                .endpoint("bailian.cn-beijing.aliyuncs.com")
+                .denseSimilarityTopK(10)
+                .sparseSimilarityTopK(10)
+                .enableReranking(true)
+                .build();
+        this.reportKnowledge = BailianKnowledge.builder()
+                .config(config)
+                .indexId(BAILIAN_KNOWLEDGE_INDEX_ID)
+                .build();
     }
 
     public static void main(String[] args) {
@@ -79,16 +92,33 @@ public class ImmBatchBasicInfoReviewBy37Plus {
         }
     }
 
-    /** 按“转图片、分批抽取、跨文件汇总”三个阶段执行基础信息审查。 */
+    /** 按“转图片、分批抽取、归并审查、生成报告”四个阶段执行基础信息审查。 */
     public void execute(List<String> pdfUrls) throws Exception {
         validateUrls(pdfUrls);
         long startNanos = System.nanoTime();
-        System.out.println("阶段1/3：将PDF转为页面图片...");
-        List<DocumentMaterial> materials = loadMaterials(pdfUrls);
+        System.out.println("阶段1/4：将PDF转为页面图片...");
+        ExecutorService conversionExecutor = Executors.newFixedThreadPool(Math.max(1, pdfUrls.size()));
+        List<DocumentMaterial> materials;
+        try {
+            materials = IntStream.range(0, pdfUrls.size())
+                    .mapToObj(index -> CompletableFuture.supplyAsync(() -> {
+                        try {
+                            return new DocumentMaterial("文件" + (index + 1),
+                                    pdfUtils.pdfToImage(pdfUrls.get(index)));
+                        } catch (Exception exception) {
+                            throw new CompletionException("PDF转图片失败: " + pdfUrls.get(index), exception);
+                        }
+                    }, conversionExecutor))
+                    .toList().stream()
+                    .map(CompletableFuture::join)
+                    .toList();
+        } finally {
+            conversionExecutor.shutdown();
+        }
         int imageCount = materials.stream().mapToInt(item -> item.pages().size()).sum();
         System.out.println("文件数=" + materials.size() + "，总图片数=" + imageCount);
 
-        System.out.println("阶段2/3：按每批最多" + IMAGE_BATCH_SIZE + "张图片抽取结构化事实...");
+        System.out.println("阶段2/4：按每批最多" + IMAGE_BATCH_SIZE + "张图片抽取基础、报价与版式事实...");
         List<ExtractionOutput> outputs = extractFacts(materials);
         long parsedCount = outputs.stream().filter(output -> output.facts() != null).count();
         System.out.println("完成抽取批次数=" + outputs.size() + "，成功解析JSON=" + parsedCount);
@@ -96,38 +126,14 @@ public class ImmBatchBasicInfoReviewBy37Plus {
             throw new IllegalStateException("所有基础信息抽取批次均未返回内容，终止报告生成");
         }
 
-        System.out.println("阶段3/3：使用 qwen3.7-plus 对全部供应商事实执行纯文本比对...");
-        System.out.println(compareFacts(outputs));
-        System.out.printf("总耗时: %.3f 秒%n", elapsedSeconds(startNanos));
-    }
+        CibCollusionReviewData reviewData = aggregateFacts(outputs);
+        System.out.println("阶段3/4：归并为" + reviewData.bidders().size() + "个投标人、"
+                + reviewData.unassignedDocuments().size() + "个待归属文件，并执行围标串标专项审查...");
+        CibCollusionReviewResult reviewResult = reviewCollusion(reviewData);
 
-    /** 为每个输入文件分配稳定 documentId，后续模型不得改变该文件归属。 */
-    private List<DocumentMaterial> loadMaterials(List<String> pdfUrls) throws Exception {
-        ExecutorService executor = Executors.newFixedThreadPool(Math.max(1, pdfUrls.size()));
-        try {
-            List<CompletableFuture<DocumentMaterial>> futures = IntStream.range(0, pdfUrls.size())
-                    .mapToObj(index -> CompletableFuture.supplyAsync(() -> {
-                        String url = pdfUrls.get(index);
-                        List<ImmImagePage> pages = convertPages(url);
-                        return new DocumentMaterial("文件" + (index + 1), pages);
-                    }, executor))
-                    .toList();
-            List<DocumentMaterial> result = new ArrayList<>();
-            for (CompletableFuture<DocumentMaterial> future : futures) {
-                result.add(await(future));
-            }
-            return result;
-        } finally {
-            executor.shutdown();
-        }
-    }
-
-    private List<ImmImagePage> convertPages(String url) {
-        try {
-            return pdfUtils.pdfToImage(url);
-        } catch (Exception exception) {
-            throw new CompletionException("PDF转图片失败: " + url, exception);
-        }
+        System.out.println("阶段4/4：根据专项审查结论生成报告...");
+        System.out.println(generateReport(reviewData, reviewResult));
+        System.out.printf("总耗时: %.3f 秒%n", (System.nanoTime() - startNanos) / 1_000_000_000D);
     }
 
     /** 按页分批并发抽取，批次边界同时作为最终证据的页码映射。 */
@@ -151,16 +157,20 @@ public class ImmBatchBasicInfoReviewBy37Plus {
                     .map(task -> CompletableFuture.supplyAsync(() -> extractBatch(task), executor))
                     .toList().stream()
                     .map(CompletableFuture::join)
-                    .flatMap(List::stream)
+                    .filter(Objects::nonNull)
                     .toList();
         } finally {
             executor.shutdown();
         }
     }
 
-    /** 单批图片仅抽取页面事实；解析失败时保留原始响应供最终阶段参考。 */
-    private List<ExtractionOutput> extractBatch(ExtractionTask task) {
-        String label = extractionLabel(task);
+    /** 单批图片仅抽取页面事实，解析失败时记录原始响应用于诊断。 */
+    private ExtractionOutput extractBatch(ExtractionTask task) {
+        String label = task.pages().isEmpty()
+                ? task.material().documentId() + "#批次" + task.batchNumber() + "#无图片"
+                : task.material().documentId() + "#批次" + task.batchNumber() + "#第"
+                        + task.pages().get(0).page() + "-"
+                        + task.pages().get(task.pages().size() - 1).page() + "页";
         try {
             ReActAgent agent = ReActAgent.builder()
                     .name("basic-info-extractor-" + task.batchNumber())
@@ -172,30 +182,26 @@ public class ImmBatchBasicInfoReviewBy37Plus {
             try {
                 CibBasicInfoFacts facts = QwenDocResponseParser.parse(
                         result.text(), CibBasicInfoFacts.class);
-                return List.of(extractionOutput(task, facts, result.text()));
+                return new ExtractionOutput(task.material().documentId(), task.batchNumber(),
+                        task.pages().isEmpty() ? null : task.pages().get(0).page(),
+                        task.pages().isEmpty() ? null : task.pages().get(task.pages().size() - 1).page(), facts);
             } catch (IllegalArgumentException parseException) {
                 System.err.println("基础信息JSON解析失败[" + label + "]："
                         + parseException.getMessage());
                 System.err.println("原始响应字符数[" + label + "]：" + result.text().length()
-                        + "，末尾片段：" + responseTail(result.text()));
+                        + "，末尾片段：" + result.text().substring(Math.max(0, result.text().length() - 200))
+                                .replaceAll("[\\r\\n]+", " "));
                 System.err.println("----- 原始响应开始[" + label + "] -----");
                 System.err.println(result.text());
                 System.err.println("----- 原始响应结束[" + label + "] -----");
-                return List.of(extractionOutput(task, null, result.text()));
+                return new ExtractionOutput(task.material().documentId(), task.batchNumber(),
+                        task.pages().isEmpty() ? null : task.pages().get(0).page(),
+                        task.pages().isEmpty() ? null : task.pages().get(task.pages().size() - 1).page(), null);
             }
         } catch (Exception exception) {
             System.err.println("基础信息抽取失败[" + label + "]：" + exception.getMessage());
-            return List.of();
+            return null;
         }
-    }
-
-    private String extractionLabel(ExtractionTask task) {
-        if (task.pages().isEmpty()) {
-            return task.material().documentId() + "#批次" + task.batchNumber() + "#无图片";
-        }
-        return task.material().documentId() + "#批次" + task.batchNumber() + "#第"
-                + task.pages().get(0).page() + "-"
-                + task.pages().get(task.pages().size() - 1).page() + "页";
     }
 
     private Msg buildExtractionRequest(ExtractionTask task) {
@@ -246,16 +252,131 @@ public class ImmBatchBasicInfoReviewBy37Plus {
         return new StreamResult(text.toString(), usage.get());
     }
 
-    /** 将带不可变来源元数据的批次事实交由 3.7 Plus 生成最终报告。 */
-    private String compareFacts(List<ExtractionOutput> outputs) {
-        String legalReferences = retrieveLegalReferences(outputs);
+    /** 先将同一文件的批次合并，再将可识别的同一投标人文件归到同一组。 */
+    private CibCollusionReviewData aggregateFacts(List<ExtractionOutput> outputs) {
+        LinkedHashMap<String, List<ExtractionOutput>> documentOutputs = new LinkedHashMap<>();
+        for (ExtractionOutput output : outputs) {
+            documentOutputs.computeIfAbsent(output.documentId(), ignored -> new ArrayList<>()).add(output);
+        }
+
+        LinkedHashMap<String, List<CibCollusionReviewData.DocumentFacts>> bidderDocuments = new LinkedHashMap<>();
+        List<CibCollusionReviewData.DocumentFacts> unassignedDocuments = new ArrayList<>();
+        for (var entry : documentOutputs.entrySet()) {
+            CibCollusionReviewData.DocumentFacts documentFacts = mergeDocumentFacts(entry.getKey(), entry.getValue());
+            if (isKnownSupplier(documentFacts.supplierName())) {
+                bidderDocuments.computeIfAbsent(documentFacts.supplierName(), ignored -> new ArrayList<>())
+                        .add(documentFacts);
+            } else {
+                unassignedDocuments.add(documentFacts);
+            }
+        }
+        List<CibCollusionReviewData.BidderFacts> bidders = bidderDocuments.entrySet().stream()
+                .map(entry -> new CibCollusionReviewData.BidderFacts(entry.getKey(), entry.getValue()))
+                .toList();
+        return new CibCollusionReviewData(bidders, unassignedDocuments);
+    }
+
+    private CibCollusionReviewData.DocumentFacts mergeDocumentFacts(
+            String documentId, List<ExtractionOutput> documentOutputs) {
+        List<ExtractionOutput> sortedOutputs = documentOutputs.stream()
+                .sorted(java.util.Comparator.comparingInt(ExtractionOutput::batchNumber))
+                .toList();
+        String supplierName = sortedOutputs.stream()
+                .map(ExtractionOutput::facts)
+                .filter(Objects::nonNull)
+                .map(CibBasicInfoFacts::supplierName)
+                .filter(this::isKnownSupplier)
+                .findFirst()
+                .orElse("UNKNOWN");
+        List<CibCollusionReviewData.BatchFacts> batches = sortedOutputs.stream()
+                .map(output -> new CibCollusionReviewData.BatchFacts(output.batchNumber(), output.pageStart(),
+                        output.pageEnd(), output.facts()))
+                .toList();
+        return new CibCollusionReviewData.DocumentFacts(documentId, supplierName, batches,
+                mergeFacts(supplierName, sortedOutputs));
+    }
+
+    /** 合并列表事实而不删除 location，后续任一结论都可以继续回溯PDF页码。 */
+    private CibBasicInfoFacts mergeFacts(String supplierName, List<ExtractionOutput> outputs) {
+        List<CibBasicInfoFacts> facts = outputs.stream()
+                .map(ExtractionOutput::facts)
+                .filter(Objects::nonNull)
+                .toList();
+        return new CibBasicInfoFacts(
+                supplierName,
+                firstNonBlank(facts.stream().map(CibBasicInfoFacts::documentRole).toList()),
+                mergeQuoteSummary(facts),
+                flatten(facts, CibBasicInfoFacts::referencePrices),
+                flatten(facts, CibBasicInfoFacts::associationFacts),
+                flatten(facts, CibBasicInfoFacts::keyPriceItems),
+                flatten(facts, CibBasicInfoFacts::documentLayoutFacts),
+                flatten(facts, CibBasicInfoFacts::textSimilarityFacts),
+                flatten(facts, CibBasicInfoFacts::legalRetrievalClues));
+    }
+
+    private CibBasicInfoFacts.QuoteSummary mergeQuoteSummary(List<CibBasicInfoFacts> facts) {
+        List<CibBasicInfoFacts.QuoteSummary> summaries = facts.stream()
+                .map(CibBasicInfoFacts::quoteSummary)
+                .filter(Objects::nonNull)
+                .toList();
+        if (summaries.isEmpty()) {
+            return null;
+        }
+        return new CibBasicInfoFacts.QuoteSummary(
+                firstNonBlank(summaries.stream().map(CibBasicInfoFacts.QuoteSummary::firstQuoteAmount).toList()),
+                firstNonBlank(summaries.stream().map(CibBasicInfoFacts.QuoteSummary::firstQuoteLocation).toList()),
+                firstNonBlank(summaries.stream().map(CibBasicInfoFacts.QuoteSummary::firstQuoteExcerpt).toList()),
+                firstNonBlank(summaries.stream().map(CibBasicInfoFacts.QuoteSummary::finalQuoteAmount).toList()),
+                firstNonBlank(summaries.stream().map(CibBasicInfoFacts.QuoteSummary::finalQuoteLocation).toList()),
+                firstNonBlank(summaries.stream().map(CibBasicInfoFacts.QuoteSummary::finalQuoteExcerpt).toList()));
+    }
+
+    private <T> List<T> flatten(List<CibBasicInfoFacts> facts,
+            Function<CibBasicInfoFacts, List<T>> extractor) {
+        return facts.stream()
+                .map(extractor)
+                .filter(Objects::nonNull)
+                .flatMap(Collection::stream)
+                .toList();
+    }
+
+    private String firstNonBlank(List<String> values) {
+        return values.stream().filter(value -> value != null && !value.isBlank()).findFirst().orElse(null);
+    }
+
+    private boolean isKnownSupplier(String supplierName) {
+        return supplierName != null && !supplierName.isBlank() && !"UNKNOWN".equalsIgnoreCase(supplierName);
+    }
+
+    /** 对归并后的事实进行五维围标串标审查，报告阶段不再重复判断风险。 */
+    private CibCollusionReviewResult reviewCollusion(CibCollusionReviewData reviewData) {
+        ReActAgent agent = ReActAgent.builder()
+                .name("collusion-review")
+                .sysPrompt(ImmBatchBasicInfoReviewPrompts.collusionReviewPrompt())
+                .model(modelConfig.qwen37PlusDefaultReportModel())
+                .build();
+        Msg response = agent.call(Msg.builder().role(MsgRole.USER)
+                .textContent("以下是按投标人和文件归并的结构化审查材料：\n" + toJson(reviewData))
+                .build()).block();
+        String text = requireContent(response, "围标串标专项审查");
+        printTokenUsage("围标串标专项审查", "五维审查", response.getChatUsage());
+        try {
+            return QwenDocResponseParser.parse(text, CibCollusionReviewResult.class);
+        } catch (IllegalArgumentException exception) {
+            throw new IllegalStateException("围标串标专项审查JSON解析失败：" + exception.getMessage(), exception);
+        }
+    }
+
+    /** 报告仅整理已审查结论、归并事实和与结论对应的法律资料。 */
+    private String generateReport(CibCollusionReviewData reviewData, CibCollusionReviewResult reviewResult) {
+        String legalReferences = retrieveLegalReferences(reviewResult);
         ReActAgent agent = ReActAgent.builder()
                 .name("basic-info-similarity-report")
                 .sysPrompt(ImmBatchBasicInfoReviewPrompts.REPORT_PROMPT)
                 .model(modelConfig.qwen37PlusDefaultReportModel())
                 .build();
-        Msg response = agent.call(buildComparisonRequest(outputs, legalReferences)).block();
-        String report = requireReportContent(response);
+        Msg response = agent.call(buildReportRequest(reviewData, reviewResult, legalReferences)).block();
+        String report = requireContent(response, "基础信息雷同比对报告");
         printTokenUsage("基础信息雷同比对", "最终汇总", response.getChatUsage());
         return report;
     }
@@ -269,139 +390,68 @@ public class ImmBatchBasicInfoReviewBy37Plus {
         System.out.println(stage + "输出Token[" + label + "]: " + usage.getOutputTokens());
     }
 
-    private Msg buildComparisonRequest(List<ExtractionOutput> outputs, String legalReferences) {
-        List<String> suppliers = identifiedSuppliers(outputs);
+    private Msg buildReportRequest(CibCollusionReviewData reviewData,
+            CibCollusionReviewResult reviewResult, String legalReferences) {
+        List<String> suppliers = reviewData.bidders().stream()
+                .map(CibCollusionReviewData.BidderFacts::supplierName)
+                .toList();
         String content = """
                 本次已识别的真实投标人名单（共%d名，顺序固定）：%s
                 第一张和第三张表必须完整保留名单中的每一名投标人。第三张表的表头必须为“分项项目”加上述每名投标人的报价列及“报价分布特征”；
                 即使某投标人缺少某一分项报价，也不得省略该投标人列，应填写“未发现明确报价”。
 
-                以下是所有文件批次的事实材料。JSON解析失败的批次保留原始响应：
+                以下是已归并的文件事实：
+                %s
+
+                以下是独立围标串标审查Agent的结论，风险判断必须以此为准：
                 %s
 
                 以下是法律文件知识库检索结果，仅用于报告中的法律条款依据：
                 %s
                 """.formatted(suppliers.size(), String.join("、", suppliers),
-                comparisonMaterials(outputs), legalReferences);
+                toJson(reviewData), toJson(reviewResult), legalReferences);
         return Msg.builder().role(MsgRole.USER).textContent(content).build();
     }
 
-    private List<String> identifiedSuppliers(List<ExtractionOutput> outputs) {
-        return outputs.stream()
-                .map(ExtractionOutput::facts)
-                .filter(Objects::nonNull)
-                .map(CibBasicInfoFacts::supplierName)
-                .filter(name -> name != null && !name.isBlank() && !"UNKNOWN".equalsIgnoreCase(name))
-                .map(String::trim)
-                .distinct()
-                .toList();
-    }
-
-    private String requireReportContent(Msg response) {
+    private String requireContent(Msg response, String stage) {
         if (response == null || response.getTextContent().isBlank()) {
-            throw new IllegalStateException("基础信息雷同比对未返回报告");
+            throw new IllegalStateException(stage + "未返回内容");
         }
         return response.getTextContent();
     }
 
     /** 仅对页面事实给出的法律线索检索知识库，不进行通用兜底检索。 */
-    private String retrieveLegalReferences(List<ExtractionOutput> outputs) {
-        List<String> clues = buildLegalRetrievalClues(outputs);
-        StringBuilder references = new StringBuilder();
-        Set<String> referencedContents = new LinkedHashSet<>();
-        for (String clue : clues) {
-            String query = "投标采购围标串标审查法律依据、认定规则与法律责任：" + clue;
-            appendLegalReferences(references, referencedContents, "检索线索：" + clue, query);
-        }
-        return references.isEmpty() ? "法律文件知识库未检索到相关条款。"
-                : references.toString();
-    }
-
-    private void appendLegalReferences(
-            StringBuilder references, Set<String> referencedContents, String label, String query) {
-        System.out.println("法律知识库检索：" + label);
-        List<Document> documents = reportKnowledge.retrieve(
-                query,
-                RetrieveConfig.builder()
-                        .limit(3)
-                        .build())
-                .block();
-        if (documents == null || documents.isEmpty()) {
-            return;
-        }
-        references.append('\n').append('[').append(label).append("]\n");
-        for (Document document : documents) {
-            String content = document.getMetadata().getContentText();
-            if (content != null && referencedContents.add(content)) {
-                references.append("[法律资料]\n").append(content).append('\n');
-            }
-        }
-    }
-
-    private List<String> buildLegalRetrievalClues(List<ExtractionOutput> outputs) {
+    private String retrieveLegalReferences(CibCollusionReviewResult reviewResult) {
         Set<String> clues = new LinkedHashSet<>();
-        for (ExtractionOutput output : outputs) {
-            if (output.facts() == null || output.facts().legalRetrievalClues() == null) {
-                continue;
-            }
-            for (CibBasicInfoFacts.LegalRetrievalClue clue : output.facts().legalRetrievalClues()) {
-                String text = String.join(" ", nonBlankParts(
-                        clue.riskCategory(), clue.observedIssue(), clue.applicableScenario(),
-                        clue.keywords() == null ? null : String.join(" ", clue.keywords())));
+        if (reviewResult.legalRetrievalClues() != null) {
+            for (CibBasicInfoFacts.LegalRetrievalClue clue : reviewResult.legalRetrievalClues()) {
+                String text = Arrays.stream(new String[] {clue.riskCategory(), clue.observedIssue(),
+                        clue.applicableScenario(), clue.keywords() == null ? null : String.join(" ", clue.keywords())})
+                        .filter(value -> value != null && !value.isBlank())
+                        .collect(java.util.stream.Collectors.joining(" "));
                 if (!text.isBlank()) {
                     clues.add(text);
                 }
             }
         }
-        return new ArrayList<>(clues);
-    }
-
-    private List<String> nonBlankParts(String... values) {
-        return Arrays.stream(values)
-                .filter(value -> value != null && !value.isBlank())
-                .toList();
-    }
-
-    private Knowledge createReportKnowledge() {
-        BailianConfig config = BailianConfig.builder()
-                .accessKeyId(AgentServiceConfig.ossAccessKeyId())
-                .accessKeySecret(AgentServiceConfig.ossAccessKeySecret())
-                .workspaceId(BAILIAN_WORKSPACE_ID)
-                .indexId(BAILIAN_KNOWLEDGE_INDEX_ID)
-                .endpoint("bailian.cn-beijing.aliyuncs.com")
-                .denseSimilarityTopK(10)
-                .sparseSimilarityTopK(10)
-                .enableReranking(true)
-                .build();
-        return BailianKnowledge.builder()
-                .config(config)
-                .indexId(BAILIAN_KNOWLEDGE_INDEX_ID)
-                .build();
-    }
-
-    /** 将文件、批次和页码与抽取事实一并序列化，防止最终模型发生归属漂移。 */
-    private String comparisonMaterials(List<ExtractionOutput> outputs) {
-        StringBuilder materials = new StringBuilder();
-        for (ExtractionOutput output : outputs) {
-            materials.append('\n').append(toJson(new ComparisonMaterial(
-                    output.documentId(),
-                    output.batchNumber(),
-                    output.pageStart(),
-                    output.pageEnd(),
-                    output.facts(),
-                    output.facts() == null ? output.rawText() : null)));
+        StringBuilder references = new StringBuilder();
+        Set<String> referencedContents = new LinkedHashSet<>();
+        for (String clue : clues) {
+            System.out.println("法律知识库检索：检索线索：" + clue);
+            List<Document> documents = reportKnowledge.retrieve(
+                    "投标采购围标串标审查法律依据、认定规则与法律责任：" + clue,
+                    RetrieveConfig.builder().limit(3).build()).block();
+            if (documents != null && !documents.isEmpty()) {
+                references.append('\n').append("[检索线索：").append(clue).append("]\n");
+                for (Document document : documents) {
+                    String content = document.getMetadata().getContentText();
+                    if (content != null && referencedContents.add(content)) {
+                        references.append("[法律资料]\n").append(content).append('\n');
+                    }
+                }
+            }
         }
-        return materials.toString();
-    }
-
-    /** 从代码侧任务生成来源元数据，不采信模型返回的文件名或供应商名。 */
-    private ExtractionOutput extractionOutput(
-            ExtractionTask task, CibBasicInfoFacts facts, String rawText) {
-        Integer pageStart = task.pages().isEmpty() ? null : task.pages().get(0).page();
-        Integer pageEnd = task.pages().isEmpty() ? null
-                : task.pages().get(task.pages().size() - 1).page();
-        return new ExtractionOutput(task.material().documentId(), task.batchNumber(),
-                pageStart, pageEnd, facts, rawText);
+        return references.isEmpty() ? "法律文件知识库未检索到相关条款。" : references.toString();
     }
 
     private void validateUrls(List<String> urls) {
@@ -411,28 +461,12 @@ public class ImmBatchBasicInfoReviewBy37Plus {
         }
     }
 
-    private <T> T await(CompletableFuture<T> future) throws Exception {
-        try {
-            return future.join();
-        } catch (CompletionException exception) {
-            Throwable cause = exception.getCause();
-            if (cause instanceof Exception typedCause) {
-                throw typedCause;
-            }
-            throw new IllegalStateException("异步任务失败", cause);
-        }
-    }
-
     private String toJson(Object value) {
         try {
             return OBJECT_MAPPER.writeValueAsString(value);
         } catch (JsonProcessingException exception) {
             throw new IllegalStateException("结构化事实序列化失败", exception);
         }
-    }
-
-    private double elapsedSeconds(long startNanos) {
-        return (System.nanoTime() - startNanos) / 1_000_000_000D;
     }
 
     private record DocumentMaterial(
@@ -454,22 +488,7 @@ public class ImmBatchBasicInfoReviewBy37Plus {
             int batchNumber,
             Integer pageStart,
             Integer pageEnd,
-            CibBasicInfoFacts facts,
-            String rawText) {
+            CibBasicInfoFacts facts) {
     }
 
-    private String responseTail(String response) {
-        int start = Math.max(0, response.length() - 200);
-        return response.substring(start).replaceAll("[\\r\\n]+", " ");
-    }
-
-    /** 汇总模型的批次输入，来源映射仅以这里的流程元数据为准。 */
-    private record ComparisonMaterial(
-            String documentId,
-            int batchNumber,
-            Integer pageStart,
-            Integer pageEnd,
-            CibBasicInfoFacts facts,
-            String rawText) {
-    }
 }

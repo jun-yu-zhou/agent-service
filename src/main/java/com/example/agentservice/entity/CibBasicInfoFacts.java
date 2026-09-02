@@ -17,7 +17,8 @@ public record CibBasicInfoFacts(
         List<ReferencePriceFact> referencePrices,
         List<AssociationFact> associationFacts,
         List<PriceItemFact> keyPriceItems,
-        List<TextSignal> textSignals,
+        List<DocumentLayoutFact> documentLayoutFacts,
+        List<TextSimilarityFact> textSimilarityFacts,
         List<LegalRetrievalClue> legalRetrievalClues) {
 
     /** 首次和最终报价及其可回溯证据，直接服务于报告第一、三张表。 */
@@ -66,12 +67,23 @@ public record CibBasicInfoFacts(
             String contextType) {
     }
 
-    /** 可用于跨文件比对的异常表述或错误文本。 */
-    public record TextSignal(
+    /** 页面中可跨投标人比对的页眉页脚、字体、段落、表格和版式事实。 */
+    public record DocumentLayoutFact(
+            String pageHeader,
+            String pageFooter,
+            String pageNumber,
+            String fontAndStyle,
+            String paragraphAndIndentation,
+            String tableLayout,
+            String location,
+            String excerpt) {
+    }
+
+    /** 可用于跨文件核验的非通用表述、共同错误或疑似模板残留。 */
+    public record TextSimilarityFact(
             String signalType,
             String text,
             String normalizedText,
-            String signalScope,
             String location,
             String excerpt) {
     }
