@@ -9,6 +9,11 @@ logging:
 spring:
   config:
     import: optional:classpath:application-local.yml
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
 
 # Do not put real credentials here. Use application-local.yml for local-only values.
 app:
@@ -19,7 +24,7 @@ app:
     region: ${ALIYUN_OSS_REGION:cn-beijing}
     bucket: ${ALIYUN_OSS_BUCKET:}
     access-key-id: ${ALIYUN_OSS_ACCESS_KEY_ID:}
-    access-key-secret: ALIYUN_OSS_ACCESS_KEY_SECRET
+    access-key-secret: ${ALIYUN_OSS_ACCESS_KEY_SECRET:}
   imm:
     endpoint: ${ALIYUN_IMM_ENDPOINT:imm.cn-beijing.aliyuncs.com}
     project-name: ${ALIYUN_IMM_PROJECT:pdfReview}
@@ -27,3 +32,9 @@ app:
     knowledge-enabled: ${ALIYUN_BAILIAN_KNOWLEDGE_ENABLED:false}
     workspace-id: ${ALIYUN_BAILIAN_WORKSPACE_ID:}
     knowledge-base-id: ${ALIYUN_BAILIAN_KNOWLEDGE_BASE_ID:}
+  procurement-document:
+    template-location: ${PROCUREMENT_TEMPLATE_LOCATION:classpath:/templates/procurement/}
+    oss-output-prefix: ${PROCUREMENT_OSS_OUTPUT_PREFIX:procurement-document/}
+    generation-model: ${PROCUREMENT_GENERATION_MODEL:qwen3.7-plus}
+    max-concurrency: ${PROCUREMENT_MAX_CONCURRENCY:4}
+    task-ttl-hours: ${PROCUREMENT_TASK_TTL_HOURS:24}

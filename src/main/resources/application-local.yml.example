@@ -3,6 +3,7 @@
 app:
   dashscope:
     api-key: ""
+    base-url: "https://dashscope.aliyuncs.com/compatible-mode/v1"
   oss:
     endpoint: "https://oss-cn-beijing.aliyuncs.com"
     region: "cn-beijing"
@@ -11,8 +12,20 @@ app:
     access-key-secret: ""
   imm:
     endpoint: "imm.cn-beijing.aliyuncs.com"
-    project-name: "pdfReview"
+    project-name: "IMM"
   bailian:
     knowledge-enabled: true
     workspace-id: ""
     knowledge-base-id: ""
+  procurement-document:
+    oss-output-prefix: "procurement-document/"
+    generation-model: "qwen3.7-plus"
+    max-concurrency: 4
+    task-ttl-hours: 24
+
+spring:
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password: ""
