@@ -7,47 +7,163 @@
   <style>
     :root{--ink:#18231f;--muted:#68746f;--paper:#fbfaf5;--line:#d9ddd7;--green:#174d3b;--gold:#d7a94b;--warn:#9d4b35;--shadow:0 20px 60px rgba(23,49,40,.12)}
     *{box-sizing:border-box}body{margin:0;color:var(--ink);font-family:"Noto Serif SC","Source Han Serif SC","Microsoft YaHei",serif;background:#e8ece7;background-image:linear-gradient(90deg,rgba(23,77,59,.035) 1px,transparent 1px),linear-gradient(rgba(23,77,59,.035) 1px,transparent 1px);background-size:28px 28px}
-    button,input,textarea{font:inherit}.shell{min-height:100vh;display:grid;grid-template-columns:300px 1fr}.rail{background:#142d25;color:#f4f1e7;padding:32px 24px;position:sticky;top:0;height:100vh;overflow:auto}.brand{font-size:22px;letter-spacing:.12em}.brand small{display:block;color:#a9bdb4;font-size:11px;letter-spacing:.25em;margin-top:8px}.rule{height:1px;background:#365348;margin:26px 0}.label{font-size:12px;color:#a9bdb4;margin:16px 0 7px}.rail input{width:100%;border:1px solid #4c675d;background:#0f241d;color:white;padding:11px;border-radius:4px}.btn{border:0;border-radius:4px;padding:11px 15px;cursor:pointer;transition:.2s}.btn:hover{transform:translateY(-1px)}.primary{background:var(--gold);color:#17251f;font-weight:700}.secondary{background:#315044;color:white}.ghost{background:transparent;color:inherit;border:1px solid currentColor}.wide{width:100%;margin-top:9px}.status{margin-top:22px;padding:15px;border:1px solid #456258;background:#19382e}.status strong{display:block;margin-bottom:7px}.status span{font-size:12px;color:#bcd0c7}.steps{padding:0;list-style:none}.steps li{padding:10px 0 10px 25px;position:relative;color:#aac0b7;font-size:13px}.steps li:before{content:"";position:absolute;left:2px;top:14px;width:8px;height:8px;border:1px solid #789087;border-radius:50%}.steps li.done{color:white}.steps li.done:before{background:var(--gold);border-color:var(--gold)}
-    main{padding:28px 32px;min-width:0}.top{display:flex;justify-content:space-between;align-items:end;margin-bottom:20px}.top h1{font-size:26px;margin:0}.top p{margin:7px 0 0;color:var(--muted);font-size:13px}.actions{display:flex;gap:8px;flex-wrap:wrap}.workspace{display:grid;grid-template-columns:minmax(420px,1fr) minmax(420px,1fr);gap:18px}.panel{background:var(--paper);border:1px solid #d3d8d1;box-shadow:var(--shadow);min-height:680px}.panel-head{height:55px;padding:0 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between}.panel-head b{letter-spacing:.08em}.editor{width:100%;height:625px;border:0;resize:none;outline:none;background:transparent;padding:24px;line-height:1.8;font-family:"JetBrains Mono","Microsoft YaHei",monospace;font-size:13px}.preview{height:625px;overflow:auto;padding:30px 38px;line-height:1.8}.preview h1{text-align:center;font-size:26px;margin:0 0 30px}.preview h2{font-size:20px;border-bottom:2px solid var(--green);padding-bottom:7px;margin-top:30px}.preview h3{font-size:16px}.preview table{border-collapse:collapse;width:100%;font-size:12px;margin:18px 0}.preview th,.preview td{border:1px solid #9ba69f;padding:7px 9px;vertical-align:top}.preview th{background:#e4ebe6}.drawer{margin-top:18px;background:#fff;border-left:4px solid var(--warn);padding:16px 20px;display:none;white-space:pre-wrap;line-height:1.7;font-size:13px}.drawer.show{display:block}.versions{margin-top:18px;display:grid;gap:8px}.version{background:#fff;border:1px solid var(--line);padding:12px 15px;display:flex;justify-content:space-between;gap:15px;font-size:12px}.toast{position:fixed;right:25px;bottom:25px;background:#162e26;color:white;padding:13px 18px;border-radius:4px;box-shadow:var(--shadow);opacity:0;transform:translateY(10px);pointer-events:none;transition:.25s}.toast.show{opacity:1;transform:none}@media(max-width:1050px){.shell{grid-template-columns:1fr}.rail{position:relative;height:auto}.workspace{grid-template-columns:1fr}.panel{min-height:520px}.editor,.preview{height:500px}}
+    button,input,textarea{font:inherit}.shell{min-height:100vh;display:grid;grid-template-columns:340px 1fr}.rail{background:#142d25;color:#f4f1e7;padding:32px 24px;position:sticky;top:0;height:100vh;overflow:auto}.brand{font-size:22px;letter-spacing:.12em}.brand small{display:block;color:#a9bdb4;font-size:11px;letter-spacing:.25em;margin-top:8px}.rule{height:1px;background:#365348;margin:26px 0}.label{font-size:12px;color:#a9bdb4;margin:16px 0 7px}.rail input,.rail textarea{width:100%;border:1px solid #4c675d;background:#0f241d;color:white;padding:11px;border-radius:4px}.rail textarea{height:180px;resize:vertical;font-family:"JetBrains Mono","Microsoft YaHei",monospace;font-size:12px;line-height:1.55}.hint{margin-top:6px;color:#8fa79d;font-size:11px;line-height:1.5}.btn{border:0;border-radius:4px;padding:11px 15px;cursor:pointer;transition:.2s}.btn:hover{transform:translateY(-1px)}.primary{background:var(--gold);color:#17251f;font-weight:700}.secondary{background:#315044;color:white}.ghost{background:transparent;color:inherit;border:1px solid currentColor}.wide{width:100%;margin-top:9px}.status{margin-top:22px;padding:15px;border:1px solid #456258;background:#19382e}.status strong{display:block;margin-bottom:7px}.status span{font-size:12px;color:#bcd0c7}.steps{padding:0;list-style:none}.steps li{padding:10px 0 10px 25px;position:relative;color:#aac0b7;font-size:13px}.steps li:before{content:"";position:absolute;left:2px;top:14px;width:8px;height:8px;border:1px solid #789087;border-radius:50%}.steps li.done{color:white}.steps li.done:before{background:var(--gold);border-color:var(--gold)}
+    main{padding:28px 32px;min-width:0}.top{display:flex;justify-content:space-between;align-items:end;margin-bottom:20px}.top h1{font-size:26px;margin:0}.top p{margin:7px 0 0;color:var(--muted);font-size:13px}.actions{display:flex;gap:8px;flex-wrap:wrap}.workspace{display:grid;grid-template-columns:minmax(420px,1fr) minmax(420px,1fr);gap:18px}.panel{background:var(--paper);border:1px solid #d3d8d1;box-shadow:var(--shadow);min-height:680px}.panel-head{height:55px;padding:0 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between}.panel-head b{letter-spacing:.08em}.editor{width:100%;height:625px;border:0;resize:none;outline:none;background:transparent;padding:24px;line-height:1.8;font-family:"JetBrains Mono","Microsoft YaHei",monospace;font-size:13px}.preview{height:625px;overflow:auto;padding:30px 38px;line-height:1.8}.preview h1{text-align:center;font-size:26px;margin:0 0 30px}.preview h2{font-size:20px;border-bottom:2px solid var(--green);padding-bottom:7px;margin-top:30px}.preview h3{font-size:16px}.preview table{border-collapse:collapse;width:100%;font-size:12px;margin:18px 0}.preview th,.preview td{border:1px solid #9ba69f;padding:7px 9px;vertical-align:top}.preview th{background:#e4ebe6}.drawer{margin-top:18px;background:#fff;border-left:4px solid var(--warn);padding:16px 20px;display:none;white-space:pre-wrap;line-height:1.7;font-size:13px}.drawer.show{display:block}.versions{margin-top:18px;display:grid;gap:8px}.version{background:#fff;border:1px solid var(--line);padding:12px 15px;display:flex;justify-content:space-between;gap:15px;font-size:12px}.toast{position:fixed;right:25px;bottom:25px;background:#162e26;color:white;padding:13px 18px;border-radius:4px;box-shadow:var(--shadow);opacity:0;transform:translateY(10px);pointer-events:none;transition:.25s}.toast.show{opacity:1;transform:none}
+    .overlay{position:fixed;inset:0;z-index:60;background:rgba(20,45,37,.62);backdrop-filter:blur(2px);display:none;align-items:center;justify-content:center;flex-direction:column;gap:12px;color:#f4f1e7;text-align:center}
+    .overlay.show{display:flex}
+    .spinner{width:44px;height:44px;border-radius:50%;border:4px solid rgba(244,241,231,.22);border-top-color:var(--gold);animation:spin 1s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .busy-title{font-size:17px;font-weight:700;letter-spacing:.05em}
+    .busy-hint{font-size:12px;color:#cfe0d8;line-height:1.8;max-width:440px;padding:0 18px}
+    .busy-dismiss{margin-top:4px;background:rgba(255,255,255,.1);color:#f4f1e7;border:1px solid #8fa79d;font-size:12px;padding:8px 16px;border-radius:4px;cursor:pointer}
+    .busy-dismiss:hover{background:rgba(255,255,255,.2)}
+    .file-link{color:var(--green);text-decoration:underline;margin-left:4px;white-space:nowrap}
+    .version .file-link:hover{color:#0f3226}
+    .download-panel{margin-top:18px;background:#fff;border:1px solid var(--line);padding:16px 20px;display:none;align-items:center;flex-wrap:wrap;gap:8px}
+    .download-panel .download-head{font-weight:700;color:var(--green);margin-right:10px}
+    .download-panel .file-download{padding:7px 13px;font-size:12px;text-decoration:none}
+    @media(max-width:1050px){.shell{grid-template-columns:1fr}.rail{position:relative;height:auto}.workspace{grid-template-columns:1fr}.panel{min-height:520px}.editor,.preview{height:500px}}
   </style>
 </head>
 <body>
 <div class="shell">
   <aside class="rail">
     <div class="brand">采 购 文 牍<small>PROCUREMENT STUDIO</small></div><div class="rule"></div>
-    <div class="label">OSS 来源文件</div><input id="ossUrl" placeholder="test bucket 文件 URL">
-    <button class="btn primary wide" onclick="createTask()">生成招标初稿</button>
+    <div class="label">选择招标文件 HTML 模板</div><input id="outlineFile" type="file" accept=".html,.htm">
+    <div class="label">结构化项目 JSON（可选）</div>
+    <textarea id="projectData" spellcheck="false" placeholder='粘贴完整项目对象，例如：&#10;{&#10;  "projectName": "家具采购项目",&#10;  "purchaseMoney": "550000.00",&#10;  "classifyCode": "1",&#10;  "projectType": "1"&#10;}'></textarea>
+    <div class="hint">可直接粘贴旧版 ZbProjectCommonDto 的完整 JSON。</div>
+    <button class="btn primary wide" onclick="createTask()">上传模板并生成招标初稿</button>
     <div class="label">任务 ID</div><input id="taskId" placeholder="输入或生成 taskId">
     <button class="btn ghost wide" onclick="loadAll()">载入任务</button>
     <div class="status"><strong id="statusText">尚未载入任务</strong><span id="stageText">请创建或输入任务 ID</span></div>
-    <ol class="steps"><li id="s1">生成初稿</li><li id="s2">一致性审查</li><li id="s3">自动修订</li><li id="s4">人工确认</li><li id="s5">导出产物</li></ol>
+    <ol class="steps"><li id="s1">生成初稿</li><li id="s4">人工确认</li><li id="s5">导出产物</li></ol>
   </aside>
   <main>
-    <header class="top"><div><h1>招标文件协同工作台</h1><p>让模型负责起草与核对，让人保留最终决定权。</p></div>
-      <div class="actions"><button class="btn secondary" onclick="review()">发起审查</button><button class="btn secondary" onclick="revise()">自动修订</button><button class="btn primary" onclick="saveVersion()">保存人工版本</button><button class="btn ghost" onclick="finalizeCurrent()">确认定稿</button><button class="btn ghost" onclick="exportFiles()">导出文件</button></div></header>
+    <header class="top"><div><h1>招标文件协同工作台</h1><p>上传旧版 HTML 模板，生成初稿，人工编辑后确认定稿。</p></div>
+      <div class="actions"><button class="btn primary" onclick="saveVersion()">保存人工版本</button><button class="btn ghost" onclick="finalizeCurrent()">确认定稿</button><button class="btn ghost" onclick="exportFiles()">导出文件</button></div></header>
     <section class="workspace">
       <article class="panel"><div class="panel-head"><b>MARKDOWN 编辑</b><span id="charCount">0 字</span></div><textarea id="editor" class="editor" oninput="render()" placeholder="载入任务后，完整初稿会自动显示在这里。"></textarea></article>
       <article class="panel"><div class="panel-head"><b>文档预览</b><span>自动同步</span></div><div id="preview" class="preview"></div></article>
     </section>
-    <section id="reviewBox" class="drawer"></section><section id="versions" class="versions"></section>
+    <section id="downloadPanel" class="download-panel"></section>
+    <section id="versions" class="versions"></section>
   </main>
-</div><div id="toast" class="toast"></div>
+</div><div id="overlay" class="overlay" role="dialog" aria-live="polite">
+    <div class="spinner" aria-hidden="true"></div>
+    <div class="busy-title" id="busyTitle">正在处理</div>
+    <div class="busy-hint" id="busyHint"></div>
+    <button class="busy-dismiss" id="busyDismiss" onclick="dismissWaiting()">后台继续等待</button>
+  </div><div id="toast" class="toast"></div>
 <script>
-const base='/api/procurement/tender-drafts';let currentVersionId=null,pollTimer=null,artifacts=[];
+const base='/api/procurement/tender-drafts';let currentVersionId=null,pollTimer=null,artifacts=[],artifactsVersionId=null,overlayKind=null,liveTaskId=null;
 const $=id=>document.getElementById(id);const task=()=>$('taskId').value.trim();
-async function api(url,options={}){const r=await fetch(url,{headers:{'Content-Type':'application/json'},...options});if(!r.ok){throw new Error((await r.text())||('HTTP '+r.status))}return r.status===204?null:r.json()}
+async function api(url,options={}){const headers=options.body instanceof FormData?{}:{'Content-Type':'application/json'};const r=await fetch(url,{headers,...options});if(!r.ok){const text=await r.text();let message=text;try{message=JSON.parse(text).message||text}catch(e){}throw new Error(message||('HTTP '+r.status))}return r.status===204?null:r.json()}
 function notify(text){$('toast').textContent=text;$('toast').classList.add('show');setTimeout(()=>$('toast').classList.remove('show'),2400)}
-async function createTask(){const url=$('ossUrl').value.trim();if(!url)return notify('请填写 OSS URL');const data=await api(base+'/tasks/from-oss',{method:'POST',body:JSON.stringify({documentOssUrl:url})});$('taskId').value=data.taskId;watch();notify('任务已创建')}
-async function loadAll(){if(!task())return notify('请填写任务 ID');const data=await api(base+'/tasks/'+task()+'/result');applyResult(data);await loadVersions()}
-function watch(){clearInterval(pollTimer);loadAll().catch(()=>{});pollTimer=setInterval(async()=>{try{const d=await api(base+'/tasks/'+task()+'/result');applyResult(d);if(['COMPLETED','FAILED'].includes(d.task.status))clearInterval(pollTimer)}catch(e){}},2500)}
-function applyResult(data){$('statusText').textContent=data.task.status;$('stageText').textContent=data.task.currentStage||'';currentVersionId=data.task.currentVersionId;if(data.draft&&(!$('editor').value||$('editor').dataset.version!==currentVersionId)){$('editor').value=data.draft;$('editor').dataset.version=currentVersionId;render()}$('reviewBox').textContent=data.review||'';$('reviewBox').classList.toggle('show',!!data.review);markSteps(data)}
-function markSteps(d){$('s1').classList.toggle('done',!!d.draft);$('s2').classList.toggle('done',!!d.review);$('s3').classList.toggle('done',d.autoRevisionApplied);$('s4').classList.toggle('done',d.task.currentStage==='已确认定稿')}
-async function review(){await api(base+'/tasks/'+task()+'/review',{method:'POST'});watch();notify('审查已开始')}
-async function revise(){await api(base+'/tasks/'+task()+'/auto-revise',{method:'POST'});watch();notify('自动修订已开始')}
-async function saveVersion(){const markdown=$('editor').value;if(!markdown.trim())return notify('正文不能为空');const v=await api(base+'/tasks/'+task()+'/versions',{method:'POST',body:JSON.stringify({markdown,changedBy:'web-operator'})});currentVersionId=v.versionId;$('editor').dataset.version=currentVersionId;await loadVersions();notify('人工版本已保存')}
-async function loadVersions(){const list=await api(base+'/tasks/'+task()+'/versions');$('versions').innerHTML=list.map(x=>`<div class="version"><span>V${x.version.versionNumber} · ${esc(x.version.changeSource)} · ${esc(x.version.changedBy)}</span><span>${x.version.finalized?'已定稿':x.version.versionId.slice(0,8)}</span></div>`).join('');const f=list.find(x=>x.version.finalized);artifacts=f?f.version.artifacts:[];$('s4').classList.toggle('done',!!f);$('s5').classList.toggle('done',artifacts.length>0)}
-async function finalizeCurrent(){if(!currentVersionId)return notify('请先保存版本');await api(base+'/tasks/'+task()+'/versions/'+currentVersionId+'/finalize',{method:'POST'});await loadVersions();notify('已确认定稿')}
-async function exportFiles(){if(!currentVersionId)return notify('请先确认定稿');artifacts=await api(base+'/tasks/'+task()+'/versions/'+currentVersionId+'/artifacts/export',{method:'POST'});$('s5').classList.add('done');artifacts.forEach(a=>window.open(a.downloadUrl,'_blank'));await loadVersions();notify('DOCX 与 PDF 已生成')}
+function setActions(on){[...document.querySelectorAll('button')].forEach(b=>b.disabled=!on);$('outlineFile').disabled=!on;$('projectData').disabled=!on}
+function showOverlay(kind,title,hint){overlayKind=kind;$('busyTitle').textContent=title;$('busyHint').textContent=hint||'';setActions(false);$('busyDismiss').disabled=false;$('busyDismiss').style.display=kind==='generating'?'inline-block':'none';$('overlay').classList.add('show')}
+function hideOverlay(){overlayKind=null;$('overlay').classList.remove('show');setActions(true)}
+function dismissWaiting(){hideOverlay();notify('生成仍在后台进行，完成后会自动载入初稿')}
+async function createTask(){
+  const file=$('outlineFile').files[0];
+  if(!file)return notify('请选择招标文件 HTML 模板');
+  const json=$('projectData').value.trim();let parsed=null;
+  if(json){try{parsed=JSON.parse(json)}catch(e){return notify('结构化项目数据不是有效 JSON')}}
+  showOverlay('generating','正在上传模板并创建生成任务…','正在提交模板与项目数据，请稍候…');
+  try{
+    const form=new FormData();form.append('file',file);
+    if(parsed)form.append('projectData',new Blob([JSON.stringify(parsed)],{type:'application/json'}));
+    const created=await api(base+'/tasks/upload',{method:'POST',body:form});
+    $('taskId').value=created.taskId;liveTaskId=created.taskId;
+    $('busyTitle').textContent='正在生成招标初稿';
+    $('busyHint').textContent='AI 正在处理模板正文，通常需要数十秒，请耐心等待…';
+    watch();
+  }catch(e){hideOverlay();notify('上传失败：'+(e.message||'请查看服务日志'))}
+}
+async function loadAll(){if(!task())return notify('请填写任务 ID');try{const data=await api(base+'/tasks/'+task()+'/result');applyResult(data);await loadVersions()}catch(e){notify('载入失败：'+(e.message||'请检查任务 ID 与服务是否可用'))}}
+async function refreshResult(){const d=await api(base+'/tasks/'+task()+'/result');applyResult(d);if(['COMPLETED','FAILED'].includes(d.task.status)){clearInterval(pollTimer);pollTimer=null;return true}return false}
+function watch(){clearInterval(pollTimer);pollTimer=null;refreshResult().catch(()=>{});pollTimer=setInterval(()=>refreshResult().catch(()=>{}),2500)}
+function applyResult(data){
+  const st=data.task.status;
+  $('statusText').textContent=st;$('stageText').textContent=data.task.currentStage||'';
+  currentVersionId=data.task.currentVersionId;
+  if(overlayKind==='generating'){
+    if(st==='COMPLETED'){hideOverlay();if(liveTaskId===data.task.taskId)liveTaskId=null;notify('初稿生成完成，可直接编辑并保存')}
+    else if(st==='FAILED'){hideOverlay();if(liveTaskId===data.task.taskId)liveTaskId=null;notify('生成失败：'+(data.task.errorMessage||'请查看服务日志'))}
+    else $('busyHint').textContent=(data.task.currentStage||'AI 正在生成初稿')+'…通常需要数十秒，请耐心等待';
+  }else if(liveTaskId&&data.task.taskId===liveTaskId&&(st==='COMPLETED'||st==='FAILED')){liveTaskId=null;notify(st==='COMPLETED'?'初稿已生成完成并载入编辑区':'生成失败：'+(data.task.errorMessage||'请查看服务日志'))}
+  if(data.draft&&(!$('editor').value||$('editor').dataset.version!==currentVersionId)){$('editor').value=data.draft;$('editor').dataset.version=currentVersionId;render()}
+  markSteps(data)
+}
+function markSteps(d){$('s1').classList.toggle('done',!!d.draft);$('s4').classList.toggle('done',d.task.currentStage==='已确认定稿')}
+async function saveVersion(){
+  const markdown=$('editor').value;
+  if(!markdown.trim())return notify('正文不能为空');
+  setActions(false);
+  try{
+    const v=await api(base+'/tasks/'+task()+'/versions',{method:'POST',body:JSON.stringify({markdown,changedBy:'web-operator'})});
+    currentVersionId=v.versionId;$('editor').dataset.version=currentVersionId;
+    await loadVersions();notify('人工版本已保存')
+  }catch(e){notify('保存失败：'+(e.message||'请查看服务日志'))}
+  finally{setActions(true)}
+}
+function fileLabel(a){if(a.type==='PDF')return '下载 PDF';if(a.type==='DOCX')return '下载 DOCX';return '下载附件'}
+async function loadVersions(){
+  const list=await api(base+'/tasks/'+task()+'/versions');
+  $('versions').innerHTML=list.map(x=>{const v=x.version;const links=(v.artifacts||[]).map(a=>`<a class="file-link" download href="${artifactDownloadHref(v.taskId||task(),v.versionId,a.type)}">${fileLabel(a)}</a>`).join('');return `<div class="version"><span>V${v.versionNumber} · ${esc(v.changeSource)} · ${esc(v.changedBy)}</span><span>${v.finalized?'已定稿':v.versionId.slice(0,8)}${links?'　'+links:''}</span></div>`}).join('');
+  const f=list.find(x=>x.version.finalized);
+  artifacts=f?(f.version.artifacts||[]):[];
+  artifactsVersionId=f?f.version.versionId:null;
+  $('s4').classList.toggle('done',!!f);$('s5').classList.toggle('done',artifacts.length>0)
+}
+async function finalizeCurrent(){
+  if(!currentVersionId)return notify('请先保存版本');
+  setActions(false);
+  try{await api(base+'/tasks/'+task()+'/versions/'+currentVersionId+'/finalize',{method:'POST'});await loadVersions();notify('已确认定稿，可点击导出文件生成 DOCX 与 PDF')}
+  catch(e){notify('定稿失败：'+(e.message||'请查看服务日志'))}
+  finally{setActions(true)}
+}
+function artifactDownloadHref(taskId,versionId,type){return base+'/tasks/'+encodeURIComponent(taskId)+'/versions/'+encodeURIComponent(versionId)+'/artifacts/'+encodeURIComponent(type)+'/download'}
+function renderDownloads(list,note){
+  const panel=$('downloadPanel');panel.innerHTML='';
+  if(!list||!list.length){panel.style.display='none';return}
+  const title=document.createElement('span');title.className='download-head';title.textContent=note||'导出产物：';
+  panel.appendChild(title);
+  list.forEach(a=>{
+    const link=document.createElement('a');link.className='btn secondary file-download';
+    link.href=artifactDownloadHref(task(),currentVersionId,a.type);
+    link.setAttribute('download','');link.textContent=fileLabel(a);
+    panel.appendChild(link)
+  });
+  panel.style.display='flex'
+}
+function clickDownload(a){
+  const link=document.createElement('a');
+  link.href=artifactDownloadHref(task(),currentVersionId,a.type);
+  link.setAttribute('download','');
+  document.body.appendChild(link);link.click();link.remove()
+}
+async function exportFiles(){
+  if(!currentVersionId)return notify('请先确认定稿');
+  if(overlayKind)return;
+  if(artifacts.length&&artifactsVersionId===currentVersionId){
+    renderDownloads(artifacts,'该定稿版本的文件已就绪，正在下载：');
+    artifacts.forEach(clickDownload);
+    notify('已开始下载该版本的 '+artifacts.length+' 个文件，若浏览器拦截请点击面板中的按钮');
+    return;
+  }
+  showOverlay('exporting','正在导出文档文件…','服务端正在渲染并转换文档文件，请稍候；完成后将直接保存到本机，不会打开新标签页。');
+  try{
+    const list=await api(base+'/tasks/'+task()+'/versions/'+currentVersionId+'/artifacts/export',{method:'POST'});
+    artifacts=list||[];artifactsVersionId=currentVersionId;
+    $('s5').classList.add('done');
+    renderDownloads(artifacts,'导出完成，正在自动下载（若被浏览器拦截，请点击下方按钮）：');
+    artifacts.forEach((a,i)=>setTimeout(()=>clickDownload(a),i*400));
+    await loadVersions();
+    notify(artifacts.length?'导出完成，共生成 '+artifacts.length+' 个文件':'导出未生成文件，请查看服务日志')
+  }catch(e){notify('导出失败：'+(e.message||'请查看服务日志'))}
+  finally{hideOverlay()}
+}
 function esc(s=''){return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function render(){const text=$('editor').value;$('charCount').textContent=text.length+' 字';const lines=text.split(/\r?\n/);let html='',inList=false;for(let i=0;i<lines.length;i++){let l=lines[i].trim();if(l.startsWith('|')&&l.endsWith('|')){let rows=[];while(i<lines.length&&lines[i].trim().startsWith('|'))rows.push(lines[i++].trim());i--;rows=rows.filter(r=>!/^\|[ :|\-]+\|$/.test(r));if(rows.length){html+='<table>';rows.forEach((r,n)=>{const tag=n?'td':'th';html+='<tr>'+r.slice(1,-1).split('|').map(c=>`<${tag}>${inline(c.trim())}</${tag}>`).join('')+'</tr>'});html+='</table>'}continue}if(/^#{1,3} /.test(l)){if(inList){html+='</ul>';inList=false}const n=l.match(/^#+/)[0].length;html+=`<h${n}>${inline(l.slice(n+1))}</h${n}>`}else if(/^(- |\d+\. )/.test(l)){if(!inList){html+='<ul>';inList=true}html+='<li>'+inline(l.replace(/^(- |\d+\. )/,''))+'</li>'}else if(l){if(inList){html+='</ul>';inList=false}html+='<p>'+inline(l)+'</p>'}}if(inList)html+='</ul>';$('preview').innerHTML=html}
 function inline(s){return esc(s).replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/&lt;br&gt;/g,'<br>')}
