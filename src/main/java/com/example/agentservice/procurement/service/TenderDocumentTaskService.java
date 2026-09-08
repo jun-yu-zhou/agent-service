@@ -5,65 +5,40 @@ import com.example.agentservice.procurement.domain.DocumentType;
 import com.example.agentservice.procurement.domain.DocumentVersion;
 import com.example.agentservice.procurement.domain.GenerationTaskStatus;
 import com.fasterxml.jackson.databind.JsonNode;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.stereotype.Service;
-
 import java.time.Instant;
-import java.util.Optional;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.stereotype.Service;
 
 /** 基于 Redis 管理招标文件初稿异步生成任务。 */
 @Service
 public class TenderDocumentTaskService {
 
     private final TenderDocumentGenerationService generationService;
-    private final TenderDocumentDraftWorkflow documentWorkflow;
     private final ProcurementTaskRedisStore taskStore;
     private final ExecutorService executor;
 
     public TenderDocumentTaskService(
             TenderDocumentGenerationService generationService,
-            TenderDocumentDraftWorkflow documentWorkflow,
             ProcurementTaskRedisStore taskStore,
             @Qualifier("procurementDocumentExecutor") ExecutorService executor) {
         this.generationService = generationService;
-        this.documentWorkflow = documentWorkflow;
         this.taskStore = taskStore;
         this.executor = executor;
     }
 
-    public DocumentGenerationTask submit(String sourceText) {
-        return submit(sourceText, null);
-    }
-
-    public DocumentGenerationTask submit(String sourceText, JsonNode projectData) {
-        if (sourceText == null || sourceText.isBlank()) {
-            throw new IllegalArgumentException("招标来源正文不能为空");
+    public DocumentGenerationTask submitTemplate(String templateHtml, JsonNode projectData) {
+        if (templateHtml == null || templateHtml.isBlank()) {
+            throw new IllegalArgumentException("招标文件 HTML 模板不能为空");
         }
-        return submit(() -> new TaskRunResult(generationService.generateDraft(sourceText, projectData)));
-    }
-
-    public DocumentGenerationTask submitDocument(String documentOssUrl) {
-        return submitDocument(documentOssUrl, null);
-    }
-
-    public DocumentGenerationTask submitDocument(String documentOssUrl, JsonNode projectData) {
-        if (documentOssUrl == null || documentOssUrl.isBlank()) {
-            throw new IllegalArgumentException("招标来源文件地址不能为空");
-        }
-        return submit(() -> {
-            return new TaskRunResult(documentWorkflow.generateDraft(documentOssUrl, projectData));
-        });
-    }
-
-    private DocumentGenerationTask submit(TaskOperation operation) {
         String taskId = UUID.randomUUID().toString();
         Instant now = Instant.now();
         DocumentGenerationTask task = snapshot(taskId, GenerationTaskStatus.PENDING, "等待生成", null, now, now);
         taskStore.saveTender(new ProcurementTaskRedisStore.TenderTaskState(task, null));
-        executor.execute(() -> generate(taskId, operation));
+        executor.execute(() -> generate(taskId, templateHtml, projectData));
         return task;
     }
 
@@ -137,20 +112,18 @@ public class TenderDocumentTaskService {
         }
     }
 
-    private void generate(String taskId, TaskOperation operation) {
+    private void generate(String taskId, String templateHtml, JsonNode projectData) {
         try {
             updateTask(taskId, GenerationTaskStatus.GENERATING, "正在生成初稿", null);
-            TaskRunResult taskRunResult = operation.run();
+            String draft = generationService.generateDraft(templateHtml, projectData);
             synchronized (lock(taskId)) {
                 taskStore.findTender(taskId).ifPresent(state -> {
                     String versionId = UUID.randomUUID().toString();
                     DocumentGenerationTask completedTask = updateVersion(
                             state.task(), GenerationTaskStatus.COMPLETED, "初稿生成完成", null, versionId);
-                    taskStore.saveTender(new ProcurementTaskRedisStore.TenderTaskState(
-                            completedTask, taskRunResult.draft()));
+                    taskStore.saveTender(new ProcurementTaskRedisStore.TenderTaskState(completedTask, draft));
                     taskStore.saveVersion(versionSnapshot(
-                            completedTask, versionId, null, 1, "AI_GENERATED", "system",
-                            taskRunResult.draft(), false));
+                            completedTask, versionId, null, 1, "AI_GENERATED", "system", draft, false));
                 });
             }
         } catch (Exception exception) {
@@ -194,18 +167,15 @@ public class TenderDocumentTaskService {
         String versionId = state.task().currentVersionId() == null ? UUID.randomUUID().toString() : state.task().currentVersionId();
         DocumentGenerationTask task = updateVersion(
                 state.task(), state.task().status(), state.task().currentStage(), state.task().errorMessage(), versionId);
-        ProcurementTaskRedisStore.TenderTaskState versionedState = new ProcurementTaskRedisStore.TenderTaskState(
-                task, state.draft());
+        ProcurementTaskRedisStore.TenderTaskState versionedState = new ProcurementTaskRedisStore.TenderTaskState(task, state.draft());
         taskStore.saveTender(versionedState);
-        taskStore.saveVersion(versionSnapshot(task, versionId, null, 1, "AI_GENERATED", "system",
-                state.draft(), false));
+        taskStore.saveVersion(versionSnapshot(task, versionId, null, 1, "AI_GENERATED", "system", state.draft(), false));
         return versionedState;
     }
 
     private ProcurementTaskRedisStore.DocumentVersionSnapshot versionSnapshot(
             DocumentGenerationTask task, String versionId, String parentVersionId, int versionNumber,
-            String changeSource, String changedBy, String markdown,
-            boolean finalized) {
+            String changeSource, String changedBy, String markdown, boolean finalized) {
         return new ProcurementTaskRedisStore.DocumentVersionSnapshot(
                 new DocumentVersion(versionId, task.taskId(), parentVersionId, versionNumber, changeSource,
                         changedBy, Instant.now(), finalized, List.of()),
@@ -223,14 +193,6 @@ public class TenderDocumentTaskService {
 
     private String normalizeEditor(String changedBy) {
         return changedBy == null || changedBy.isBlank() ? "operator" : changedBy.trim();
-    }
-
-    @FunctionalInterface
-    private interface TaskOperation {
-        TaskRunResult run() throws Exception;
-    }
-
-    private record TaskRunResult(String draft) {
     }
 
     public record TaskSnapshot(

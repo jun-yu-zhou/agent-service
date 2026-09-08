@@ -7,9 +7,9 @@ import org.springframework.mock.web.MockMultipartFile;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-class TenderOutlineUploadServiceTest {
+class TenderTemplateUploadServiceTest {
 
-    private final TenderOutlineUploadService service = new TenderOutlineUploadService();
+    private final TenderTemplateUploadService service = new TenderTemplateUploadService();
 
     @Test
     void readsHtmlTemplate() throws Exception {

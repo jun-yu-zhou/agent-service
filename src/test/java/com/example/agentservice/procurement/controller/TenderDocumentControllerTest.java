@@ -2,16 +2,14 @@ package com.example.agentservice.procurement.controller;
 
 import com.example.agentservice.procurement.domain.ArtifactType;
 import com.example.agentservice.procurement.service.TenderDocumentArtifactService;
-import com.example.agentservice.procurement.service.TenderDocumentGenerationService;
 import com.example.agentservice.procurement.service.TenderDocumentTaskService;
-import com.example.agentservice.procurement.service.TenderOutlineUploadService;
+import com.example.agentservice.procurement.service.TenderTemplateUploadService;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
-
-import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -29,8 +27,7 @@ class TenderDocumentControllerTest {
                 .thenReturn(Optional.of(new TenderDocumentArtifactService.ArtifactDownload(
                         "招标文件_V2.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", 128, body)));
         TenderDocumentController controller = new TenderDocumentController(
-                mock(TenderDocumentGenerationService.class), mock(TenderDocumentTaskService.class),
-                artifactService, mock(TenderOutlineUploadService.class));
+                mock(TenderDocumentTaskService.class), artifactService, mock(TenderTemplateUploadService.class));
 
         ResponseEntity<StreamingResponseBody> response =
                 controller.downloadArtifact("task-1", "version-1", ArtifactType.DOCX);

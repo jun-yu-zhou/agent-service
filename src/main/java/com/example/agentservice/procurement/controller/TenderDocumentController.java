@@ -1,89 +1,63 @@
 package com.example.agentservice.procurement.controller;
 
-import com.example.agentservice.procurement.request.TenderDraftPreviewRequest;
-import com.example.agentservice.procurement.request.TenderDocumentOssTaskRequest;
-import com.example.agentservice.procurement.request.TenderManualVersionRequest;
 import com.example.agentservice.procurement.domain.ArtifactType;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.example.agentservice.procurement.domain.DocumentGenerationTask;
 import com.example.agentservice.procurement.domain.DocumentVersion;
 import com.example.agentservice.procurement.domain.GenerationTaskStatus;
-import com.example.agentservice.procurement.service.TenderDocumentGenerationService;
-import com.example.agentservice.procurement.service.TenderDocumentTaskService;
+import com.example.agentservice.procurement.request.TenderManualVersionRequest;
 import com.example.agentservice.procurement.service.TenderDocumentArtifactService;
-import com.example.agentservice.procurement.service.TenderOutlineUploadService;
+import com.example.agentservice.procurement.service.TenderDocumentTaskService;
+import com.example.agentservice.procurement.service.TenderTemplateUploadService;
+import com.fasterxml.jackson.databind.JsonNode;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.nio.charset.StandardCharsets;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
-/** 根据上传模板生成招标文件初稿并管理人工编辑版本。 */
+/** 根据上传 HTML 模板和结构化项目数据生成招标文件初稿并管理人工编辑版本。 */
 @RestController
 @RequestMapping("/api/procurement/tender-drafts")
 @Tag(name = "招标文件", description = "招标文件初稿生成与人工定稿")
 public class TenderDocumentController {
 
-    private final TenderDocumentGenerationService generationService;
     private final TenderDocumentTaskService taskService;
     private final TenderDocumentArtifactService artifactService;
-    private final TenderOutlineUploadService outlineUploadService;
+    private final TenderTemplateUploadService templateUploadService;
 
     public TenderDocumentController(
-            TenderDocumentGenerationService generationService, TenderDocumentTaskService taskService,
-            TenderDocumentArtifactService artifactService, TenderOutlineUploadService outlineUploadService) {
-        this.generationService = generationService;
+            TenderDocumentTaskService taskService, TenderDocumentArtifactService artifactService,
+            TenderTemplateUploadService templateUploadService) {
         this.taskService = taskService;
         this.artifactService = artifactService;
-        this.outlineUploadService = outlineUploadService;
-    }
-
-    @PostMapping("/preview")
-    @Operation(summary = "预览招标初稿", description = "根据招标文件大纲生成 Markdown 初稿；不保存任务或文件。")
-    public ResponseEntity<TenderDraftPreviewResponse> preview(@RequestBody TenderDraftPreviewRequest request) {
-        return ResponseEntity.ok(new TenderDraftPreviewResponse(
-                generationService.generateDraft(request.sourceText(), request.projectData())));
-    }
-
-    @PostMapping("/tasks")
-    @Operation(summary = "创建招标初稿生成任务", description = "根据招标文件大纲异步生成初稿，立即返回任务状态。任务结果临时保存在 Redis。")
-    public ResponseEntity<DocumentGenerationTask> createTask(@RequestBody TenderDraftPreviewRequest request) {
-        return ResponseEntity.accepted().body(taskService.submit(request.sourceText(), request.projectData()));
-    }
-
-    @PostMapping("/tasks/from-oss")
-    @Operation(summary = "从 OSS 大纲创建招标初稿生成任务", description = "使用 IMM 提取已上传大纲正文后异步生成初稿。")
-    public ResponseEntity<DocumentGenerationTask> createTaskFromOss(
-            @RequestBody TenderDocumentOssTaskRequest request) {
-        return ResponseEntity.accepted().body(
-                taskService.submitDocument(request.documentOssUrl(), request.projectData()));
+        this.templateUploadService = templateUploadService;
     }
 
     @PostMapping(value = "/tasks/upload", consumes = "multipart/form-data")
-    @Operation(summary = "上传 HTML 模板并创建招标初稿任务", description = "上传 html、htm 招标文件模板，服务端直接读取模板正文并异步生成初稿。")
+    @Operation(summary = "上传 HTML 模板并创建招标初稿任务", description = "上传 html、htm 招标文件模板和可选项目数据，异步生成初稿。")
     public ResponseEntity<DocumentGenerationTask> uploadTemplate(
             @RequestParam("file") MultipartFile file,
             @RequestPart(value = "projectData", required = false) JsonNode projectData) throws Exception {
         return ResponseEntity.accepted().body(
-                taskService.submit(outlineUploadService.readTemplate(file), projectData));
+                taskService.submitTemplate(templateUploadService.readTemplate(file), projectData));
     }
 
     @GetMapping("/tasks/{taskId}")
-    @Operation(summary = "查询招标生成任务状态", description = "查询 Redis 中暂存的异步招标初稿生成任务状态。")
+    @Operation(summary = "查询招标生成任务状态", description = "查询当前招标文件初稿的生成状态。")
     public ResponseEntity<DocumentGenerationTask> getTask(@PathVariable String taskId) {
         return taskService.findTask(taskId)
                 .map(ResponseEntity::ok)
@@ -117,7 +91,7 @@ public class TenderDocumentController {
     }
 
     @PostMapping("/tasks/{taskId}/versions/{versionId}/artifacts/export")
-    @Operation(summary = "导出定稿 DOCX", description = "将已确认定稿版本渲染为 DOCX，上传 OSS 并返回临时下载地址。")
+    @Operation(summary = "导出定稿 DOCX", description = "将已确认定稿版本渲染为 DOCX，上传 OSS 并返回下载信息。")
     public ResponseEntity<?> exportArtifacts(@PathVariable String taskId, @PathVariable String versionId) throws Exception {
         return artifactService.export(taskId, versionId)
                 .map(ResponseEntity::ok)
@@ -125,7 +99,7 @@ public class TenderDocumentController {
     }
 
     @GetMapping("/tasks/{taskId}/versions/{versionId}/artifacts/{artifactType}/download")
-    @Operation(summary = "下载导出产物", description = "以附件方式从服务端同源流式下载该版本已导出的文件（新导出仅含 DOCX，历史版本可能含 PDF）。")
+    @Operation(summary = "下载导出产物", description = "以附件方式从服务端同源流式下载已导出的文件。")
     public ResponseEntity<StreamingResponseBody> downloadArtifact(
             @PathVariable String taskId, @PathVariable String versionId,
             @PathVariable ArtifactType artifactType) {
@@ -150,20 +124,13 @@ public class TenderDocumentController {
                                         ? HttpStatus.INTERNAL_SERVER_ERROR
                                         : HttpStatus.ACCEPTED)
                                 .body(new TenderTaskResultResponse(snapshot.task(), null))
-                        : ResponseEntity.ok(new TenderTaskResultResponse(
-                                snapshot.task(),
-                                snapshot.draft())))
+                        : ResponseEntity.ok(new TenderTaskResultResponse(snapshot.task(), snapshot.draft())))
                 .orElseGet(() -> ResponseEntity.notFound().build());
-    }
-
-    public record TenderDraftPreviewResponse(
-            @Schema(description = "生成的 Markdown 招标文件初稿") String draft
-    ) {
     }
 
     public record TenderTaskResultResponse(
             @Schema(description = "任务当前快照") DocumentGenerationTask task,
-            @Schema(description = "任务完成后生成的 Markdown 初稿") String draft
+            @Schema(description = "任务完成后生成的 Markdown 招标文件初稿") String draft
     ) {
     }
 }

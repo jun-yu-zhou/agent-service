@@ -17,13 +17,9 @@ public class TenderDocumentGenerationService {
         this.modelConfig = modelConfig;
     }
 
-    public String generateDraft(String sourceText) {
-        return generateDraft(sourceText, null);
-    }
-
-    public String generateDraft(String sourceText, JsonNode projectData) {
-        if (sourceText == null || sourceText.isBlank()) {
-            throw new IllegalArgumentException("招标来源正文不能为空");
+    public String generateDraft(String templateHtml, JsonNode projectData) {
+        if (templateHtml == null || templateHtml.isBlank()) {
+            throw new IllegalArgumentException("招标文件 HTML 模板不能为空");
         }
         long startNanos = System.nanoTime();
         ReActAgent agent = ReActAgent.builder()
@@ -33,7 +29,7 @@ public class TenderDocumentGenerationService {
                 .build();
         Msg response = agent.call(Msg.builder()
                 .role(MsgRole.USER)
-                .textContent(generationInput(sourceText, projectData))
+                .textContent(generationInput(templateHtml, projectData))
                 .build()).block();
         if (response == null || response.getTextContent() == null || response.getTextContent().isBlank()) {
             throw new IllegalStateException("招标文件生成模型未返回有效内容");
@@ -42,8 +38,8 @@ public class TenderDocumentGenerationService {
         return response.getTextContent().trim();
     }
 
-    private String generationInput(String sourceText, JsonNode projectData) {
-        StringBuilder input = new StringBuilder("旧版招标文件 HTML 模板：\n\n").append(sourceText);
+    private String generationInput(String templateHtml, JsonNode projectData) {
+        StringBuilder input = new StringBuilder("旧版招标文件 HTML 模板：\n\n").append(templateHtml);
         if (projectData != null && !projectData.isNull() && !projectData.isEmpty()) {
             input.append("\n\n招标单位确认的完整结构化项目数据（同一字段冲突时以此处为准）：\n\n")
                     .append(projectData);

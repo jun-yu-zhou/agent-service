@@ -1,15 +1,14 @@
 package com.example.agentservice.procurement.service;
 
+import java.nio.charset.StandardCharsets;
+import java.util.Locale;
+import java.util.Set;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.Locale;
-import java.util.Set;
-import java.nio.charset.StandardCharsets;
-
 /** 读取用于生成初稿的招标文件 HTML 模板。 */
 @Service
-public class TenderOutlineUploadService {
+public class TenderTemplateUploadService {
 
     private static final Set<String> SUPPORTED_EXTENSIONS = Set.of("html", "htm");
 
