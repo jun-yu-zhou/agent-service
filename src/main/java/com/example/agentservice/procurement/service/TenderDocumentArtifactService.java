@@ -25,14 +25,12 @@ public class TenderDocumentArtifactService extends AbstractImmServiceSupport {
 
     private final ProcurementTaskRedisStore taskStore;
     private final TenderMarkdownDocxRenderer docxRenderer;
-    private final DocxPdfConverter pdfConverter;
     private final ProcurementDocumentProperties properties;
 
     public TenderDocumentArtifactService(ProcurementTaskRedisStore taskStore, TenderMarkdownDocxRenderer docxRenderer,
-                                         DocxPdfConverter pdfConverter, ProcurementDocumentProperties properties) {
+                                         ProcurementDocumentProperties properties) {
         this.taskStore = taskStore;
         this.docxRenderer = docxRenderer;
-        this.pdfConverter = pdfConverter;
         this.properties = properties;
     }
 
@@ -44,10 +42,8 @@ public class TenderDocumentArtifactService extends AbstractImmServiceSupport {
         Path directory = Files.createTempDirectory("procurement-export-");
         try {
             Path docx = directory.resolve("tender.docx");
-            Path pdf = directory.resolve("tender.pdf");
             docxRenderer.render(snapshot.markdown(), docx);
-            pdfConverter.convert(docx, pdf);
-            List<DocumentArtifact> artifacts = upload(taskId, versionId, docx, pdf);
+            List<DocumentArtifact> artifacts = upload(taskId, versionId, docx);
             DocumentVersion version = snapshot.version();
             taskStore.saveVersion(new ProcurementTaskRedisStore.DocumentVersionSnapshot(
                     new DocumentVersion(version.versionId(), version.taskId(), version.parentVersionId(), version.versionNumber(),
@@ -56,12 +52,11 @@ public class TenderDocumentArtifactService extends AbstractImmServiceSupport {
             return Optional.of(artifacts);
         } finally {
             Files.deleteIfExists(directory.resolve("tender.docx"));
-            Files.deleteIfExists(directory.resolve("tender.pdf"));
             Files.deleteIfExists(directory);
         }
     }
 
-    /** 查找已导出的 DOCX/PDF，并在写入 HTTP 响应时再从 OSS 传输文件。 */
+    /** 查找已导出的产物，并在写入 HTTP 响应时再从 OSS 传输文件。 */
     public Optional<ArtifactDownload> download(String taskId, String versionId, ArtifactType type) {
         ArtifactFormat format = ArtifactFormat.from(type);
         Optional<ProcurementTaskRedisStore.DocumentVersionSnapshot> optional = taskStore.findVersion(taskId, versionId);
@@ -94,12 +89,11 @@ public class TenderDocumentArtifactService extends AbstractImmServiceSupport {
                 format.contentType(), artifact.size(), body));
     }
 
-    private List<DocumentArtifact> upload(String taskId, String versionId, Path docx, Path pdf) throws Exception {
+    private List<DocumentArtifact> upload(String taskId, String versionId, Path docx) throws Exception {
         OSS client = createOssClient();
         try {
             return List.of(uploadOne(client, artifactKey(taskId, versionId, "docx"), docx, ArtifactType.DOCX,
-                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document"),
-                    uploadOne(client, artifactKey(taskId, versionId, "pdf"), pdf, ArtifactType.PDF, "application/pdf"));
+                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document"));
         } finally { client.shutdown(); }
     }
 

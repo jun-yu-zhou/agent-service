@@ -119,7 +119,7 @@ async function loadVersions(){
 async function finalizeCurrent(){
   if(!currentVersionId)return notify('请先保存版本');
   setActions(false);
-  try{await api(base+'/tasks/'+task()+'/versions/'+currentVersionId+'/finalize',{method:'POST'});await loadVersions();notify('已确认定稿，可点击导出文件生成 DOCX 与 PDF')}
+  try{await api(base+'/tasks/'+task()+'/versions/'+currentVersionId+'/finalize',{method:'POST'});await loadVersions();notify('已确认定稿，可点击导出文件生成 DOCX')}
   catch(e){notify('定稿失败：'+(e.message||'请查看服务日志'))}
   finally{setActions(true)}
 }

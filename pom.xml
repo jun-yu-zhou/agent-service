@@ -115,7 +115,7 @@
             <version>2.1.0</version>
         </dependency>
 
-        <!-- Pure-Java DOCX to PDF conversion via XSL-FO / Apache FOP; no local Office required. -->
+        <!-- Pure-Java DOCX rendering; export-fo is still required for TOC page numbering. -->
         <dependency>
             <groupId>org.docx4j</groupId>
             <artifactId>docx4j-JAXB-ReferenceImpl</artifactId>

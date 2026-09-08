@@ -117,7 +117,7 @@ public class TenderDocumentController {
     }
 
     @PostMapping("/tasks/{taskId}/versions/{versionId}/artifacts/export")
-    @Operation(summary = "导出定稿 DOCX 和 PDF", description = "将已确认定稿版本渲染为 DOCX/PDF，上传 OSS 并返回临时下载地址。")
+    @Operation(summary = "导出定稿 DOCX", description = "将已确认定稿版本渲染为 DOCX，上传 OSS 并返回临时下载地址。")
     public ResponseEntity<?> exportArtifacts(@PathVariable String taskId, @PathVariable String versionId) throws Exception {
         return artifactService.export(taskId, versionId)
                 .map(ResponseEntity::ok)
@@ -125,7 +125,7 @@ public class TenderDocumentController {
     }
 
     @GetMapping("/tasks/{taskId}/versions/{versionId}/artifacts/{artifactType}/download")
-    @Operation(summary = "下载导出产物", description = "以附件方式从服务端同源流式下载该版本已导出的 DOCX/PDF 文件。")
+    @Operation(summary = "下载导出产物", description = "以附件方式从服务端同源流式下载该版本已导出的文件（新导出仅含 DOCX，历史版本可能含 PDF）。")
     public ResponseEntity<StreamingResponseBody> downloadArtifact(
             @PathVariable String taskId, @PathVariable String versionId,
             @PathVariable ArtifactType artifactType) {
