@@ -7,7 +7,7 @@ import java.util.Locale;
 import java.util.Set;
 import java.nio.charset.StandardCharsets;
 
-/** 读取用于生成初稿的旧版招标文件 HTML 模板。 */
+/** 读取用于生成初稿的招标文件 HTML 模板。 */
 @Service
 public class TenderOutlineUploadService {
 

@@ -74,7 +74,7 @@ public class TenderDocumentController {
     }
 
     @PostMapping(value = "/tasks/upload", consumes = "multipart/form-data")
-    @Operation(summary = "上传 HTML 模板并创建招标初稿任务", description = "上传旧版 html、htm 招标文件模板，服务端直接读取模板正文并异步生成初稿。")
+    @Operation(summary = "上传 HTML 模板并创建招标初稿任务", description = "上传 html、htm 招标文件模板，服务端直接读取模板正文并异步生成初稿。")
     public ResponseEntity<DocumentGenerationTask> uploadTemplate(
             @RequestParam("file") MultipartFile file,
             @RequestPart(value = "projectData", required = false) JsonNode projectData) throws Exception {
