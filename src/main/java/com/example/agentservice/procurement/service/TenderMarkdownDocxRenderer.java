@@ -1,6 +1,7 @@
 package com.example.agentservice.procurement.service;
 
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
+import org.apache.poi.xwpf.usermodel.BreakType;
 import org.apache.poi.xwpf.usermodel.XWPFFooter;
 import org.apache.poi.xwpf.usermodel.ParagraphAlignment;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
@@ -50,6 +51,7 @@ public class TenderMarkdownDocxRenderer {
         System.setProperty("javax.xml.transform.TransformerFactory", JDK_TRANSFORMER_FACTORY);
         int tocPosition = -1;
         int tocDepth = 1;
+        int chapterHeadingLevel = 0;
         try (XWPFDocument document = new XWPFDocument(); OutputStream stream = Files.newOutputStream(output)) {
             configureA4(document);
             configureFooter(document);
@@ -71,24 +73,40 @@ public class TenderMarkdownDocxRenderer {
                     continue;
                 }
                 int headingLevel = headingLevel(line);
-                if (headingLevel == 2 && line.substring(3).trim().equals("目录")) {
+                if (isDirectoryHeading(line, headingLevel)) {
+                    XWPFParagraph directoryHeading = document.createParagraph();
+                    XWPFRun headingRun = directoryHeading.createRun();
+                    headingRun.setText("目录");
+                    headingRun.setBold(true);
+                    headingRun.setFontFamily("宋体");
+                    headingRun.setFontSize(18);
+                    directoryHeading.setAlignment(ParagraphAlignment.CENTER);
+                    directoryHeading.setSpacingBefore(240);
+                    directoryHeading.setSpacingAfter(240);
+                    breakPageBefore(directoryHeading);
                     tocPosition = document.getBodyElements().size();
                     index++;
-                    while (index < lines.size() && headingLevel(lines.get(index).trim()) != 2) {
+                    while (index < lines.size() && !isChapterHeading(
+                            lines.get(index).trim(), headingLevel(lines.get(index).trim()))) {
                         index++;
                     }
                     continue;
                 }
-                if (headingLevel == 2) {
+                boolean chapterHeading = isChapterHeading(line, headingLevel);
+                if (chapterHeading) {
                     if (tocPosition < 0) {
+                        appendPageBreak(document);
                         tocPosition = document.getBodyElements().size();
                     }
                     cover = false;
+                    if (chapterHeadingLevel == 0) {
+                        chapterHeadingLevel = headingLevel;
+                    }
                 }
                 if (!cover && headingLevel > 0) {
-                    tocDepth = Math.max(tocDepth, headingLevel - 1);
+                    tocDepth = Math.max(tocDepth, outlineLevel(headingLevel, chapterHeadingLevel));
                 }
-                appendParagraph(document, line, cover);
+                appendParagraph(document, line, cover, chapterHeading, chapterHeadingLevel);
                 index++;
             }
             document.write(stream);
@@ -125,7 +143,19 @@ public class TenderMarkdownDocxRenderer {
         run.addNewT().setStringValue("1");
     }
 
-    private void appendParagraph(XWPFDocument document, String line, boolean cover) {
+    private void appendPageBreak(XWPFDocument document) {
+        document.createParagraph().createRun().addBreak(BreakType.PAGE);
+    }
+
+    private void breakPageBefore(XWPFParagraph paragraph) {
+        var properties = paragraph.getCTP().isSetPPr()
+                ? paragraph.getCTP().getPPr()
+                : paragraph.getCTP().addNewPPr();
+        properties.addNewPageBreakBefore();
+    }
+
+    private void appendParagraph(
+            XWPFDocument document, String line, boolean cover, boolean chapterHeading, int chapterHeadingLevel) {
         XWPFParagraph paragraph = document.createParagraph();
         int headingLevel = headingLevel(line);
         String text = headingLevel > 0 ? line.substring(headingLevel + 1).trim() : stripListPrefix(line);
@@ -136,7 +166,7 @@ public class TenderMarkdownDocxRenderer {
             if (cover) {
                 paragraph.setStyle("Title");
             } else {
-                int outlineLevel = Math.max(1, headingLevel - 1);
+                int outlineLevel = outlineLevel(headingLevel, chapterHeadingLevel);
                 paragraph.setStyle("Heading" + outlineLevel);
                 var properties = paragraph.getCTP().isSetPPr()
                         ? paragraph.getCTP().getPPr()
@@ -152,8 +182,8 @@ public class TenderMarkdownDocxRenderer {
             });
             paragraph.setSpacingBefore(headingLevel <= 2 ? 240 : 160);
             paragraph.setSpacingAfter(headingLevel <= 2 ? 240 : 100);
-            if (headingLevel == 2) {
-                paragraph.setPageBreak(true);
+            if (chapterHeading) {
+                breakPageBefore(paragraph);
             }
         } else {
             run.setFontSize(12);
@@ -282,6 +312,23 @@ public class TenderMarkdownDocxRenderer {
             level++;
         }
         return level > 0 && level < line.length() && line.charAt(level) == ' ' ? level : 0;
+    }
+
+    private boolean isDirectoryHeading(String line, int headingLevel) {
+        return headingLevel > 0 && headingText(line, headingLevel).equals("目录");
+    }
+
+    private boolean isChapterHeading(String line, int headingLevel) {
+        return headingLevel > 0 && headingText(line, headingLevel)
+                .matches("^第[一二三四五六七八九十百千万零〇0-9]+(?:章|部分|篇|编).*|^[一二三四五六七八九十]+、.*部分.*");
+    }
+
+    private String headingText(String line, int headingLevel) {
+        return line.substring(headingLevel + 1).trim();
+    }
+
+    private int outlineLevel(int headingLevel, int chapterHeadingLevel) {
+        return Math.max(1, headingLevel - chapterHeadingLevel + 1);
     }
 
     private boolean isListItem(String line) {
