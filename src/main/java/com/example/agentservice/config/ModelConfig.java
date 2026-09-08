@@ -257,18 +257,19 @@ public class ModelConfig {
                 .build();
     }
 
-    /** 招标文件初稿正文较长，使用独立配置避免受审查报告输出长度限制。 */
+    /** 招标文件初稿正文较长，使用独立配置避免受审查报告输出长度限制，走 DashScope 原生通道。 */
     @Bean
     @Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)
-    public OpenAIChatModel qwen37PlusTenderGenerationModel() {
-        return OpenAIChatModel.builder()
+    public DashScopeChatModel qwen37PlusTenderGenerationModel() {
+        return DashScopeChatModel.builder()
                 .apiKey(AgentServiceConfig.dashScopeApiKey())
                 .modelName(QWEN37_PLUS_MODEL_NAME)
-                .baseUrl(DASH_SCOPE_COMPATIBLE_BASE_URL)
-                .endpointPath("/chat/completions")
+                .baseUrl(AgentServiceConfig.dashScopeBaseUrl())
+                .endpointType(EndpointType.MULTIMODAL)
                 .httpTransport(newHttpTransport())
                 .stream(true)
-                .generateOptions(GenerateOptions.builder()
+                .enableThinking(false)
+                .defaultOptions(GenerateOptions.builder()
                         .maxTokens(16384)
                         .temperature(0.2D)
                         .executionConfig(longExecutionConfig())
