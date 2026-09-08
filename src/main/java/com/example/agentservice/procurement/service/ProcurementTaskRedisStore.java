@@ -25,7 +25,6 @@ public class ProcurementTaskRedisStore {
     private static final Logger log = LoggerFactory.getLogger(ProcurementTaskRedisStore.class);
     private static final long[] RETRY_DELAYS_MS = {500L, 1_000L, 2_000L};
     private static final String TENDER_PREFIX = "procurement:document-task:tender:";
-    private static final String BID_PREFIX = "procurement:document-task:bid:";
     private static final String VERSION_PREFIX = "procurement:document-version:";
 
     private final StringRedisTemplate redisTemplate;
@@ -47,14 +46,6 @@ public class ProcurementTaskRedisStore {
 
     public Optional<TenderTaskState> findTender(String taskId) {
         return find(TENDER_PREFIX + taskId, TenderTaskState.class);
-    }
-
-    public void saveBid(BidTaskState state) {
-        save(BID_PREFIX + state.task().taskId(), state);
-    }
-
-    public Optional<BidTaskState> findBid(String taskId) {
-        return find(BID_PREFIX + taskId, BidTaskState.class);
     }
 
     public void saveVersion(DocumentVersionSnapshot version) {
@@ -121,12 +112,6 @@ public class ProcurementTaskRedisStore {
     }
 
     public record TenderTaskState(
-            DocumentGenerationTask task,
-            String draft
-    ) {
-    }
-
-    public record BidTaskState(
             DocumentGenerationTask task,
             String draft
     ) {

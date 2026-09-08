@@ -12,8 +12,8 @@ public class ProcurementOpenApiConfig {
     @Bean
     public OpenAPI procurementOpenApi() {
         return new OpenAPI().info(new Info()
-                .title("AI 辅助生成招投标文件接口")
+                .title("AI 辅助生成招标文件接口")
                 .version("v1")
-                .description("用于预览、审查和生成招标/投标文件的接口。"));
+                .description("用于预览、审查和生成招标文件的接口。"));
     }
 }

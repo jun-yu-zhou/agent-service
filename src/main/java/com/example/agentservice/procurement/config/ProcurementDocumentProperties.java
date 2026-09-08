@@ -3,7 +3,7 @@ package com.example.agentservice.procurement.config;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
-/** 招标文件与投标文件生成流程共用的外部配置。 */
+/** 招标文件生成流程共用的外部配置。 */
 @Component
 @ConfigurationProperties(prefix = "app.procurement-document")
 public class ProcurementDocumentProperties {
