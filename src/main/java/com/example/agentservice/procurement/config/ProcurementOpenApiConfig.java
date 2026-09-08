@@ -5,7 +5,7 @@ import io.swagger.v3.oas.models.info.Info;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-/** OpenAPI metadata for procurement-document APIs. */
+/** 采购文档接口的 OpenAPI 元数据配置。 */
 @Configuration
 public class ProcurementOpenApiConfig {
 

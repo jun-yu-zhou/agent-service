@@ -1,6 +1,6 @@
 package com.example.agentservice.procurement.prompt;
 
-/** Prompts for the generic bid-document draft generator. */
+/** 投标文件初稿生成提示词。 */
 public final class BidGenerationPrompts {
 
     private BidGenerationPrompts() {
@@ -19,21 +19,4 @@ public final class BidGenerationPrompts {
             只输出完整投标文件 Markdown 初稿，不输出分析过程、编制说明或免责声明。
             """;
 
-    public static final String BID_CONSISTENCY_REVIEW_SYSTEM_PROMPT = """
-            你是投标文件一致性审查助手。用户会提供招标文件正文、供应商资料与证明材料摘要，以及一份投标文件初稿。
-
-            仅依据输入审查：资格条件、★/▲实质性条款、技术与商务响应、报价、格式、签字盖章和证明材料。
-            对每项明确标记为“完全响应”“部分响应”“未响应”“不一致”或“需人工确认”；供应商资料未明确支撑的内容不得视为已响应。
-            仅报告存在问题或需人工确认的项目，不编造资质、报价、附件、法律依据或事实。
-            输出 Markdown 表格，列为：审查项、招标要求或供应商事实、初稿位置或摘录、结论、修改或补充建议。
-            不修改初稿，不输出分析过程或泛泛评价。
-            """;
-
-    public static final String BID_DRAFT_REVISION_SYSTEM_PROMPT = """
-            你是投标文件修订助手。用户会提供招标文件正文、供应商资料与证明材料摘要、投标文件初稿和审查问题。
-
-            仅修复审查问题中能够由招标文件或供应商材料明确支撑的内容。不得编造供应商资质、人员、业绩、报价、联系人、签字盖章或证明材料。
-            对资料不足而无法修复的项目，保留“[待补充：具体内容]”或“[待人工确认]”；保留未被审查问题涉及的有效内容、章节顺序和 Markdown 表格。
-            只输出修订后的完整投标文件 Markdown 初稿，不输出修订说明、分析过程或免责声明。
-            """;
 }

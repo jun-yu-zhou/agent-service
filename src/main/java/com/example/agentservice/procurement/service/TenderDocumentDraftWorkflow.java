@@ -1,63 +1,33 @@
 package com.example.agentservice.procurement.service;
 
 import com.example.agentservice.service.ImmService;
+import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.stereotype.Service;
 
-/** Generates a tender draft directly from an OSS document URL supported by IMM. */
+/** 根据 IMM 支持的 OSS 文档地址生成招标文件初稿。 */
 @Service
 public class TenderDocumentDraftWorkflow {
 
     private final ImmService immService;
     private final TenderDocumentGenerationService generationService;
-    private final TenderDraftConsistencyChecker consistencyChecker;
 
     public TenderDocumentDraftWorkflow(
             ImmService immService,
-            TenderDocumentGenerationService generationService,
-            TenderDraftConsistencyChecker consistencyChecker) {
+            TenderDocumentGenerationService generationService) {
         this.immService = immService;
         this.generationService = generationService;
-        this.consistencyChecker = consistencyChecker;
     }
 
     public String generateDraft(String documentOssUrl) throws Exception {
-        return generateDraftWithCheck(documentOssUrl).draft();
+        return generateDraft(documentOssUrl, null);
     }
 
-    /** Generates a draft from an OSS document and retains its source consistency result. */
-    public TenderDocumentGenerationService.DraftGenerationResult generateDraftWithCheck(String documentOssUrl)
-            throws Exception {
-        return generationService.generateDraftWithCheck(extractSourceText(documentOssUrl));
-    }
-
-    /** Extracts the source text again and reviews a caller-provided draft without changing it. */
-    public String reviewDraft(String documentOssUrl, String draftText) throws Exception {
-        return generationService.reviewConsistency(extractSourceText(documentOssUrl), draftText);
-    }
-
-    /** Revises a caller-provided draft once from review findings and the extracted source text. */
-    public String reviseDraft(String documentOssUrl, String draftText, String reviewText) throws Exception {
-        return generationService.reviseDraft(extractSourceText(documentOssUrl), draftText, reviewText);
-    }
-
-    /** Executes the only allowed automatic revision, then returns the second review result. */
-    public DraftReviewWorkflowResult generateReviewAndRevise(String documentOssUrl) throws Exception {
-        String sourceText = extractSourceText(documentOssUrl);
-        TenderDocumentGenerationService.DraftGenerationResult initial =
-                generationService.generateDraftWithCheck(sourceText);
-        String firstReview = generationService.reviewConsistency(sourceText, initial.draft());
-        String revisedDraft = generationService.reviseDraft(sourceText, initial.draft(), firstReview);
-        TenderDraftConsistencyChecker.ConsistencyResult revisedConsistency =
-                consistencyChecker.check(sourceText, revisedDraft);
-        String secondReview = generationService.reviewConsistency(sourceText, revisedDraft);
-        return new DraftReviewWorkflowResult(
-                initial.draft(), initial.consistency(), firstReview,
-                revisedDraft, revisedConsistency, secondReview
-        );
+    public String generateDraft(String documentOssUrl, JsonNode projectData) throws Exception {
+        return generationService.generateDraft(extractSourceText(documentOssUrl), projectData);
     }
 
     /**
-     * Extracts source text once so callers coordinating a multi-step workflow can reuse it.
+     * 只提取一次来源正文，供编排多阶段流程的调用方复用。
      */
     public String extractSourceText(String documentOssUrl) throws Exception {
         if (documentOssUrl == null || documentOssUrl.isBlank()) {
@@ -70,13 +40,4 @@ public class TenderDocumentDraftWorkflow {
         return sourceText;
     }
 
-    public record DraftReviewWorkflowResult(
-            String initialDraft,
-            TenderDraftConsistencyChecker.ConsistencyResult initialConsistency,
-            String initialReview,
-            String revisedDraft,
-            TenderDraftConsistencyChecker.ConsistencyResult revisedConsistency,
-            String secondReview
-    ) {
-    }
 }

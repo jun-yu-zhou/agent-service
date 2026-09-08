@@ -6,7 +6,7 @@ import org.springframework.context.annotation.Configuration;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-/** Shared bounded executor for all procurement document generation tasks. */
+/** 所有采购文档生成任务共用的有界线程池。 */
 @Configuration
 public class ProcurementTaskExecutorConfig {
 

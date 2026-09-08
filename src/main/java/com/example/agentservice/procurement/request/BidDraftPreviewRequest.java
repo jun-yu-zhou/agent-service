@@ -2,7 +2,7 @@ package com.example.agentservice.procurement.request;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
-/** Request for generating a bid draft from tender and supplier texts. */
+/** 根据招标文件和供应商资料正文生成投标文件初稿的请求。 */
 public record BidDraftPreviewRequest(
         @Schema(description = "已确认的招标文件正文", example = "项目名称：示例采购项目\n★投标人须提供有效营业执照。")
         String tenderText,

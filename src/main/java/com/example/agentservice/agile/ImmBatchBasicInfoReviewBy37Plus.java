@@ -31,6 +31,7 @@ import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.ConfigurableApplicationContext;
 
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -55,10 +56,10 @@ public class ImmBatchBasicInfoReviewBy37Plus {
     private static final String BAILIAN_WORKSPACE_ID = "llm-2c213fyvomyxzuc9";
     private static final String BAILIAN_KNOWLEDGE_INDEX_ID = "94kvimrfoy";
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-    private static final List<String> PDF_URLS = List.of();
     private final PdfUtils pdfUtils;
     private final ModelConfig modelConfig;
     private final Knowledge reportKnowledge;
+
 
     public ImmBatchBasicInfoReviewBy37Plus(PdfUtils pdfUtils, ModelConfig modelConfig) {
         this.pdfUtils = pdfUtils;
@@ -86,7 +87,10 @@ public class ImmBatchBasicInfoReviewBy37Plus {
             ImmBatchBasicInfoReviewBy37Plus review = new ImmBatchBasicInfoReviewBy37Plus(
                     context.getBean(PdfUtils.class),
                     context.getBean(ModelConfig.class));
-            review.execute(args.length == 0 ? PDF_URLS : Arrays.asList(args));
+            if (args.length == 0) {
+                throw new IllegalArgumentException("请通过命令行传入待审查的 PDF URL");
+            }
+            review.execute(Arrays.asList(args));
         } catch (Exception exception) {
             throw new IllegalStateException("IMM分批基础信息雷同审查失败", exception);
         }
@@ -115,9 +119,38 @@ public class ImmBatchBasicInfoReviewBy37Plus {
         } finally {
             conversionExecutor.shutdown();
         }
+        printImmImageUrls(materials);
+        executeMaterials(materials, startNanos);
+    }
+
+    /** 复用已有 IMM 页面图片，避免测试时重复执行 PDF 转图。 */
+    public void executeImmImages(List<String> imageUrls) {
+        if (imageUrls == null || imageUrls.isEmpty()) {
+            throw new IllegalArgumentException("至少需要传入一个有效IMM页面图片URL");
+        }
+        LinkedHashMap<String, List<ImmImagePage>> pagesBySource = new LinkedHashMap<>();
+        for (String imageUrl : imageUrls) {
+            String path = URI.create(imageUrl).getPath();
+            int documentStart = path.lastIndexOf('/', path.lastIndexOf('/') - 1) + 1;
+            int pageStart = path.lastIndexOf('/') + 1;
+            String source = path.substring(documentStart, pageStart - 1);
+            int page = Integer.parseInt(path.substring(pageStart, path.lastIndexOf('.')));
+            pagesBySource.computeIfAbsent(source, ignored -> new ArrayList<>())
+                    .add(new ImmImagePage(source, page, imageUrl));
+        }
+        List<DocumentMaterial> materials = new ArrayList<>();
+        int documentIndex = 1;
+        for (List<ImmImagePage> pages : pagesBySource.values()) {
+            pages.sort(java.util.Comparator.comparingInt(ImmImagePage::page));
+            materials.add(new DocumentMaterial("文件" + documentIndex++, pages));
+        }
+        executeMaterials(materials, System.nanoTime());
+    }
+
+    /** 页面来源可以是刚转换的 PDF，也可以是本地复用的 IMM 地址。 */
+    private void executeMaterials(List<DocumentMaterial> materials, long startNanos) {
         int imageCount = materials.stream().mapToInt(item -> item.pages().size()).sum();
         System.out.println("文件数=" + materials.size() + "，总图片数=" + imageCount);
-
         System.out.println("阶段2/4：按每批最多" + IMAGE_BATCH_SIZE + "张图片抽取基础、报价与版式事实...");
         List<ExtractionOutput> outputs = extractFacts(materials);
         long parsedCount = outputs.stream().filter(output -> output.facts() != null).count();
@@ -161,6 +194,15 @@ public class ImmBatchBasicInfoReviewBy37Plus {
                     .toList();
         } finally {
             executor.shutdown();
+        }
+    }
+
+    /** 逐行打印完整的 IMM 页面图片地址，供后续测试直接复制复用。 */
+    private void printImmImageUrls(List<DocumentMaterial> materials) {
+        for (DocumentMaterial material : materials) {
+            for (ImmImagePage page : material.pages()) {
+                System.out.println(page.url());
+            }
         }
     }
 
@@ -238,12 +280,16 @@ public class ImmBatchBasicInfoReviewBy37Plus {
             if (message == null) {
                 return;
             }
+            if (message.getChatUsage() != null) {
+                usage.set(message.getChatUsage());
+            }
+            // AGENT_RESULT 流中会携带 USER 请求回显，不能作为模型 JSON 的一部分。
+            if (message.getRole() != MsgRole.ASSISTANT) {
+                return;
+            }
             String chunk = message.getTextContent();
             if (chunk != null && !chunk.isEmpty()) {
                 text.append(chunk);
-            }
-            if (message.getChatUsage() != null) {
-                usage.set(message.getChatUsage());
             }
         }).blockLast();
         if (text.isEmpty()) {
@@ -306,8 +352,10 @@ public class ImmBatchBasicInfoReviewBy37Plus {
                 supplierName,
                 firstNonBlank(facts.stream().map(CibBasicInfoFacts::documentRole).toList()),
                 mergeQuoteSummary(facts),
+                flatten(facts, CibBasicInfoFacts::quoteRounds),
                 flatten(facts, CibBasicInfoFacts::referencePrices),
                 flatten(facts, CibBasicInfoFacts::associationFacts),
+                flatten(facts, CibBasicInfoFacts::documentFeatures),
                 flatten(facts, CibBasicInfoFacts::keyPriceItems),
                 flatten(facts, CibBasicInfoFacts::documentLayoutFacts),
                 flatten(facts, CibBasicInfoFacts::textSimilarityFacts),

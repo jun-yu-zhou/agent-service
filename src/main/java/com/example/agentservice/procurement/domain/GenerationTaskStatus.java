@@ -1,13 +1,9 @@
 package com.example.agentservice.procurement.domain;
 
-/** Lifecycle shared by tender and bid document generation tasks. */
+/** 招标文件与投标文件生成任务共用的生命周期状态。 */
 public enum GenerationTaskStatus {
     PENDING,
-    PARSING,
     GENERATING,
-    REVIEWING,
-    REVISING,
-    RENDERING,
     COMPLETED,
     FAILED
 }

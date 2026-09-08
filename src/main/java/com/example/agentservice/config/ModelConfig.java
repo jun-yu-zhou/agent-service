@@ -257,6 +257,25 @@ public class ModelConfig {
                 .build();
     }
 
+    /** 招标文件初稿正文较长，使用独立配置避免受审查报告输出长度限制。 */
+    @Bean
+    @Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)
+    public OpenAIChatModel qwen37PlusTenderGenerationModel() {
+        return OpenAIChatModel.builder()
+                .apiKey(AgentServiceConfig.dashScopeApiKey())
+                .modelName(QWEN37_PLUS_MODEL_NAME)
+                .baseUrl(DASH_SCOPE_COMPATIBLE_BASE_URL)
+                .endpointPath("/chat/completions")
+                .httpTransport(newHttpTransport())
+                .stream(true)
+                .generateOptions(GenerateOptions.builder()
+                        .maxTokens(16384)
+                        .temperature(0.2D)
+                        .executionConfig(longExecutionConfig())
+                        .build())
+                .build();
+    }
+
     /** 使用 AgentScope 默认 HTTP 配置，由 qwen3.8-flash 生成最终报告。 */
     @Bean
     @Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)

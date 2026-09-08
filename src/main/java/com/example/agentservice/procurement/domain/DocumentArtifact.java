@@ -2,7 +2,7 @@ package com.example.agentservice.procurement.domain;
 
 import java.time.Instant;
 
-/** One immutable output uploaded for a document version. */
+/** 文档版本上传后形成的不可变导出产物。 */
 public record DocumentArtifact(
         ArtifactType type,
         String objectKey,

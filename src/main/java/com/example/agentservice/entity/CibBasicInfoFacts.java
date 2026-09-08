@@ -14,8 +14,10 @@ public record CibBasicInfoFacts(
         String supplierName,
         String documentRole,
         QuoteSummary quoteSummary,
+        List<QuoteRoundFact> quoteRounds,
         List<ReferencePriceFact> referencePrices,
         List<AssociationFact> associationFacts,
+        List<DocumentFeatureFact> documentFeatures,
         List<PriceItemFact> keyPriceItems,
         List<DocumentLayoutFact> documentLayoutFacts,
         List<TextSimilarityFact> textSimilarityFacts,
@@ -29,6 +31,16 @@ public record CibBasicInfoFacts(
             String finalQuoteAmount,
             String finalQuoteLocation,
             String finalQuoteExcerpt) {
+    }
+
+    /** 同一文件中每一轮可确认归属当前投标人的投标总价。 */
+    public record QuoteRoundFact(
+            String roundType,
+            String amount,
+            String currency,
+            String quoteDate,
+            String location,
+            String excerpt) {
     }
 
     /** 项目预算、最高限价或控制价，用于计算投标总价偏差率。 */
@@ -56,12 +68,26 @@ public record CibBasicInfoFacts(
     /** 仅保留投标总价之外，可能影响报价结构对比的关键分项。 */
     public record PriceItemFact(
             String itemName,
+            String itemCode,
             String specification,
             String unit,
             String quantity,
             String unitPrice,
             String totalPrice,
+            String quoteRound,
+            String taxIncluded,
+            String pricingBasis,
             String tableName,
+            String location,
+            String excerpt,
+            String contextType) {
+    }
+
+    /** 非报价文件中可能用于后续核验的声明、授权、资质、业绩或签章等客观事实。 */
+    public record DocumentFeatureFact(
+            String documentCategory,
+            String factType,
+            String value,
             String location,
             String excerpt,
             String contextType) {

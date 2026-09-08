@@ -1,6 +1,9 @@
 package com.example.agentservice.procurement.service;
 
 import org.docx4j.Docx4J;
+import org.docx4j.fonts.IdentityPlusMapper;
+import org.docx4j.fonts.PhysicalFont;
+import org.docx4j.fonts.PhysicalFonts;
 import org.docx4j.openpackaging.packages.WordprocessingMLPackage;
 import org.springframework.stereotype.Service;
 
@@ -9,7 +12,7 @@ import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-/** Converts DOCX to PDF through docx4j's pure-Java XSL-FO exporter. */
+/** 使用 docx4j 的纯 Java XSL-FO 导出器将 DOCX 转换为 PDF。 */
 @Service
 public class DocxPdfConverter {
 
@@ -25,6 +28,13 @@ public class DocxPdfConverter {
             Files.createDirectories(parent);
         }
         WordprocessingMLPackage document = WordprocessingMLPackage.load(docx.toFile());
+        PhysicalFont simSun = PhysicalFonts.get("SimSun");
+        if (simSun != null) {
+            IdentityPlusMapper fontMapper = new IdentityPlusMapper();
+            fontMapper.put("宋体", simSun);
+            fontMapper.put("SimSun", simSun);
+            document.setFontMapper(fontMapper);
+        }
         try (OutputStream output = Files.newOutputStream(pdf)) {
             Docx4J.toPDF(document, output);
         } catch (IOException exception) {

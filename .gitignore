@@ -42,6 +42,7 @@ src/test/java/com/example/agentservice/agile/ImmReportReplay.java
 src/test/java/com/example/agentservice/service/ImmServiceIntegrationTests.java
 src/test/java/com/example/agentservice/service/ImmImageSplicingIntegrationTests.java
 src/test/java/com/example/agentservice/service/ImmImageTextIntegrationTests.java
+src/main/java/com/example/agentservice/agile/ImmTestUrls.java
 
 # Local competition reference files may contain signed OSS URLs or third-party documents.
 src/main/resources/doc/**/*.doc

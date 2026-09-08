@@ -11,7 +11,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 
-/** Redis-backed asynchronous task runner for bid draft generation. */
+/** 基于 Redis 管理投标文件初稿异步生成任务。 */
 @Service
 public class BidDocumentTaskService {
 

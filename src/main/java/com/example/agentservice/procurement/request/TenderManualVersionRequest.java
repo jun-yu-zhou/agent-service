@@ -2,7 +2,7 @@ package com.example.agentservice.procurement.request;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
-/** Operator-authored Markdown content saved as a child version of a tender draft. */
+/** 人工编辑并保存为招标文件初稿子版本的 Markdown 内容。 */
 public record TenderManualVersionRequest(
         @Schema(description = "人工编辑后的完整 Markdown 招标文件", requiredMode = Schema.RequiredMode.REQUIRED)
         String markdown,

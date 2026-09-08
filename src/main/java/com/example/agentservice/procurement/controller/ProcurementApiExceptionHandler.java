@@ -7,7 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-/** Converts expected workflow conflicts into stable API responses instead of servlet 500 pages. */
+/** 将可预期的流程异常转换为稳定的 API 错误响应。 */
 @RestControllerAdvice(basePackages = "com.example.agentservice.procurement.controller")
 public class ProcurementApiExceptionHandler {
 

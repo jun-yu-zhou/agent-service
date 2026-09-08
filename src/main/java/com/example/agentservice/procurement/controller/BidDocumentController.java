@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-/** HTTP preview endpoint for bid drafts; it does not persist documents or create background tasks. */
+/** 提供投标文件初稿预览接口，不保存文档或创建后台任务。 */
 @RestController
 @RequestMapping("/api/procurement/bid-drafts")
 @Tag(name = "投标文件", description = "投标文件初稿生成与审查")

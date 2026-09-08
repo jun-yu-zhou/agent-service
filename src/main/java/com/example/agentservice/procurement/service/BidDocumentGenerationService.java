@@ -7,7 +7,7 @@ import io.agentscope.core.message.Msg;
 import io.agentscope.core.message.MsgRole;
 import org.springframework.stereotype.Service;
 
-/** Generates a bid draft from arbitrary tender and supplier source texts. */
+/** 根据招标文件正文和供应商资料生成投标文件初稿。 */
 @Service
 public class BidDocumentGenerationService {
 
@@ -34,60 +34,6 @@ public class BidDocumentGenerationService {
             throw new IllegalStateException("投标文件生成模型未返回有效内容");
         }
         printMetrics("投标初稿生成", response, startNanos);
-        return response.getTextContent().trim();
-    }
-
-    /** Reviews a bid draft without changing it. */
-    public String reviewConsistency(String tenderText, String supplierText, String draftText) {
-        requireSourceTexts(tenderText, supplierText);
-        if (draftText == null || draftText.isBlank()) {
-            throw new IllegalArgumentException("投标文件初稿不能为空");
-        }
-        long startNanos = System.nanoTime();
-        ReActAgent agent = ReActAgent.builder()
-                .name("bid-document-consistency-reviewer")
-                .sysPrompt(BidGenerationPrompts.BID_CONSISTENCY_REVIEW_SYSTEM_PROMPT)
-                .model(modelConfig.qwen37PlusReportModel())
-                .build();
-        Msg response = agent.call(Msg.builder()
-                .role(MsgRole.USER)
-                .textContent("已确认招标文件正文：\n\n" + tenderText
-                        + "\n\n供应商资料与证明材料摘要：\n\n" + supplierText
-                        + "\n\n投标文件初稿：\n\n" + draftText)
-                .build()).block();
-        if (response == null || response.getTextContent() == null || response.getTextContent().isBlank()) {
-            throw new IllegalStateException("投标文件一致性审查模型未返回有效内容");
-        }
-        printMetrics("投标初稿语义审查", response, startNanos);
-        return response.getTextContent().trim();
-    }
-
-    /** Revises a bid draft once using only source-grounded review findings. */
-    public String reviseDraft(String tenderText, String supplierText, String draftText, String reviewText) {
-        requireSourceTexts(tenderText, supplierText);
-        if (draftText == null || draftText.isBlank()) {
-            throw new IllegalArgumentException("投标文件初稿不能为空");
-        }
-        if (reviewText == null || reviewText.isBlank()) {
-            throw new IllegalArgumentException("一致性审查结果不能为空");
-        }
-        long startNanos = System.nanoTime();
-        ReActAgent agent = ReActAgent.builder()
-                .name("bid-document-draft-reviser")
-                .sysPrompt(BidGenerationPrompts.BID_DRAFT_REVISION_SYSTEM_PROMPT)
-                .model(modelConfig.qwen37PlusReportModel())
-                .build();
-        Msg response = agent.call(Msg.builder()
-                .role(MsgRole.USER)
-                .textContent("已确认招标文件正文：\n\n" + tenderText
-                        + "\n\n供应商资料与证明材料摘要：\n\n" + supplierText
-                        + "\n\n投标文件初稿：\n\n" + draftText
-                        + "\n\n一致性审查问题：\n\n" + reviewText)
-                .build()).block();
-        if (response == null || response.getTextContent() == null || response.getTextContent().isBlank()) {
-            throw new IllegalStateException("投标文件修订模型未返回有效内容");
-        }
-        printMetrics("投标初稿自动修订", response, startNanos);
         return response.getTextContent().trim();
     }
 
