@@ -25,17 +25,19 @@ class TenderDocumentControllerTest {
     void shouldReturnSafeAttachmentHeadersForArtifactDownloads() {
         TenderDocumentArtifactService artifactService = mock(TenderDocumentArtifactService.class);
         StreamingResponseBody body = output -> { };
-        when(artifactService.download("task-1", "version-1", ArtifactType.PDF))
+        when(artifactService.download("task-1", "version-1", ArtifactType.DOCX))
                 .thenReturn(Optional.of(new TenderDocumentArtifactService.ArtifactDownload(
-                        "招标文件_V2.pdf", "application/pdf", 128, body)));
+                        "招标文件_V2.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", 128, body)));
         TenderDocumentController controller = new TenderDocumentController(
                 mock(TenderDocumentGenerationService.class), mock(TenderDocumentTaskService.class),
                 artifactService, mock(TenderOutlineUploadService.class));
 
         ResponseEntity<StreamingResponseBody> response =
-                controller.downloadArtifact("task-1", "version-1", ArtifactType.PDF);
+                controller.downloadArtifact("task-1", "version-1", ArtifactType.DOCX);
 
-        assertEquals(MediaType.APPLICATION_PDF, response.getHeaders().getContentType());
+        assertEquals(MediaType.parseMediaType(
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document"),
+                response.getHeaders().getContentType());
         assertEquals(128, response.getHeaders().getContentLength());
         assertEquals("private, no-store", response.getHeaders().getCacheControl());
         assertEquals("nosniff", response.getHeaders().getFirst("X-Content-Type-Options"));

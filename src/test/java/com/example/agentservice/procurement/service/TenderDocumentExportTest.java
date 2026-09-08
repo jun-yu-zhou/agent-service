@@ -14,15 +14,15 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class TenderDocumentExportTest {
 
     @Test
-    void shouldRenderMarkdownToDocxAndPdf() throws Exception {
+    void shouldRenderMarkdownToDocx() throws Exception {
         Path directory = Files.createTempDirectory("tender-export-");
         Path docx = directory.resolve("tender.docx");
-        Path pdf = directory.resolve("tender.pdf");
         try {
             new TenderMarkdownDocxRenderer().render("# 招标文件\n\n项目编号：VCCGDLGK-2026090\n\n"
                     + "采购代理机构：江苏唯诚建设咨询有限公司\n\n## 目录\n\n第一章 投标邀请\n\n"
                     + "## 第一章 投标邀请\n\n### 一、项目概况\n\n★采购需求\n\n"
                     + "#### （一）采购范围\n\n##### 1. 服务边界\n\n"
+                    + "## 第二章 投标人须知\n\n### 一、总则\n\n"
                     + "| 项目 | 数量 |\n| --- | --- |\n| 示例服务 | 1 |", docx);
             try (XWPFDocument document = new XWPFDocument(Files.newInputStream(docx))) {
                 assertEquals(11, document.getTables().get(0).getRow(1).getCell(0)
@@ -39,17 +39,16 @@ class TenderDocumentExportTest {
                         StandardCharsets.UTF_8);
                 assertTrue(documentXml.contains("TOC"));
                 assertTrue(documentXml.contains("第一章 投标邀请"));
+                assertTrue(documentXml.contains("第二章 投标人须知"));
                 assertTrue(documentXml.contains("一、项目概况"));
                 assertTrue(documentXml.contains("（一）采购范围"));
                 assertTrue(documentXml.contains("1. 服务边界"));
                 assertTrue(documentXml.contains("1-4"));
+                assertTrue(documentXml.split("pageBreakBefore", -1).length - 1 >= 3);
             }
-            new DocxPdfConverter().convert(docx, pdf);
             assertTrue(Files.size(docx) > 0);
-            assertTrue(Files.size(pdf) > 0);
         } finally {
             Files.deleteIfExists(docx);
-            Files.deleteIfExists(pdf);
             Files.deleteIfExists(directory);
         }
     }

@@ -79,8 +79,7 @@ class TenderDocumentArtifactServiceTest {
     private TenderDocumentArtifactService service(ProcurementTaskRedisStore store, OSS client) {
         ProcurementDocumentProperties properties = new ProcurementDocumentProperties();
         properties.setOssOutputPrefix("procurement-document/");
-        return new TenderDocumentArtifactService(store, mock(TenderMarkdownDocxRenderer.class),
-                mock(DocxPdfConverter.class), properties) {
+        return new TenderDocumentArtifactService(store, mock(TenderMarkdownDocxRenderer.class), properties) {
             @Override
             protected OSS createOssClient() {
                 return client;
