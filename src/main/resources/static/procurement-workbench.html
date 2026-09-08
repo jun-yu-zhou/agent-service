@@ -146,12 +146,6 @@ function clickDownload(a){
 async function exportFiles(){
   if(!currentVersionId)return notify('请先确认定稿');
   if(overlayKind)return;
-  if(artifacts.length&&artifactsVersionId===currentVersionId){
-    renderDownloads(artifacts,'该定稿版本的文件已就绪，正在下载：');
-    artifacts.forEach(clickDownload);
-    notify('已开始下载该版本的 '+artifacts.length+' 个文件，若浏览器拦截请点击面板中的按钮');
-    return;
-  }
   showOverlay('exporting','正在导出文档文件…','服务端正在渲染并转换文档文件，请稍候；完成后将直接保存到本机，不会打开新标签页。');
   try{
     const list=await api(base+'/tasks/'+task()+'/versions/'+currentVersionId+'/artifacts/export',{method:'POST'});
