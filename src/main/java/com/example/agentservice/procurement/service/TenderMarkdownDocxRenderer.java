@@ -67,7 +67,7 @@ public class TenderMarkdownDocxRenderer {
             configureFooter(document);
             for (int index = 0; index < lines.size();) {
                 String line = lines.get(index).trim();
-                if (line.isBlank() || line.equals("---")) {
+                if (line.isBlank() || line.equals("---") || isBreakTagLine(line)) {
                     index++;
                     continue;
                 }
@@ -340,7 +340,12 @@ public class TenderMarkdownDocxRenderer {
     }
 
     private String stripInlineMarkdown(String text) {
-        return text.replace("**", "").replace("`", "");
+        return text.replaceAll("(?i)<br\\s*/?>", "").replace("**", "").replace("`", "");
+    }
+
+    /** 模板分页/留白的 br 标签被模型带进初稿时，整行只由 br 标签组成的行直接丢弃。 */
+    private boolean isBreakTagLine(String line) {
+        return line.replaceAll("(?i)<br\\s*/?>", "").isBlank();
     }
 
 }
