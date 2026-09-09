@@ -17,6 +17,7 @@ import org.docx4j.toc.Toc;
 import org.docx4j.toc.TocGenerator;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTPageMar;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSectPr;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.STVerticalJc;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -57,6 +58,8 @@ public class TenderMarkdownDocxRenderer {
             configureFooter(document);
             List<String> lines = markdown.replace("\r\n", "\n").replace('\r', '\n').lines().toList();
             boolean cover = true;
+            boolean coverSectionClosed = false;
+            XWPFParagraph lastCoverParagraph = null;
             for (int index = 0; index < lines.size();) {
                 String line = lines.get(index).trim();
                 if (line.isBlank() || line.equals("---")) {
@@ -74,6 +77,11 @@ public class TenderMarkdownDocxRenderer {
                 }
                 int headingLevel = headingLevel(line);
                 if (isDirectoryHeading(line, headingLevel)) {
+                    if (cover && lastCoverParagraph != null) {
+                        closeCoverSection(lastCoverParagraph);
+                        coverSectionClosed = true;
+                    }
+                    cover = false;
                     XWPFParagraph directoryHeading = document.createParagraph();
                     XWPFRun headingRun = directoryHeading.createRun();
                     headingRun.setText("目录");
@@ -83,7 +91,9 @@ public class TenderMarkdownDocxRenderer {
                     directoryHeading.setAlignment(ParagraphAlignment.CENTER);
                     directoryHeading.setSpacingBefore(240);
                     directoryHeading.setSpacingAfter(240);
-                    breakPageBefore(directoryHeading);
+                    if (!coverSectionClosed) {
+                        breakPageBefore(directoryHeading);
+                    }
                     tocPosition = document.getBodyElements().size();
                     index++;
                     while (index < lines.size() && !isChapterHeading(
@@ -94,11 +104,17 @@ public class TenderMarkdownDocxRenderer {
                 }
                 boolean chapterHeading = isChapterHeading(line, headingLevel);
                 if (chapterHeading) {
-                    if (tocPosition < 0) {
-                        appendPageBreak(document);
-                        tocPosition = document.getBodyElements().size();
+                    if (cover && lastCoverParagraph != null) {
+                        closeCoverSection(lastCoverParagraph);
+                        coverSectionClosed = true;
                     }
                     cover = false;
+                    if (tocPosition < 0) {
+                        if (!coverSectionClosed) {
+                            appendPageBreak(document);
+                        }
+                        tocPosition = document.getBodyElements().size();
+                    }
                     if (chapterHeadingLevel == 0) {
                         chapterHeadingLevel = headingLevel;
                     }
@@ -106,7 +122,10 @@ public class TenderMarkdownDocxRenderer {
                 if (!cover && headingLevel > 0) {
                     tocDepth = Math.max(tocDepth, outlineLevel(headingLevel, chapterHeadingLevel));
                 }
-                appendParagraph(document, line, cover, chapterHeading, chapterHeadingLevel);
+                XWPFParagraph appended = appendParagraph(document, line, cover, chapterHeading, chapterHeadingLevel);
+                if (cover) {
+                    lastCoverParagraph = appended;
+                }
                 index++;
             }
             document.write(stream);
@@ -154,7 +173,7 @@ public class TenderMarkdownDocxRenderer {
         properties.addNewPageBreakBefore();
     }
 
-    private void appendParagraph(
+    private XWPFParagraph appendParagraph(
             XWPFDocument document, String line, boolean cover, boolean chapterHeading, int chapterHeadingLevel) {
         XWPFParagraph paragraph = document.createParagraph();
         int headingLevel = headingLevel(line);
@@ -164,7 +183,7 @@ public class TenderMarkdownDocxRenderer {
         run.setFontFamily("宋体");
         if (headingLevel > 0) {
             if (cover) {
-                paragraph.setStyle("Title");
+                paragraph.setAlignment(ParagraphAlignment.CENTER);
             } else {
                 int outlineLevel = outlineLevel(headingLevel, chapterHeadingLevel);
                 paragraph.setStyle("Heading" + outlineLevel);
@@ -189,13 +208,31 @@ public class TenderMarkdownDocxRenderer {
             run.setFontSize(12);
             paragraph.setSpacingBetween(1.5D);
             paragraph.setSpacingAfter(80);
-            paragraph.setAlignment(cover ? ParagraphAlignment.LEFT : ParagraphAlignment.BOTH);
+            paragraph.setAlignment(cover ? ParagraphAlignment.CENTER : ParagraphAlignment.BOTH);
             if (isListItem(line)) {
                 paragraph.setIndentationLeft(420);
             } else if (!cover) {
                 paragraph.setFirstLineIndent(480);
             }
         }
+        return paragraph;
+    }
+
+    /** 封面单独成节并垂直水平居中：在封面最后一段落下分节符，该节版式设置为垂直居中。 */
+    private void closeCoverSection(XWPFParagraph lastCoverParagraph) {
+        var properties = lastCoverParagraph.getCTP().isSetPPr()
+                ? lastCoverParagraph.getCTP().getPPr()
+                : lastCoverParagraph.getCTP().addNewPPr();
+        CTSectPr section = properties.addNewSectPr();
+        section.addNewPgSz().setW(BigInteger.valueOf(11906));
+        section.getPgSz().setH(BigInteger.valueOf(16838));
+        CTPageMar margin = section.addNewPgMar();
+        margin.setTop(BigInteger.valueOf(1440));
+        margin.setBottom(BigInteger.valueOf(1440));
+        margin.setLeft(BigInteger.valueOf(1440));
+        margin.setRight(BigInteger.valueOf(1440));
+        margin.setFooter(BigInteger.valueOf(360));
+        section.addNewVAlign().setVal(STVerticalJc.CENTER);
     }
 
     private void appendTable(XWPFDocument document, List<String> lines) {

@@ -44,7 +44,8 @@ class TenderDocumentExportTest {
                 assertTrue(documentXml.contains("（一）采购范围"));
                 assertTrue(documentXml.contains("1. 服务边界"));
                 assertTrue(documentXml.contains("1-4"));
-                assertTrue(documentXml.split("pageBreakBefore", -1).length - 1 >= 3);
+                assertTrue(documentXml.split("pageBreakBefore", -1).length - 1 >= 2);
+                assertTrue(documentXml.contains("<w:vAlign w:val=\"center\"/>"));
             }
             assertTrue(Files.size(docx) > 0);
         } finally {
