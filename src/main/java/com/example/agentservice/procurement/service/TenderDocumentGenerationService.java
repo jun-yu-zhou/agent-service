@@ -8,7 +8,7 @@ import io.agentscope.core.message.Msg;
 import io.agentscope.core.message.MsgRole;
 import org.springframework.stereotype.Service;
 
-/** 根据旧版 HTML 模板和项目数据生成招标文件初稿。 */
+/** 根据招标文件 HTML 模板和项目数据生成招标文件初稿。 */
 @Service
 public class TenderDocumentGenerationService {
 
@@ -39,7 +39,7 @@ public class TenderDocumentGenerationService {
     }
 
     private String generationInput(String templateHtml, JsonNode projectData) {
-        StringBuilder input = new StringBuilder("旧版招标文件 HTML 模板：\n\n").append(templateHtml);
+        StringBuilder input = new StringBuilder("招标文件 HTML 模板：\n\n").append(templateHtml);
         if (projectData != null && !projectData.isNull() && !projectData.isEmpty()) {
             input.append("\n\n招标单位确认的完整结构化项目数据（同一字段冲突时以此处为准）：\n\n")
                     .append(projectData);
