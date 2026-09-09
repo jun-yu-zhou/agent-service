@@ -79,14 +79,8 @@
         <dependency>
             <groupId>org.apache.poi</groupId>
             <artifactId>poi-ooxml</artifactId>
-            <version>5.2.2</version>
+            <version>5.5.1</version>
         </dependency>
-        <dependency>
-            <groupId>commons-io</groupId>
-            <artifactId>commons-io</artifactId>
-            <version>2.16.1</version>
-        </dependency>
-
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-redis</artifactId>
@@ -115,7 +109,7 @@
             <version>2.1.0</version>
         </dependency>
 
-        <!-- Pure-Java DOCX rendering; export-fo is still required for TOC page numbering. -->
+        <!-- 纯Java DOCX渲染；导出FO仍需用于目录页码编号 -->
         <dependency>
             <groupId>org.docx4j</groupId>
             <artifactId>docx4j-JAXB-ReferenceImpl</artifactId>
@@ -126,13 +120,6 @@
             <artifactId>docx4j-export-fo</artifactId>
             <version>11.5.3</version>
         </dependency>
-        <!-- Align with docx4j 11.5.3; POI's older transitive version is excluded above. -->
-        <dependency>
-            <groupId>org.apache.commons</groupId>
-            <artifactId>commons-compress</artifactId>
-            <version>1.27.1</version>
-        </dependency>
-
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
