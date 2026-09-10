@@ -1,56 +1,60 @@
 package com.example.agentservice.procurement.service;
 
 import org.junit.jupiter.api.Test;
-import org.apache.poi.xwpf.usermodel.XWPFDocument;
 
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.charset.StandardCharsets;
 import java.util.zip.ZipFile;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 
+/** 验证正式导出链路使用 docx4j 生成页面、目录、页码和表格空间。 */
 class TenderDocumentExportTest {
+
+    @Test
+    void shouldRenderDocxDirectlyToMemory() throws Exception {
+        byte[] content = new Docx4jMarkdownDocxRenderer().render("# 招标文件\n\n## 第一章 投标邀请");
+
+        assertTrue(content.length > 0);
+        assertTrue(content[0] == 'P' && content[1] == 'K');
+    }
 
     @Test
     void shouldRenderMarkdownToDocx() throws Exception {
         Path directory = Files.createTempDirectory("tender-export-");
         Path docx = directory.resolve("tender.docx");
         try {
-            new TenderMarkdownDocxRenderer().render("# 招标文件\n\n项目编号：VCCGDLGK-2026090\n\n"
-                    + "采购代理机构：江苏唯诚建设咨询有限公司\n\n# 目录\n\n第一章 投标邀请\n\n"
-                    + "# 第一章 投标邀请\n\n## 一、项目概况\n\n★采购需求\n\n"
-                    + "### （一）采购范围\n\n#### 1. 服务边界\n\n"
-                    + "# 第二部分 投标人须知\n\n## 一、总则\n\n"
-                    + "| 项目 | 数量 |\n| --- | --- |\n| 示例服务 | 1 |", docx);
-            try (XWPFDocument document = new XWPFDocument(Files.newInputStream(docx))) {
-                assertEquals(11, document.getTables().get(0).getRow(1).getCell(0)
-                        .getParagraphs().get(0).getRuns().get(0).getFontSize());
-                assertTrue(document.getTables().get(0).getCellMarginLeft() >= 120);
-                assertTrue(document.getTables().get(0).getRow(1).getHeight() >= 420);
-                assertTrue(document.getHeaderList().isEmpty());
-                assertTrue(document.getFooterList().get(0).getParagraphs().get(0).getCTP().xmlText()
-                        .contains("PAGE"));
-            }
+            new Docx4jMarkdownDocxRenderer().render("# 招标文件\n\n项目名称：测试项目\n\n招标编号：TEST-001\n\n"
+                    + "招 标 人：测试单位\n\n组织招标：测试机构\n\n发布日期：2026-09-09\n\n"
+                    + "## 目录\n\n## 第一章 投标邀请\n\n### 一、项目概况\n\n"
+                    + "## 第二章 投标人须知\n\n| 项目 | 数量 |\n| --- | --- |\n| 示例服务 | 1 |", docx);
+
             try (ZipFile archive = new ZipFile(docx.toFile())) {
-                String documentXml = new String(
-                        archive.getInputStream(archive.getEntry("word/document.xml")).readAllBytes(),
-                        StandardCharsets.UTF_8);
+                String documentXml = xml(archive, "word/document.xml");
+                String footerXml = xml(archive, "word/footer.xml");
                 assertTrue(documentXml.contains("TOC"));
                 assertTrue(documentXml.contains("第一章 投标邀请"));
-                assertTrue(documentXml.contains("第二部分 投标人须知"));
-                assertTrue(documentXml.contains("一、项目概况"));
-                assertTrue(documentXml.contains("（一）采购范围"));
-                assertTrue(documentXml.contains("1. 服务边界"));
-                assertTrue(documentXml.contains("1-4"));
-                assertTrue(documentXml.split("pageBreakBefore", -1).length - 1 >= 2);
-                assertTrue(documentXml.contains("<w:vAlign w:val=\"center\"/>"));
+                assertTrue(documentXml.contains("第二章 投标人须知"));
+                assertFalse(documentXml.contains("测试项目招标编号"));
+                assertFalse(documentXml.contains("测试单位组织招标"));
+                assertTrue(documentXml.contains("w:tcMar"));
+                assertTrue(documentXml.contains("w:trHeight w:val=\"420\" w:hRule=\"atLeast\""));
+                assertTrue(documentXml.contains("w:vAlign w:val=\"center\""));
+                assertTrue(documentXml.split("w:pageBreakBefore", -1).length - 1 >= 2);
+                assertTrue(documentXml.contains("w:type w:val=\"nextPage\""));
+                assertTrue(documentXml.matches("(?s).*PAGEREF.*<w:t>\\d+</w:t>.*"));
+                assertTrue(footerXml.contains("PAGE"));
             }
             assertTrue(Files.size(docx) > 0);
         } finally {
             Files.deleteIfExists(docx);
             Files.deleteIfExists(directory);
         }
+    }
+
+    private String xml(ZipFile archive, String entry) throws Exception {
+        return new String(archive.getInputStream(archive.getEntry(entry)).readAllBytes(), StandardCharsets.UTF_8);
     }
 }
