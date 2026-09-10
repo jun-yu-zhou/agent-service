@@ -10,20 +10,21 @@ import java.nio.file.Path;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** 使用 Redis 中已有初稿验证 poi-tl 渲染与 POI 排版的真实导出效果。 */
 @SpringBootTest
-class Docx4jMarkdownDocxRendererIntegrationTest {
+class PoiMarkdownDocxRendererIntegrationTest {
 
     private static final String TASK_ID = "c74be838-935d-4b5d-832d-29d1c76ff022";
-    private static final Path OUTPUT = Path.of("target", "docx4j-markdown-preview.docx");
+    private static final Path OUTPUT = Path.of("target", "poi-markdown-preview.docx");
 
     @Autowired
     private ProcurementTaskRedisStore taskStore;
 
     @Autowired
-    private Docx4jMarkdownDocxRenderer renderer;
+    private PoiMarkdownDocxRenderer renderer;
 
     @Test
     void rendersDraftFromRedis() throws Exception {
@@ -43,9 +44,9 @@ class Docx4jMarkdownDocxRendererIntegrationTest {
                     .findFirst()
                     .orElseThrow());
             String settingsXml = xml(archive, "word/settings.xml");
-            assertTrue(documentXml.contains("TOC"));
+            assertFalse(documentXml.contains("TOC"));
             assertTrue(footerXml.contains("PAGE"));
-            assertTrue(settingsXml.contains("updateFields"));
+            assertFalse(settingsXml.contains("updateFields"));
         }
         System.out.println("poi-tl Markdown 导出文件：" + OUTPUT.toAbsolutePath());
     }

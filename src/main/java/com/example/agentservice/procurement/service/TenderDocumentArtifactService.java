@@ -13,10 +13,10 @@ public class TenderDocumentArtifactService {
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
     private final ProcurementTaskRedisStore taskStore;
-    private final Docx4jMarkdownDocxRenderer docxRenderer;
+    private final PoiMarkdownDocxRenderer docxRenderer;
 
     public TenderDocumentArtifactService(
-            ProcurementTaskRedisStore taskStore, Docx4jMarkdownDocxRenderer docxRenderer) {
+            ProcurementTaskRedisStore taskStore, PoiMarkdownDocxRenderer docxRenderer) {
         this.taskStore = taskStore;
         this.docxRenderer = docxRenderer;
     }

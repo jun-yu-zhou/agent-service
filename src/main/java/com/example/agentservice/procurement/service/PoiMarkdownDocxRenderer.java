@@ -17,7 +17,7 @@ import java.util.Map;
 
 /** 使用 poi-tl Markdown 插件生成并排版招标文件 Word。 */
 @Service
-public class Docx4jMarkdownDocxRenderer {
+public class PoiMarkdownDocxRenderer {
 
     private static final String MARKDOWN_TAG = "md";
     private static final Configure CONFIGURE = Configure.builder()
