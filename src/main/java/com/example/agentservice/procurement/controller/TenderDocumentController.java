@@ -4,6 +4,7 @@ import com.example.agentservice.procurement.domain.DocumentGenerationTask;
 import com.example.agentservice.procurement.domain.DocumentVersion;
 import com.example.agentservice.procurement.domain.GenerationTaskStatus;
 import com.example.agentservice.procurement.request.TenderManualVersionRequest;
+import com.example.agentservice.procurement.request.TenderProjectTaskRequest;
 import com.example.agentservice.procurement.service.TenderDocumentArtifactService;
 import com.example.agentservice.procurement.service.TenderDocumentTaskService;
 import com.example.agentservice.procurement.service.TenderTemplateUploadService;
@@ -43,6 +44,12 @@ public class TenderDocumentController {
         this.taskService = taskService;
         this.artifactService = artifactService;
         this.templateUploadService = templateUploadService;
+    }
+
+    @PostMapping("/tasks")
+    @Operation(summary = "根据项目创建招标初稿任务", description = "按旧业务项目 ID 读取项目资料和 HTML 模板，异步生成初稿。")
+    public ResponseEntity<DocumentGenerationTask> createTask(@RequestBody TenderProjectTaskRequest request) {
+        return ResponseEntity.accepted().body(taskService.submitProject(request.id()));
     }
 
     @PostMapping(value = "/tasks/upload", consumes = "multipart/form-data")

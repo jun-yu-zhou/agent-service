@@ -37,6 +37,9 @@
 <div class="shell">
   <aside class="rail">
     <div class="brand">采 购 文 牍<small>PROCUREMENT STUDIO</small></div><div class="rule"></div>
+    <div class="label">招标项目 ID</div><input id="projectId" placeholder="输入 zbProjectId">
+    <button class="btn primary wide" onclick="createProjectTask()">读取项目并生成招标初稿</button>
+    <div class="rule"></div>
     <div class="label">选择招标文件 HTML 模板</div><input id="outlineFile" type="file" accept=".html,.htm">
     <div class="label">结构化项目 JSON（可选）</div>
     <textarea id="projectData" spellcheck="false" placeholder='粘贴完整项目对象，例如：&#10;{&#10;  "projectName": "家具采购项目",&#10;  "purchaseMoney": "550000.00",&#10;  "classifyCode": "1",&#10;  "projectType": "1"&#10;}'></textarea>
@@ -89,10 +92,22 @@ bindDiffSync();
 })();
 async function api(url,options={}){const headers=options.body instanceof FormData?{}:{'Content-Type':'application/json'};const r=await fetch(url,{headers,...options});if(!r.ok){const text=await r.text();let message=text;try{message=JSON.parse(text).message||text}catch(e){}throw new Error(message||('HTTP '+r.status))}return r.status===204?null:r.json()}
 function notify(text){$('toast').textContent=text;$('toast').classList.add('show');setTimeout(()=>$('toast').classList.remove('show'),2400)}
-function setActions(on){[...document.querySelectorAll('button')].forEach(b=>b.disabled=!on);$('outlineFile').disabled=!on;$('projectData').disabled=!on}
+function setActions(on){[...document.querySelectorAll('button')].forEach(b=>b.disabled=!on);$('projectId').disabled=!on;$('outlineFile').disabled=!on;$('projectData').disabled=!on}
 function showOverlay(kind,title,hint){overlayKind=kind;$('busyTitle').textContent=title;$('busyHint').textContent=hint||'';setActions(false);$('busyDismiss').disabled=false;$('busyDismiss').style.display=kind==='generating'?'inline-block':'none';$('overlay').classList.add('show')}
 function hideOverlay(){overlayKind=null;$('overlay').classList.remove('show');setActions(true)}
 function dismissWaiting(){hideOverlay();notify('生成仍在后台进行，完成后会自动载入初稿')}
+async function createProjectTask(){
+  const id=$('projectId').value.trim();
+  if(!id)return notify('请填写招标项目 ID');
+  showOverlay('generating','正在读取项目并创建生成任务…','正在加载项目资料和招标文件模板，请稍候…');
+  try{
+    const created=await api(base+'/tasks',{method:'POST',body:JSON.stringify({id})});
+    $('taskId').value=created.taskId;liveTaskId=created.taskId;
+    $('busyTitle').textContent='正在生成招标初稿';
+    $('busyHint').textContent='AI 正在处理项目资料和模板正文，通常需要数十秒，请耐心等待…';
+    watch();
+  }catch(e){hideOverlay();notify('创建失败：'+(e.message||'请查看服务日志'))}
+}
 async function createTask(){
   const file=$('outlineFile').files[0];
   if(!file)return notify('请选择招标文件 HTML 模板');

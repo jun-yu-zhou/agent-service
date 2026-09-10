@@ -18,16 +18,25 @@ import org.springframework.stereotype.Service;
 public class TenderDocumentTaskService {
 
     private final TenderDocumentGenerationService generationService;
+    private final TenderProjectDataService projectDataService;
     private final ProcurementTaskRedisStore taskStore;
     private final ExecutorService executor;
 
     public TenderDocumentTaskService(
             TenderDocumentGenerationService generationService,
+            TenderProjectDataService projectDataService,
             ProcurementTaskRedisStore taskStore,
             @Qualifier("procurementDocumentExecutor") ExecutorService executor) {
         this.generationService = generationService;
+        this.projectDataService = projectDataService;
         this.taskStore = taskStore;
         this.executor = executor;
+    }
+
+    /** 根据旧业务项目 ID 自动读取模板和项目资料后创建生成任务。 */
+    public DocumentGenerationTask submitProject(String projectId) {
+        TenderProjectDataService.GenerationInput input = projectDataService.load(projectId);
+        return submitTemplate(input.templateHtml(), input.projectData());
     }
 
     public DocumentGenerationTask submitTemplate(String templateHtml, JsonNode projectData) {
