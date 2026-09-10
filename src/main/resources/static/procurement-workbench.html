@@ -6,7 +6,7 @@
   <title>招标文件协同工作台</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/vditor@3.11.1/dist/index.css">
   <style>
-    :root{--c:#409eff;--text:#303133;--sub:#909399;--line:#dcdfe6;--bg:#f5f7fa}
+    :root{--c:#409eff;--text:#303133;--sub:#909399;--line:#dcdfe6;--bg:#f5f7fa;--ok:#67c23a}
     *{box-sizing:border-box}body{margin:0;font:13px/1.6 "Microsoft YaHei",system-ui,sans-serif;color:var(--text);background:var(--bg)}button,input,textarea{font:inherit}
     .shell{min-height:100vh;display:grid;grid-template-columns:320px 1fr}main{padding:20px;min-width:0}
     .rail{position:sticky;top:0;height:100vh;overflow:auto;padding:20px;background:#fff;border-right:1px solid var(--line)}
@@ -17,7 +17,7 @@
     .btn{width:auto;cursor:pointer}.btn:hover{border-color:var(--c);color:var(--c)}.btn:disabled{opacity:.5;cursor:not-allowed}
     .primary{border-color:var(--c);background:var(--c);color:#fff}.ghost{background:transparent}.secondary{background:var(--bg)}.wide{width:100%;margin-top:8px}
     .status{margin-top:16px;color:var(--sub);font-size:12px}.status strong{display:block;color:var(--text)}
-    .steps{list-style:none;margin:12px 0 0;padding:0;color:var(--sub);font-size:12px}.steps li{padding:3px 0}.steps .done{color:var(--c)}
+    .steps{list-style:none;margin:12px 0 0;padding:0;color:var(--sub);font-size:12px}.steps li{position:relative;padding:4px 0 4px 18px}.steps li:before{content:"";position:absolute;left:2px;top:9px;width:7px;height:7px;border:1px solid var(--line);border-radius:50%}.steps .done{color:var(--text)}.steps .done:before{border-color:var(--ok);background:var(--ok)}
     .top{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px;margin-bottom:16px}.top h1{margin:0;font-size:20px}.top p{margin:4px 0 0;color:var(--sub);font-size:12px}.actions{display:flex;flex-wrap:wrap;gap:8px}
     .workspace{display:grid;grid-template-columns:minmax(320px,1fr) 6px minmax(320px,1fr);min-height:680px;background:#fff;border:1px solid var(--line);border-radius:4px;overflow:hidden}
     .panel{display:flex;flex-direction:column;min-width:0}.panel-head{flex:none;display:flex;justify-content:space-between;align-items:center;height:38px;padding:0 12px;background:var(--bg);border-bottom:1px solid var(--line);font-size:12px}.panel-head span{color:var(--sub)}
