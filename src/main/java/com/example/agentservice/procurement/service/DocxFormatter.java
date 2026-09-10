@@ -29,7 +29,7 @@ import org.openxmlformats.schemas.wordprocessingml.x2006.main.STVerticalJc;
 import java.math.BigInteger;
 import java.util.List;
 
-/** 使用 Apache POI 统一处理招标文件的页面、目录、页码和表格版式。 */
+/** 使用 Apache POI 统一处理招标文件的页面、页码和表格版式。 */
 public final class DocxFormatter {
 
     private static final int A4_WIDTH = 11906;
@@ -39,7 +39,6 @@ public final class DocxFormatter {
 
     private final XWPFDocument document;
     private boolean a4;
-    private boolean toc;
     private boolean pageNumber;
     private boolean tableLayout;
     private boolean majorChapterPageBreak;
@@ -57,11 +56,6 @@ public final class DocxFormatter {
 
     public DocxFormatter a4() {
         a4 = true;
-        return this;
-    }
-
-    public DocxFormatter toc() {
-        toc = true;
         return this;
     }
 
@@ -88,9 +82,6 @@ public final class DocxFormatter {
         List<XWPFParagraph> paragraphs = document.getParagraphs();
         int directoryIndex = directoryTitleIndex(paragraphs);
         formatCover(paragraphs, directoryIndex);
-        if (toc) {
-            insertToc(paragraphs, directoryIndex);
-        }
         if (majorChapterPageBreak) {
             breakMajorChapters(paragraphs, directoryIndex + 1);
         }
@@ -116,25 +107,6 @@ public final class DocxFormatter {
         configureA4(cover);
         cover.addNewType().setVal(STSectionMark.NEXT_PAGE);
         cover.addNewVAlign().setVal(STVerticalJc.CENTER);
-    }
-
-    /** 写入标准目录域，由 Word/WPS 根据最终分页生成准确页码。 */
-    private void insertToc(List<XWPFParagraph> paragraphs, int directoryIndex) {
-        if (directoryIndex < 0) {
-            return;
-        }
-        XWPFParagraph title = paragraphs.get(directoryIndex);
-        title.setPageBreak(true);
-        for (int index = directoryIndex + 1; index < paragraphs.size(); index++) {
-            XWPFParagraph paragraph = paragraphs.get(index);
-            int level = headingLevel(paragraph);
-            if (level > 0) {
-                paragraph.setStyle("Heading" + level);
-            }
-        }
-        title.createRun().addBreak();
-        addField(title, "TOC \\o \"1-6\" \\h \\z \\u", "目录将在打开文档时更新");
-        document.getSettings().setUpdateFields();
     }
 
     /** 目录后的最高标题层级视为大章节，每个大章节从新页开始。 */

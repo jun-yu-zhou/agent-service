@@ -29,7 +29,7 @@ class TenderDocumentExportTest {
         try {
             new Docx4jMarkdownDocxRenderer().render("# 招标文件\n\n项目名称：测试项目\n\n招标编号：TEST-001\n\n"
                     + "招 标 人：测试单位\n\n组织招标：测试机构\n\n发布日期：2026-09-09\n\n"
-                    + "## 目录\n\n## 第一章 投标邀请\n\n### 一、项目概况\n\n"
+                    + "## 目录\n\n第一章 投标邀请 ...... 1\n\n## 第一章 投标邀请\n\n### 一、项目概况\n\n"
                     + "## 第二章 投标人须知\n\n| 项目 | 数量 |\n| --- | --- |\n| 示例服务 | 1 |", docx);
 
             try (ZipFile archive = new ZipFile(docx.toFile())) {
@@ -39,7 +39,8 @@ class TenderDocumentExportTest {
                         .filter(name -> name.startsWith("word/footer"))
                         .findFirst()
                         .orElseThrow());
-                assertTrue(documentXml.contains("TOC"));
+                assertFalse(documentXml.contains("TOC"));
+                assertTrue(documentXml.contains("第一章 投标邀请 ...... 1"));
                 assertTrue(documentXml.contains("第一章 投标邀请"));
                 assertTrue(documentXml.contains("第二章 投标人须知"));
                 assertFalse(documentXml.contains("测试项目招标编号"));

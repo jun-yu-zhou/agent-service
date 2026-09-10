@@ -58,7 +58,6 @@ public class Docx4jMarkdownDocxRenderer {
                         .render(Map.of(MARKDOWN_TAG, data))) {
             DocxFormatter.of(rendered.getXWPFDocument())
                     .a4()
-                    .toc()
                     .pageNumber()
                     .tableLayout()
                     .majorChapterPageBreak()
