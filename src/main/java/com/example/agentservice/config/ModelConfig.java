@@ -270,7 +270,7 @@ public class ModelConfig {
                 .stream(true)
                 .enableThinking(false)
                 .defaultOptions(GenerateOptions.builder()
-                        .maxTokens(16384)
+                        .maxTokens(32768)
                         .temperature(0.2D)
                         .executionConfig(longExecutionConfig())
                         .build())

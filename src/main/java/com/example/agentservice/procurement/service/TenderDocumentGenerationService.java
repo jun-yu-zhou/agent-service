@@ -8,6 +8,8 @@ import io.agentscope.core.message.Msg;
 import io.agentscope.core.message.MsgRole;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
+
 /** 根据招标文件 HTML 模板和项目数据生成招标文件初稿。 */
 @Service
 public class TenderDocumentGenerationService {
@@ -44,7 +46,9 @@ public class TenderDocumentGenerationService {
             input.append("\n\n招标单位确认的完整结构化项目数据（同一字段冲突时以此处为准）：\n\n")
                     .append(projectData);
         }
-        return input.toString();
+        return input.append("\n\n今天的日期（用于模板中“当前日期、发布日期”这类变量）：")
+                .append(LocalDate.now())
+                .toString();
     }
 
     private void printModelMetrics(String stage, Msg response, long startNanos) {
