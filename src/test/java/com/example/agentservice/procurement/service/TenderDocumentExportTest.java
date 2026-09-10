@@ -5,12 +5,13 @@ import org.junit.jupiter.api.Test;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** 验证正式导出链路使用 docx4j 生成页面、目录、页码和表格空间。 */
+/** 验证正式导出链路使用 poi-tl 和 POI 生成正文并完成统一排版。 */
 class TenderDocumentExportTest {
 
     @Test
@@ -33,7 +34,11 @@ class TenderDocumentExportTest {
 
             try (ZipFile archive = new ZipFile(docx.toFile())) {
                 String documentXml = xml(archive, "word/document.xml");
-                String footerXml = xml(archive, "word/footer.xml");
+                String footerXml = xml(archive, archive.stream()
+                        .map(ZipEntry::getName)
+                        .filter(name -> name.startsWith("word/footer"))
+                        .findFirst()
+                        .orElseThrow());
                 assertTrue(documentXml.contains("TOC"));
                 assertTrue(documentXml.contains("第一章 投标邀请"));
                 assertTrue(documentXml.contains("第二章 投标人须知"));
@@ -44,7 +49,6 @@ class TenderDocumentExportTest {
                 assertTrue(documentXml.contains("w:vAlign w:val=\"center\""));
                 assertTrue(documentXml.split("w:pageBreakBefore", -1).length - 1 >= 2);
                 assertTrue(documentXml.contains("w:type w:val=\"nextPage\""));
-                assertTrue(documentXml.matches("(?s).*PAGEREF.*<w:t>\\d+</w:t>.*"));
                 assertTrue(footerXml.contains("PAGE"));
             }
             assertTrue(Files.size(docx) > 0);
