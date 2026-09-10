@@ -109,17 +109,28 @@
             <version>2.1.0</version>
         </dependency>
 
-        <!-- 纯Java DOCX渲染；导出FO仍需用于目录页码编号 -->
+        <!-- docx4j 统一负责 Markdown 转换、DOCX 排版与目录生成。 -->
+        <dependency>
+            <groupId>org.docx4j</groupId>
+            <artifactId>docx4j-core</artifactId>
+            <version>17.1.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.docx4j</groupId>
+            <artifactId>docx4j-markdown</artifactId>
+            <version>17.1.0</version>
+        </dependency>
         <dependency>
             <groupId>org.docx4j</groupId>
             <artifactId>docx4j-JAXB-ReferenceImpl</artifactId>
-            <version>11.5.3</version>
+            <version>17.1.0</version>
         </dependency>
         <dependency>
             <groupId>org.docx4j</groupId>
             <artifactId>docx4j-export-fo</artifactId>
-            <version>11.5.3</version>
+            <version>17.1.0</version>
         </dependency>
+
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>

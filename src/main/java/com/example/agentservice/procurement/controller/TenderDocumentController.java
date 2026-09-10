@@ -1,6 +1,5 @@
 package com.example.agentservice.procurement.controller;
 
-import com.example.agentservice.procurement.domain.ArtifactType;
 import com.example.agentservice.procurement.domain.DocumentGenerationTask;
 import com.example.agentservice.procurement.domain.DocumentVersion;
 import com.example.agentservice.procurement.domain.GenerationTaskStatus;
@@ -27,7 +26,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
 /** 根据上传 HTML 模板和结构化项目数据生成招标文件初稿并管理人工编辑版本。 */
 @RestController
@@ -91,27 +89,18 @@ public class TenderDocumentController {
     }
 
     @PostMapping("/tasks/{taskId}/versions/{versionId}/artifacts/export")
-    @Operation(summary = "导出定稿 DOCX", description = "将已确认定稿版本渲染为 DOCX，上传 OSS 并返回下载信息。")
-    public ResponseEntity<?> exportArtifacts(@PathVariable String taskId, @PathVariable String versionId) throws Exception {
+    @Operation(summary = "导出定稿 DOCX", description = "在内存中生成已确认定稿版本，并直接作为附件返回。")
+    public ResponseEntity<byte[]> exportArtifacts(
+            @PathVariable String taskId, @PathVariable String versionId) throws Exception {
         return artifactService.export(taskId, versionId)
-                .map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.notFound().build());
-    }
-
-    @GetMapping("/tasks/{taskId}/versions/{versionId}/artifacts/{artifactType}/download")
-    @Operation(summary = "下载导出产物", description = "以附件方式从服务端同源流式下载已导出的文件。")
-    public ResponseEntity<StreamingResponseBody> downloadArtifact(
-            @PathVariable String taskId, @PathVariable String versionId,
-            @PathVariable ArtifactType artifactType) {
-        return artifactService.download(taskId, versionId, artifactType)
-                .map(download -> ResponseEntity.ok()
-                        .contentType(MediaType.parseMediaType(download.contentType()))
-                        .contentLength(download.contentLength())
+                .map(document -> ResponseEntity.ok()
+                        .contentType(MediaType.parseMediaType(document.contentType()))
+                        .contentLength(document.content().length)
                         .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment()
-                                .filename(download.filename(), StandardCharsets.UTF_8).build().toString())
+                                .filename(document.filename(), StandardCharsets.UTF_8).build().toString())
                         .header(HttpHeaders.CACHE_CONTROL, "private, no-store")
                         .header("X-Content-Type-Options", "nosniff")
-                        .body(download.body()))
+                        .body(document.content()))
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 

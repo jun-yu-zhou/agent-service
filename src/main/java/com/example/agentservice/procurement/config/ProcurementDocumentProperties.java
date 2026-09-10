@@ -9,7 +9,6 @@ import org.springframework.stereotype.Component;
 public class ProcurementDocumentProperties {
 
     private String templateLocation = "classpath:/templates/procurement/";
-    private String ossOutputPrefix = "procurement-document/";
     private String generationModel = "qwen3.7-plus";
     private int maxConcurrency = 4;
     private int taskTtlHours = 24;
@@ -20,14 +19,6 @@ public class ProcurementDocumentProperties {
 
     public void setTemplateLocation(String templateLocation) {
         this.templateLocation = templateLocation;
-    }
-
-    public String getOssOutputPrefix() {
-        return ossOutputPrefix;
-    }
-
-    public void setOssOutputPrefix(String ossOutputPrefix) {
-        this.ossOutputPrefix = ossOutputPrefix;
     }
 
     public String getGenerationModel() {
