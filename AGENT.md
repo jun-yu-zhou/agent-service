@@ -51,6 +51,8 @@ PDF 转图片由 `PdfUtils` 编排，`PdfUtils` 注入 `ImmService`，返回包�
 
 模型提示词应明确事实来源、输出格式和证据要求。法律、合规类结论必须要求模型给出法律文件和条款依据，并在无法核验时标记人工复核，不得由 Java 代码编造法律结论。
 
+Redis 的 JSON 存取统一走 `com.example.agentservice.redis.RedisJsonStore`（提供序列化读写、TTL 写入与瞬时故障重试，key 前缀和 TTL 由业务方决定）；业务包不要直接注入 `StringRedisTemplate`。Redis 连接仍由 `spring.data.redis.*` 配置。
+
 ## 运行方式
 
 各实验流程保留独立 `main` 方法，通常在 IntelliJ IDEA 中直接运行对应类。运行前在 `application-local.yml` 配置 DashScope API Key，其他配置可使用环境变量或本地 YAML。
