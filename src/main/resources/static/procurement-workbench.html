@@ -6,24 +6,31 @@
   <title>招标文件协同工作台</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/vditor@3.11.1/dist/index.css">
   <style>
-    :root{--ink:#18231f;--muted:#68746f;--paper:#fbfaf5;--line:#d9ddd7;--green:#174d3b;--gold:#d7a94b;--warn:#9d4b35;--shadow:0 20px 60px rgba(23,49,40,.12)}
-    *{box-sizing:border-box}body{margin:0;color:var(--ink);font-family:"Noto Serif SC","Source Han Serif SC","Microsoft YaHei",serif;background:#e8ece7;background-image:linear-gradient(90deg,rgba(23,77,59,.035) 1px,transparent 1px),linear-gradient(rgba(23,77,59,.035) 1px,transparent 1px);background-size:28px 28px}
-    button,input,textarea{font:inherit}.shell{min-height:100vh;display:grid;grid-template-columns:340px 1fr}.rail{background:#142d25;color:#f4f1e7;padding:32px 24px;position:sticky;top:0;height:100vh;overflow:auto}.brand{font-size:22px;letter-spacing:.12em}.brand small{display:block;color:#a9bdb4;font-size:11px;letter-spacing:.25em;margin-top:8px}.rule{height:1px;background:#365348;margin:26px 0}.label{font-size:12px;color:#a9bdb4;margin:16px 0 7px}.rail input,.rail textarea{width:100%;border:1px solid #4c675d;background:#0f241d;color:white;padding:11px;border-radius:4px}.rail textarea{height:180px;resize:vertical;font-family:"JetBrains Mono","Microsoft YaHei",monospace;font-size:12px;line-height:1.55}.hint{margin-top:6px;color:#8fa79d;font-size:11px;line-height:1.5}.btn{border:0;border-radius:4px;padding:11px 15px;cursor:pointer;transition:.2s}.btn:hover{transform:translateY(-1px)}.primary{background:var(--gold);color:#17251f;font-weight:700}.secondary{background:#315044;color:white}.ghost{background:transparent;color:inherit;border:1px solid currentColor}.wide{width:100%;margin-top:9px}.status{margin-top:22px;padding:15px;border:1px solid #456258;background:#19382e}.status strong{display:block;margin-bottom:7px}.status span{font-size:12px;color:#bcd0c7}.steps{padding:0;list-style:none}.steps li{padding:10px 0 10px 25px;position:relative;color:#aac0b7;font-size:13px}.steps li:before{content:"";position:absolute;left:2px;top:14px;width:8px;height:8px;border:1px solid #789087;border-radius:50%}.steps li.done{color:white}.steps li.done:before{background:var(--gold);border-color:var(--gold)}
-    main{padding:28px 32px;min-width:0}.top{display:flex;justify-content:space-between;align-items:end;margin-bottom:20px}.top h1{font-size:26px;margin:0}.top p{margin:7px 0 0;color:var(--muted);font-size:13px}.actions{display:flex;gap:8px;flex-wrap:wrap}.workspace{display:grid;grid-template-columns:minmax(420px,1fr) minmax(420px,1fr);gap:18px}.panel{background:var(--paper);border:1px solid #d3d8d1;box-shadow:var(--shadow);min-height:680px}.panel-head{height:55px;padding:0 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between}.panel-head b{letter-spacing:.08em}.editor{height:625px}.editor .vditor{height:100%;border:0}.editor .vditor-toolbar{background:#f4f2ea;border-bottom:1px solid var(--line)}.editor .vditor-content{background:transparent}.editor .vditor-wysiwyg{padding:24px;line-height:1.8;font-family:"Microsoft YaHei",sans-serif;font-size:14px}.preview{height:625px;overflow:auto;padding:30px 38px;line-height:1.8}.preview h1{text-align:center;font-size:26px;margin:0 0 30px}.preview h2{font-size:20px;border-bottom:2px solid var(--green);padding-bottom:7px;margin-top:30px}.preview h3{font-size:16px}.preview table{border-collapse:collapse;width:100%;font-size:12px;margin:18px 0}.preview th,.preview td{border:1px solid #9ba69f;padding:7px 9px;vertical-align:top}.preview th{background:#e4ebe6}.drawer{margin-top:18px;background:#fff;border-left:4px solid var(--warn);padding:16px 20px;display:none;white-space:pre-wrap;line-height:1.7;font-size:13px}.drawer.show{display:block}.versions{margin-top:18px;display:grid;gap:8px}.version{background:#fff;border:1px solid var(--line);padding:12px 15px;display:flex;justify-content:space-between;gap:15px;font-size:12px}.toast{position:fixed;right:25px;bottom:25px;background:#162e26;color:white;padding:13px 18px;border-radius:4px;box-shadow:var(--shadow);opacity:0;transform:translateY(10px);pointer-events:none;transition:.25s}.toast.show{opacity:1;transform:none}
-    .overlay{position:fixed;inset:0;z-index:60;background:rgba(20,45,37,.62);backdrop-filter:blur(2px);display:none;align-items:center;justify-content:center;flex-direction:column;gap:12px;color:#f4f1e7;text-align:center}
-    .overlay.show{display:flex}
-    .spinner{width:44px;height:44px;border-radius:50%;border:4px solid rgba(244,241,231,.22);border-top-color:var(--gold);animation:spin 1s linear infinite}
-    @keyframes spin{to{transform:rotate(360deg)}}
-    .busy-title{font-size:17px;font-weight:700;letter-spacing:.05em}
-    .busy-hint{font-size:12px;color:#cfe0d8;line-height:1.8;max-width:440px;padding:0 18px}
-    .busy-dismiss{margin-top:4px;background:rgba(255,255,255,.1);color:#f4f1e7;border:1px solid #8fa79d;font-size:12px;padding:8px 16px;border-radius:4px;cursor:pointer}
-    .busy-dismiss:hover{background:rgba(255,255,255,.2)}
-    .file-link{color:var(--green);text-decoration:underline;margin-left:4px;white-space:nowrap}
-    .version .file-link:hover{color:#0f3226}
-    .download-panel{margin-top:18px;background:#fff;border:1px solid var(--line);padding:16px 20px;display:none;align-items:center;flex-wrap:wrap;gap:8px}
-    .download-panel .download-head{font-weight:700;color:var(--green);margin-right:10px}
-    .download-panel .file-download{padding:7px 13px;font-size:12px;text-decoration:none}
-    @media(max-width:1050px){.shell{grid-template-columns:1fr}.rail{position:relative;height:auto}.workspace{grid-template-columns:1fr}.panel{min-height:520px}.editor,.preview{height:500px}}
+    :root{--c:#409eff;--text:#303133;--sub:#909399;--line:#dcdfe6;--bg:#f5f7fa}
+    *{box-sizing:border-box}body{margin:0;font:13px/1.6 "Microsoft YaHei",system-ui,sans-serif;color:var(--text);background:var(--bg)}button,input,textarea{font:inherit}
+    .shell{min-height:100vh;display:grid;grid-template-columns:320px 1fr}main{padding:20px;min-width:0}
+    .rail{position:sticky;top:0;height:100vh;overflow:auto;padding:20px;background:#fff;border-right:1px solid var(--line)}
+    .brand{font-size:17px;font-weight:600}.brand small{display:block;color:var(--sub);font-size:11px}.rule{height:1px;margin:16px 0;background:var(--line)}
+    .label,.hint{color:var(--sub);font-size:12px}.label{margin:14px 0 6px}.hint{margin-top:6px}
+    .rail input,.rail textarea,.btn{padding:8px 10px;border:1px solid var(--line);border-radius:4px;background:#fff;color:var(--text)}
+    .rail input,.rail textarea{width:100%}.rail textarea{height:150px;resize:vertical;font:12px/1.6 Consolas,monospace}
+    .btn{width:auto;cursor:pointer}.btn:hover{border-color:var(--c);color:var(--c)}.btn:disabled{opacity:.5;cursor:not-allowed}
+    .primary{border-color:var(--c);background:var(--c);color:#fff}.ghost{background:transparent}.secondary{background:var(--bg)}.wide{width:100%;margin-top:8px}
+    .status{margin-top:16px;color:var(--sub);font-size:12px}.status strong{display:block;color:var(--text)}
+    .steps{list-style:none;margin:12px 0 0;padding:0;color:var(--sub);font-size:12px}.steps li{padding:3px 0}.steps .done{color:var(--c)}
+    .top{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px;margin-bottom:16px}.top h1{margin:0;font-size:20px}.top p{margin:4px 0 0;color:var(--sub);font-size:12px}.actions{display:flex;flex-wrap:wrap;gap:8px}
+    .workspace{display:grid;grid-template-columns:minmax(320px,1fr) 6px minmax(320px,1fr);min-height:680px;background:#fff;border:1px solid var(--line);border-radius:4px;overflow:hidden}
+    .panel{display:flex;flex-direction:column;min-width:0}.panel-head{flex:none;display:flex;justify-content:space-between;align-items:center;height:38px;padding:0 12px;background:var(--bg);border-bottom:1px solid var(--line);font-size:12px}.panel-head span{color:var(--sub)}
+    .splitter{background:var(--line);cursor:col-resize}.splitter:hover,.splitter.drag{background:var(--c)}
+    .editor,.preview{height:638px}.editor .vditor{border:0}
+    .preview{overflow:auto;padding:20px 28px;line-height:1.8}.preview h1{text-align:center}.preview h2{font-size:17px}.preview table{width:100%;border-collapse:collapse;font-size:12px}.preview th,.preview td{padding:6px 8px;border:1px solid var(--line)}
+    .versions{margin-top:16px;display:grid}.version{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--line);font-size:12px}.file-link{margin-left:6px;color:var(--c)}
+    .download-panel{display:none;flex-wrap:wrap;align-items:center;gap:8px;margin-top:16px}.download-head{font-weight:600}.file-download{text-decoration:none}
+    .toast{position:fixed;right:20px;bottom:20px;padding:10px 16px;border-radius:4px;background:#303133;color:#fff;opacity:0;transition:.2s;pointer-events:none}.toast.show{opacity:1}
+    .overlay{position:fixed;inset:0;z-index:60;display:none;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:rgba(0,0,0,.45);color:#fff;text-align:center}.overlay.show{display:flex}
+    .spinner{width:36px;height:36px;border:3px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
+    .busy-title{font-size:16px;font-weight:600}.busy-hint,.busy-dismiss{font-size:12px}.busy-hint{max-width:440px;color:#e4e7ed}.busy-dismiss{padding:8px 16px;border:1px solid #fff;border-radius:4px;background:transparent;color:#fff;cursor:pointer}
+    @media(max-width:1050px){.shell{grid-template-columns:1fr}.rail{position:relative;height:auto}.workspace{grid-template-columns:1fr!important;min-height:0}.splitter{display:none}.editor,.preview{height:500px}}
   </style>
 </head>
 <body>
@@ -33,7 +40,7 @@
     <div class="label">选择招标文件 HTML 模板</div><input id="outlineFile" type="file" accept=".html,.htm">
     <div class="label">结构化项目 JSON（可选）</div>
     <textarea id="projectData" spellcheck="false" placeholder='粘贴完整项目对象，例如：&#10;{&#10;  "projectName": "家具采购项目",&#10;  "purchaseMoney": "550000.00",&#10;  "classifyCode": "1",&#10;  "projectType": "1"&#10;}'></textarea>
-    <div class="hint">可直接粘贴旧版 ZbProjectCommonDto 的完整 JSON。</div>
+    <div class="hint">可直接粘贴 ZbProjectCommonDto 的完整 JSON。</div>
     <button class="btn primary wide" onclick="createTask()">上传模板并生成招标初稿</button>
     <div class="label">任务 ID</div><input id="taskId" placeholder="输入或生成 taskId">
     <button class="btn ghost wide" onclick="loadAll()">载入任务</button>
@@ -41,11 +48,12 @@
     <ol class="steps"><li id="s1">生成初稿</li><li id="s4">人工确认</li><li id="s5">导出产物</li></ol>
   </aside>
   <main>
-    <header class="top"><div><h1>招标文件协同工作台</h1><p>上传旧版 HTML 模板，生成初稿，人工编辑后确认定稿。</p></div>
+    <header class="top"><div><h1>招标文件协同工作台</h1><p>上传 HTML 模板，生成初稿，人工编辑后确认定稿。</p></div>
       <div class="actions"><button class="btn primary" onclick="saveVersion()">保存人工版本</button><button class="btn ghost" onclick="finalizeCurrent()">确认定稿</button><button class="btn ghost" onclick="exportFiles()">导出文件</button></div></header>
-    <section class="workspace">
+    <section class="workspace" id="workspace">
       <article class="panel"><div class="panel-head"><b>文档编辑</b><span id="charCount">0 字</span></div><div id="editor" class="editor"></div></article>
-      <article class="panel"><div class="panel-head"><b>文档预览</b><span>自动同步</span></div><div id="preview" class="preview"></div></article>
+      <div class="splitter" id="splitter" title="拖动调整两侧宽度"></div>
+      <article class="panel"><div class="panel-head"><b>文档预览</b><span>滚动自动同步</span></div><div id="preview" class="preview"></div></article>
     </section>
     <section id="downloadPanel" class="download-panel"></section>
     <section id="versions" class="versions"></section>
@@ -58,11 +66,27 @@
   </div><div id="toast" class="toast"></div>
 <script src="https://cdn.jsdelivr.net/npm/vditor@3.11.1/dist/index.min.js"></script>
 <script>
-const base='/api/procurement/tender-drafts';let currentVersionId=null,pollTimer=null,artifacts=[],artifactsVersionId=null,overlayKind=null,liveTaskId=null;
+const base='/api/procurement/tender-drafts';let currentVersionId=null,pollTimer=null,overlayKind=null,liveTaskId=null;
 const $=id=>document.getElementById(id);const task=()=>$('taskId').value.trim();
 let editor;
 const editorValue=()=>editor?editor.getValue():'';
-editor=new Vditor('editor',{mode:'wysiwyg',lang:'zh_CN',height:625,cache:{enable:false},toolbar:['headings','bold','italic','strike','|','list','ordered-list','check','outdent','indent','|','quote','line','table','link','|','undo','redo','fullscreen'],input:render});
+editor=new Vditor('editor',{mode:'wysiwyg',lang:'zh_CN',height:638,cache:{enable:false},toolbar:['headings','bold','italic','strike','|','list','ordered-list','check','outdent','indent','|','quote','line','table','link','|','undo','redo','fullscreen'],input:render});
+function bindDiffSync(){
+  const pv=$('preview');
+  let lock=false,edCache=null;
+  const edEl=()=>{if(edCache&&edCache.isConnected)return edCache;const root=(typeof editor!=='undefined'&&editor.vditor&&editor.vditor.element)||document;return edCache=root.querySelector('.vditor-wysiwyg .vditor-reset')||root.querySelector('.vditor-wysiwyg')||root.querySelector('.vditor-content')};
+  const ratio=el=>el.scrollTop/Math.max(1,el.scrollHeight-el.clientHeight);
+  const follow=(src,dst)=>{if(lock||window.innerWidth<=1050)return;lock=true;dst.scrollTop=ratio(src)*(dst.scrollHeight-dst.clientHeight);requestAnimationFrame(()=>requestAnimationFrame(()=>lock=false))};
+  document.addEventListener('scroll',e=>{const ed=edEl();if(ed&&e.target===ed)follow(ed,pv)},true);
+  pv.addEventListener('scroll',()=>{const ed=edEl();if(ed)follow(pv,ed)});
+}
+bindDiffSync();
+(function(){
+  const ws=$('workspace'),sp=$('splitter');let drag=null;
+  sp.addEventListener('mousedown',e=>{const left=ws.children[0].getBoundingClientRect().width,right=ws.children[2].getBoundingClientRect().width;drag={x:e.clientX,left,right};sp.classList.add('drag');document.body.style.cursor='col-resize';document.body.style.userSelect='none';e.preventDefault()});
+  window.addEventListener('mousemove',e=>{if(!drag)return;const total=drag.left+drag.right;const left=Math.min(total-280,Math.max(280,drag.left+(e.clientX-drag.x)));ws.style.gridTemplateColumns=left+'px 6px minmax(0,'+(total-left)+'px)'});
+  window.addEventListener('mouseup',()=>{if(!drag)return;drag=null;sp.classList.remove('drag');document.body.style.cursor='';document.body.style.userSelect=''});
+})();
 async function api(url,options={}){const headers=options.body instanceof FormData?{}:{'Content-Type':'application/json'};const r=await fetch(url,{headers,...options});if(!r.ok){const text=await r.text();let message=text;try{message=JSON.parse(text).message||text}catch(e){}throw new Error(message||('HTTP '+r.status))}return r.status===204?null:r.json()}
 function notify(text){$('toast').textContent=text;$('toast').classList.add('show');setTimeout(()=>$('toast').classList.remove('show'),2400)}
 function setActions(on){[...document.querySelectorAll('button')].forEach(b=>b.disabled=!on);$('outlineFile').disabled=!on;$('projectData').disabled=!on}
@@ -112,14 +136,11 @@ async function saveVersion(){
   }catch(e){notify('保存失败：'+(e.message||'请查看服务日志'))}
   finally{setActions(true)}
 }
-function fileLabel(a){if(a.type==='PDF')return '下载 PDF';if(a.type==='DOCX')return '下载 DOCX';return '下载附件'}
 async function loadVersions(){
   const list=await api(base+'/tasks/'+task()+'/versions');
-  $('versions').innerHTML=list.map(x=>{const v=x.version;const links=(v.artifacts||[]).map(a=>`<a class="file-link" download href="${artifactDownloadHref(v.taskId||task(),v.versionId,a.type)}">${fileLabel(a)}</a>`).join('');return `<div class="version"><span>V${v.versionNumber} · ${esc(v.changeSource)} · ${esc(v.changedBy)}</span><span>${v.finalized?'已定稿':v.versionId.slice(0,8)}${links?'　'+links:''}</span></div>`}).join('');
+  $('versions').innerHTML=list.map(x=>{const v=x.version;return `<div class="version"><span>V${v.versionNumber} · ${esc(v.changeSource)} · ${esc(v.changedBy)}</span><span>${v.finalized?'已定稿':v.versionId.slice(0,8)}</span></div>`}).join('');
   const f=list.find(x=>x.version.finalized);
-  artifacts=f?(f.version.artifacts||[]):[];
-  artifactsVersionId=f?f.version.versionId:null;
-  $('s4').classList.toggle('done',!!f);$('s5').classList.toggle('done',artifacts.length>0)
+  $('s4').classList.toggle('done',!!f)
 }
 async function finalizeCurrent(){
   if(!currentVersionId)return notify('请先保存版本');
@@ -128,38 +149,23 @@ async function finalizeCurrent(){
   catch(e){notify('定稿失败：'+(e.message||'请查看服务日志'))}
   finally{setActions(true)}
 }
-function artifactDownloadHref(taskId,versionId,type){return base+'/tasks/'+encodeURIComponent(taskId)+'/versions/'+encodeURIComponent(versionId)+'/artifacts/'+encodeURIComponent(type)+'/download'}
-function renderDownloads(list,note){
-  const panel=$('downloadPanel');panel.innerHTML='';
-  if(!list||!list.length){panel.style.display='none';return}
-  const title=document.createElement('span');title.className='download-head';title.textContent=note||'导出产物：';
-  panel.appendChild(title);
-  list.forEach(a=>{
-    const link=document.createElement('a');link.className='btn secondary file-download';
-    link.href=artifactDownloadHref(task(),currentVersionId,a.type);
-    link.setAttribute('download','');link.textContent=fileLabel(a);
-    panel.appendChild(link)
-  });
-  panel.style.display='flex'
-}
-function clickDownload(a){
+function saveDownload(blob,filename){
   const link=document.createElement('a');
-  link.href=artifactDownloadHref(task(),currentVersionId,a.type);
-  link.setAttribute('download','');
-  document.body.appendChild(link);link.click();link.remove()
+  link.href=URL.createObjectURL(blob);link.download=filename;
+  document.body.appendChild(link);link.click();link.remove();URL.revokeObjectURL(link.href)
 }
 async function exportFiles(){
   if(!currentVersionId)return notify('请先确认定稿');
   if(overlayKind)return;
   showOverlay('exporting','正在导出文档文件…','服务端正在渲染并转换文档文件，请稍候；完成后将直接保存到本机，不会打开新标签页。');
   try{
-    const list=await api(base+'/tasks/'+task()+'/versions/'+currentVersionId+'/artifacts/export',{method:'POST'});
-    artifacts=list||[];artifactsVersionId=currentVersionId;
+    const response=await fetch(base+'/tasks/'+task()+'/versions/'+currentVersionId+'/artifacts/export',{method:'POST'});
+    if(!response.ok)throw new Error((await response.text())||('HTTP '+response.status));
+    const disposition=response.headers.get('Content-Disposition')||'';
+    const matched=disposition.match(/filename\*=UTF-8''([^;]+)/i);
+    saveDownload(await response.blob(),matched?decodeURIComponent(matched[1]):'招标文件.docx');
     $('s5').classList.add('done');
-    renderDownloads(artifacts,'导出完成，正在自动下载（若被浏览器拦截，请点击下方按钮）：');
-    artifacts.forEach((a,i)=>setTimeout(()=>clickDownload(a),i*400));
-    await loadVersions();
-    notify(artifacts.length?'导出完成，共生成 '+artifacts.length+' 个文件':'导出未生成文件，请查看服务日志')
+    notify('导出完成，Word 文件已保存到本机')
   }catch(e){notify('导出失败：'+(e.message||'请查看服务日志'))}
   finally{hideOverlay()}
 }
