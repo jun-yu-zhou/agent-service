@@ -1,242 +1,314 @@
 package com.example.agentservice.procurement.service;
 
-import org.apache.poi.wp.usermodel.HeaderFooterType;
-import org.apache.poi.xwpf.usermodel.ParagraphAlignment;
-import org.apache.poi.xwpf.usermodel.TableRowHeightRule;
-import org.apache.poi.xwpf.usermodel.XWPFAbstractNum;
-import org.apache.poi.xwpf.usermodel.XWPFDocument;
-import org.apache.poi.xwpf.usermodel.XWPFFooter;
-import org.apache.poi.xwpf.usermodel.XWPFParagraph;
-import org.apache.poi.xwpf.usermodel.XWPFRun;
-import org.apache.poi.xwpf.usermodel.XWPFTable;
-import org.apache.poi.xwpf.usermodel.XWPFTableCell;
-import org.apache.poi.xwpf.usermodel.XWPFTableRow;
-import org.apache.xmlbeans.impl.xb.xmlschema.SpaceAttribute;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBody;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTPageMar;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTPageSz;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTPPr;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTR;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSectPr;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTblWidth;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTcMar;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTcPr;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.STFldCharType;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.STNumberFormat;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.STSectionMark;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.STVerticalJc;
+import org.docx4j.TextUtils;
+import org.docx4j.TraversalUtil;
+import org.docx4j.finders.ClassFinder;
+import org.docx4j.openpackaging.packages.WordprocessingMLPackage;
+import org.docx4j.openpackaging.parts.WordprocessingML.FooterPart;
+import org.docx4j.relationships.Relationship;
+import org.docx4j.toc.Toc;
+import org.docx4j.toc.TocGenerator;
+import org.docx4j.wml.CTSimpleField;
+import org.docx4j.wml.CTVerticalJc;
+import org.docx4j.wml.FooterReference;
+import org.docx4j.wml.Ftr;
+import org.docx4j.wml.HdrFtrRef;
+import org.docx4j.wml.Jc;
+import org.docx4j.wml.JcEnumeration;
+import org.docx4j.wml.ObjectFactory;
+import org.docx4j.wml.P;
+import org.docx4j.wml.PPr;
+import org.docx4j.wml.R;
+import org.docx4j.wml.STVerticalJc;
+import org.docx4j.wml.SectPr;
+import org.docx4j.wml.Tbl;
+import org.docx4j.wml.TblPr;
+import org.docx4j.wml.TblWidth;
+import org.docx4j.wml.Tc;
+import org.docx4j.wml.TcMar;
+import org.docx4j.wml.TcPr;
+import org.docx4j.wml.Text;
 
 import java.math.BigInteger;
 import java.util.List;
 
-/** 使用 Apache POI 统一处理招标文件的页面、页码和表格版式。 */
+/**
+ * 使用 docx4j 统一处理招标文件目录、页码和页面版式。
+ *
+ * <p>Markdown 转换只负责生成 Word 内容结构，本类在转换完成后集中补齐正式文档所需的分页、目录、
+ * 页脚和表格版式，避免这些规则分散在生成流程中。</p>
+ */
 public final class DocxFormatter {
 
-    private static final int A4_WIDTH = 11906;
-    private static final int A4_HEIGHT = 16838;
-    private static final int PAGE_MARGIN = 1440;
-    private static final int CONTENT_WIDTH = A4_WIDTH - PAGE_MARGIN * 2;
+    private static final ObjectFactory FACTORY = new ObjectFactory();
 
-    private final XWPFDocument document;
+    /** Word 页面尺寸使用 twip，1440 twip 等于 1 英寸。 */
+    private static final BigInteger A4_WIDTH = BigInteger.valueOf(11906);
+    private static final BigInteger A4_HEIGHT = BigInteger.valueOf(16838);
+    private static final BigInteger PAGE_MARGIN = BigInteger.valueOf(1440);
+    private static final BigInteger CONTENT_WIDTH = BigInteger.valueOf(9026);
+
+    private final WordprocessingMLPackage document;
+
+    /** 链式方法只登记待执行能力，最终由 apply 按固定顺序统一处理。 */
     private boolean a4;
+    private boolean toc;
     private boolean pageNumber;
     private boolean tableLayout;
     private boolean majorChapterPageBreak;
 
-    private DocxFormatter(XWPFDocument document) {
-        if (document == null) {
-            throw new IllegalArgumentException("DOCX 文档不能为空");
-        }
+    private DocxFormatter(WordprocessingMLPackage document) {
+        if (document == null) throw new IllegalArgumentException("DOCX 文档不能为空");
         this.document = document;
     }
 
-    public static DocxFormatter of(XWPFDocument document) {
+    public static DocxFormatter of(WordprocessingMLPackage document) {
         return new DocxFormatter(document);
     }
 
+    /** 将所有正文分节统一设置为纵向 A4 页面。 */
     public DocxFormatter a4() {
         a4 = true;
         return this;
     }
 
+    /** 根据 Heading 标题样式生成最多六级目录。 */
+    public DocxFormatter toc() {
+        toc = true;
+        return this;
+    }
+
+    /** 在正文节的页脚中加入居中的 PAGE 域。 */
     public DocxFormatter pageNumber() {
         pageNumber = true;
         return this;
     }
 
+    /** 调整表格宽度、单元格留白和垂直对齐。 */
     public DocxFormatter tableLayout() {
         tableLayout = true;
         return this;
     }
 
+    /** 让目录后的最高级标题分别从新页开始。 */
     public DocxFormatter majorChapterPageBreak() {
         majorChapterPageBreak = true;
         return this;
     }
 
-    /** 按链式调用选中的能力统一修改文档。 */
-    public void apply() {
-        if (a4) {
-            configureA4(section());
-        }
-        List<XWPFParagraph> paragraphs = document.getParagraphs();
-        int directoryIndex = directoryTitleIndex(paragraphs);
-        formatCover(paragraphs, directoryIndex);
-        if (majorChapterPageBreak) {
-            breakMajorChapters(paragraphs, directoryIndex + 1);
-        }
-        if (pageNumber) {
-            insertPageNumber();
-        }
-        if (tableLayout) {
-            formatTables();
-        }
-        normalizeNumbering();
+    /**
+     * 按链式调用选中的能力统一修改文档。
+     *
+     * <p>目录依赖最终标题与分页信息，因此先完成封面和章节分页，再调用目录分页引擎。</p>
+     */
+    public void apply() throws Exception {
+        SectPr section = section();
+        if (a4) configureA4(section);
+        List<Object> content = body();
+        int directoryIndex = directoryIndex(content);
+        formatCover(content, directoryIndex);
+        if (majorChapterPageBreak) breakMajorChapters(content, directoryIndex + 1);
+        if (toc) insertToc(content, directoryIndex);
+        if (pageNumber) insertPageNumber(section);
+        if (tableLayout) formatTables();
     }
 
-    /** 目录前的正文作为封面，并通过分节实现垂直居中。 */
-    private void formatCover(List<XWPFParagraph> paragraphs, int directoryIndex) {
-        if (directoryIndex <= 0) {
-            return;
-        }
+    /**
+     * 将“目录”标题之前的内容识别为封面。
+     *
+     * <p>在封面末段挂载 nextPage 分节符，使封面独立垂直居中，同时保证目录从下一页开始。</p>
+     */
+    private void formatCover(List<Object> content, int directoryIndex) {
+        if (directoryIndex <= 0) return;
+        P last = null;
         for (int index = 0; index < directoryIndex; index++) {
-            paragraphs.get(index).setAlignment(ParagraphAlignment.CENTER);
+            Object value = org.docx4j.XmlUtils.unwrap(content.get(index));
+            if (value instanceof P paragraph) {
+                properties(paragraph).setJc(alignment(JcEnumeration.CENTER));
+                last = paragraph;
+            }
         }
-        CTPPr properties = properties(paragraphs.get(directoryIndex - 1));
-        CTSectPr cover = properties.isSetSectPr() ? properties.getSectPr() : properties.addNewSectPr();
+        if (last == null) return;
+        SectPr cover = FACTORY.createSectPr();
+        SectPr.Type type = FACTORY.createSectPrType();
+        type.setVal("nextPage");
+        cover.setType(type);
+        CTVerticalJc vertical = FACTORY.createCTVerticalJc();
+        vertical.setVal(STVerticalJc.CENTER);
+        cover.setVAlign(vertical);
         configureA4(cover);
-        cover.addNewType().setVal(STSectionMark.NEXT_PAGE);
-        cover.addNewVAlign().setVal(STVerticalJc.CENTER);
+        properties(last).setSectPr(cover);
     }
 
-    /** 目录后的最高标题层级视为大章节，每个大章节从新页开始。 */
-    private void breakMajorChapters(List<XWPFParagraph> paragraphs, int startIndex) {
-        int majorLevel = paragraphs.stream()
-                .skip(Math.max(0, startIndex))
-                .mapToInt(this::headingLevel)
-                .filter(level -> level > 0)
-                .min()
-                .orElse(0);
-        if (majorLevel == 0) {
-            return;
+    /**
+     * 以目录后的最高标题层级作为大章节级别。
+     *
+     * <p>这里只读取 Markdown 转换器生成的 Heading 样式，不依赖中文标题文本或正则规则。</p>
+     */
+    private void breakMajorChapters(List<Object> content, int startIndex) {
+        int majorLevel = content.stream().skip(Math.max(0, startIndex))
+                .map(org.docx4j.XmlUtils::unwrap).filter(P.class::isInstance).map(P.class::cast)
+                .mapToInt(this::headingLevel).filter(level -> level > 0).min().orElse(0);
+        if (majorLevel == 0) return;
+        content.stream().skip(Math.max(0, startIndex))
+                .map(org.docx4j.XmlUtils::unwrap).filter(P.class::isInstance).map(P.class::cast)
+                .filter(paragraph -> headingLevel(paragraph) == majorLevel)
+                .forEach(paragraph -> properties(paragraph).setPageBreakBefore(FACTORY.createBooleanDefaultTrue()));
+    }
+
+    /**
+     * 根据 Heading 1—6 生成目录，并通过 docx4j-export-fo 的分页结果写入页码。
+     *
+     * <p>最后一个参数传 false，表示不能跳过页码计算；否则目录只有标题而没有实际页码。</p>
+     */
+    private void insertToc(List<Object> content, int directoryIndex) throws Exception {
+        if (directoryIndex < 0) return;
+        removeExistingDirectoryEntries(content, directoryIndex);
+        Toc.setTocHeadingText(null);
+        new TocGenerator(document).generateToc(directoryIndex + 1, " TOC \\o \"1-6\" \\h \\z \\u ", false);
+    }
+
+    /** 删除模型生成的静态目录内容，保留“目录”标题，避免导出后出现两份目录。 */
+    private void removeExistingDirectoryEntries(List<Object> content, int directoryIndex) {
+        int directoryLevel = headingLevel((P) org.docx4j.XmlUtils.unwrap(content.get(directoryIndex)));
+        int end = directoryIndex + 1;
+        while (end < content.size()) {
+            Object value = org.docx4j.XmlUtils.unwrap(content.get(end));
+            if (value instanceof P paragraph && headingLevel(paragraph) > 0
+                    && (directoryLevel == 0 || headingLevel(paragraph) <= directoryLevel)) break;
+            end++;
         }
-        for (int index = Math.max(0, startIndex); index < paragraphs.size(); index++) {
-            XWPFParagraph paragraph = paragraphs.get(index);
-            if (headingLevel(paragraph) == majorLevel) {
-                paragraph.setPageBreak(true);
-            }
-        }
+        content.subList(directoryIndex + 1, end).clear();
     }
 
-    private void insertPageNumber() {
-        XWPFFooter footer = document.createFooter(HeaderFooterType.DEFAULT);
-        XWPFParagraph paragraph = footer.createParagraph();
-        paragraph.setAlignment(ParagraphAlignment.CENTER);
-        addField(paragraph, "PAGE", "1");
+    /** 创建独立页脚部件，并将其关系绑定到正文节。 */
+    private void insertPageNumber(SectPr section) throws Exception {
+        FooterPart footer = new FooterPart();
+        footer.setJaxbElement(pageNumberFooter());
+        Relationship relationship = document.getMainDocumentPart().addTargetPart(footer);
+        FooterReference reference = FACTORY.createFooterReference();
+        reference.setId(relationship.getId());
+        reference.setType(HdrFtrRef.DEFAULT);
+        section.getEGHdrFtrReferences().add(reference);
     }
 
-    /** 表格占满正文宽度，并统一单元格留白、最小行高与垂直对齐。 */
+    /** PAGE 是动态域而非固定数字，Word 会按照实际页面显示页码。 */
+    private Ftr pageNumberFooter() {
+        Ftr footer = FACTORY.createFtr();
+        P paragraph = FACTORY.createP();
+        properties(paragraph).setJc(alignment(JcEnumeration.CENTER));
+        CTSimpleField field = FACTORY.createCTSimpleField();
+        field.setInstr(" PAGE ");
+        R run = FACTORY.createR();
+        Text value = FACTORY.createText();
+        value.setValue("1");
+        run.getContent().add(value);
+        field.getContent().add(run);
+        paragraph.getContent().add(FACTORY.createPFldSimple(field));
+        footer.getContent().add(paragraph);
+        return footer;
+    }
+
+    /**
+     * 表格占满正文可用宽度，并增加单元格留白和垂直居中。
+     *
+     * <p>通过遍历嵌套节点同时处理普通表格和表格内部的单元格。</p>
+     */
     private void formatTables() {
-        for (XWPFTable table : document.getTables()) {
-            table.setWidth(CONTENT_WIDTH);
-            for (XWPFTableRow row : table.getRows()) {
-                row.setHeight(420);
-                row.setHeightRule(TableRowHeightRule.AT_LEAST);
-                for (XWPFTableCell cell : row.getTableCells()) {
-                    setCellMargins(cell);
-                    cell.setVerticalAlignment(XWPFTableCell.XWPFVertAlign.CENTER);
-                }
-            }
+        for (Object value : elements(Tbl.class)) {
+            Tbl table = (Tbl) org.docx4j.XmlUtils.unwrap(value);
+            TblPr properties = table.getTblPr() == null ? FACTORY.createTblPr() : table.getTblPr();
+            properties.setTblW(width(CONTENT_WIDTH));
+            table.setTblPr(properties);
+        }
+        for (Object value : elements(Tc.class)) {
+            Tc cell = (Tc) org.docx4j.XmlUtils.unwrap(value);
+            TcPr properties = cell.getTcPr() == null ? FACTORY.createTcPr() : cell.getTcPr();
+            TcMar margins = FACTORY.createTcMar();
+            margins.setTop(width(BigInteger.valueOf(100)));
+            margins.setLeft(width(BigInteger.valueOf(120)));
+            margins.setBottom(width(BigInteger.valueOf(100)));
+            margins.setRight(width(BigInteger.valueOf(120)));
+            properties.setTcMar(margins);
+            CTVerticalJc vertical = FACTORY.createCTVerticalJc();
+            vertical.setVal(STVerticalJc.CENTER);
+            properties.setVAlign(vertical);
+            cell.setTcPr(properties);
         }
     }
 
-    /** 插件默认使用“1)”列表格式，统一改为不存在括号歧义的“1.”。 */
-    private void normalizeNumbering() {
-        if (document.getNumbering() == null) {
-            return;
-        }
-        for (XWPFAbstractNum number : document.getNumbering().getAbstractNums()) {
-            for (var level : number.getCTAbstractNum().getLvlList()) {
-                if (!level.isSetNumFmt() || level.getNumFmt().getVal() != STNumberFormat.DECIMAL
-                        || !level.isSetLvlText()) {
-                    continue;
-                }
-                String format = level.getLvlText().getVal();
-                if (format != null && (format.endsWith(")") || format.endsWith("）"))) {
-                    level.getLvlText().setVal(format.substring(0, format.length() - 1) + ".");
-                }
-            }
-        }
+    /** 使用 docx4j 遍历器查找指定节点，避免手工递归 WordprocessingML 树。 */
+    private List<Object> elements(Class<?> type) {
+        ClassFinder finder = new ClassFinder(type);
+        new TraversalUtil(document.getMainDocumentPart().getJaxbElement(), finder);
+        return finder.results;
     }
 
-    private void setCellMargins(XWPFTableCell cell) {
-        CTTcPr properties = cell.getCTTc().isSetTcPr() ? cell.getCTTc().getTcPr() : cell.getCTTc().addNewTcPr();
-        CTTcMar margins = properties.isSetTcMar() ? properties.getTcMar() : properties.addNewTcMar();
-        margins.setTop(width(100));
-        margins.setLeft(width(120));
-        margins.setBottom(width(100));
-        margins.setRight(width(120));
-    }
-
-    private CTTblWidth width(int value) {
-        CTTblWidth width = CTTblWidth.Factory.newInstance();
-        width.setW(BigInteger.valueOf(value));
-        return width;
-    }
-
-    private void configureA4(CTSectPr section) {
-        CTPageSz size = section.isSetPgSz() ? section.getPgSz() : section.addNewPgSz();
-        size.setW(BigInteger.valueOf(A4_WIDTH));
-        size.setH(BigInteger.valueOf(A4_HEIGHT));
-        CTPageMar margin = section.isSetPgMar() ? section.getPgMar() : section.addNewPgMar();
-        margin.setTop(BigInteger.valueOf(PAGE_MARGIN));
-        margin.setBottom(BigInteger.valueOf(PAGE_MARGIN));
-        margin.setLeft(BigInteger.valueOf(PAGE_MARGIN));
-        margin.setRight(BigInteger.valueOf(PAGE_MARGIN));
+    /** 设置纵向 A4、四周一英寸页边距及页脚距离。 */
+    private void configureA4(SectPr section) {
+        SectPr.PgSz size = FACTORY.createSectPrPgSz();
+        size.setW(A4_WIDTH);
+        size.setH(A4_HEIGHT);
+        section.setPgSz(size);
+        SectPr.PgMar margin = FACTORY.createSectPrPgMar();
+        margin.setTop(PAGE_MARGIN);
+        margin.setBottom(PAGE_MARGIN);
+        margin.setLeft(PAGE_MARGIN);
+        margin.setRight(PAGE_MARGIN);
         margin.setFooter(BigInteger.valueOf(360));
+        section.setPgMar(margin);
     }
 
-    private int directoryTitleIndex(List<XWPFParagraph> paragraphs) {
-        for (int index = 0; index < paragraphs.size(); index++) {
-            if ("目录".equals(paragraphs.get(index).getText().trim())) {
-                return index;
-            }
+    /** 返回“目录”标题在主文档顶层节点中的位置，未找到时返回 -1。 */
+    private int directoryIndex(List<Object> content) {
+        for (int index = 0; index < content.size(); index++) {
+            Object value = org.docx4j.XmlUtils.unwrap(content.get(index));
+            if (value instanceof P paragraph && "目录".equals(TextUtils.getText(paragraph).trim())) return index;
         }
         return -1;
     }
 
-    private int headingLevel(XWPFParagraph paragraph) {
-        String style = paragraph.getStyle();
-        if (style == null) {
-            return 0;
-        }
+    /** 从 Heading 样式读取标题级别；普通段落返回 0。 */
+    private int headingLevel(P paragraph) {
+        PPr properties = paragraph.getPPr();
+        if (properties == null || properties.getPStyle() == null) return 0;
+        String style = properties.getPStyle().getVal();
+        if (style == null || !style.startsWith("Heading")) return 0;
         try {
-            return Integer.parseInt(style.startsWith("Heading")
-                    ? style.substring("Heading".length()) : style);
+            return Integer.parseInt(style.substring("Heading".length()));
         } catch (NumberFormatException ignored) {
             return 0;
         }
     }
 
-    private void addField(XWPFParagraph paragraph, String instruction, String placeholder) {
-        CTR begin = paragraph.createRun().getCTR();
-        begin.addNewFldChar().setFldCharType(STFldCharType.BEGIN);
-        XWPFRun code = paragraph.createRun();
-        code.getCTR().addNewInstrText().setStringValue(instruction);
-        code.getCTR().getInstrTextArray(0).setSpace(SpaceAttribute.Space.PRESERVE);
-        CTR separate = paragraph.createRun().getCTR();
-        separate.addNewFldChar().setFldCharType(STFldCharType.SEPARATE);
-        paragraph.createRun().setText(placeholder);
-        CTR end = paragraph.createRun().getCTR();
-        end.addNewFldChar().setFldCharType(STFldCharType.END);
+    private List<Object> body() {
+        return document.getMainDocumentPart().getJaxbElement().getBody().getContent();
     }
 
-    private CTSectPr section() {
-        CTBody body = document.getDocument().getBody();
-        return body.isSetSectPr() ? body.getSectPr() : body.addNewSectPr();
+    /** 获取正文末尾分节属性；Markdown 转换未创建时就地补齐。 */
+    private SectPr section() {
+        var body = document.getMainDocumentPart().getJaxbElement().getBody();
+        if (body.getSectPr() == null) body.setSectPr(FACTORY.createSectPr());
+        return body.getSectPr();
     }
 
-    private CTPPr properties(XWPFParagraph paragraph) {
-        return paragraph.getCTP().isSetPPr() ? paragraph.getCTP().getPPr() : paragraph.getCTP().addNewPPr();
+    /** 获取段落属性，供对齐、分页和分节设置复用。 */
+    private PPr properties(P paragraph) {
+        if (paragraph.getPPr() == null) paragraph.setPPr(FACTORY.createPPr());
+        return paragraph.getPPr();
+    }
+
+    private Jc alignment(JcEnumeration value) {
+        Jc alignment = FACTORY.createJc();
+        alignment.setVal(value);
+        return alignment;
+    }
+
+    /** 创建以 twip 为单位的固定宽度定义。 */
+    private TblWidth width(BigInteger value) {
+        TblWidth width = FACTORY.createTblWidth();
+        width.setType(TblWidth.TYPE_DXA);
+        width.setW(value);
+        return width;
     }
 }
