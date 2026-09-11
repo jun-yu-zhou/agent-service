@@ -28,7 +28,9 @@ class TenderProjectDataServiceTest {
         project.setProjectType("1");
         project.setDelFlag("1");
         when(mapper.selectById("project-1")).thenReturn(project);
-        when(mapper.selectTemplate("college-1", "30")).thenReturn("<!--${ZbProject.projectName}-->");
+        when(mapper.selectTemplate("college-1", "30")).thenReturn(Map.of(
+                "templateId", "template-1",
+                "templateHtml", "<!--${ZbProject.projectName}-->"));
         when(mapper.selectProject("project-1"))
                 .thenReturn(Map.of("ZB_PROJECT_ID", "project-1", "PROJECT_NAME", "家具采购"));
         when(mapper.selectItems("project-1")).thenReturn(List.of(Map.of("ITEM_ID", "item-1")));
@@ -39,6 +41,7 @@ class TenderProjectDataServiceTest {
 
         TenderProjectDataService.GenerationInput input = service.load("project-1");
 
+        assertEquals("template-1", input.templateId());
         assertEquals("${ZbProject.projectName}", input.templateHtml());
         assertEquals("家具采购", input.projectData().get("projectName").asText());
         assertEquals("尺寸", input.projectData().path("items").get(0)

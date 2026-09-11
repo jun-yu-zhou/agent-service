@@ -1,6 +1,6 @@
 package com.example.agentservice.procurement.service;
 
-import com.example.agentservice.procurement.domain.DocumentVersion;
+import com.example.agentservice.procurement.persistence.TenderDocumentEntity;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
@@ -22,9 +22,9 @@ class TenderDocumentArtifactServiceTest {
     @Test
     void shouldRenderFinalizedVersionInMemory() throws Exception {
         byte[] expected = "docx-content".getBytes();
-        ProcurementTaskRedisStore store = mock(ProcurementTaskRedisStore.class);
+        TenderDocumentStore store = mock(TenderDocumentStore.class);
         Docx4jMarkdownDocxRenderer renderer = mock(Docx4jMarkdownDocxRenderer.class);
-        when(store.findVersion(TASK_ID, VERSION_ID)).thenReturn(Optional.of(snapshot(true)));
+        when(store.findByTaskId(TASK_ID)).thenReturn(Optional.of(document(true)));
         when(renderer.render("# 招标文件")).thenReturn(expected);
 
         TenderDocumentArtifactService.ExportedDocument document =
@@ -38,17 +38,21 @@ class TenderDocumentArtifactServiceTest {
 
     @Test
     void shouldRejectUnfinalizedVersion() {
-        ProcurementTaskRedisStore store = mock(ProcurementTaskRedisStore.class);
-        when(store.findVersion(TASK_ID, VERSION_ID)).thenReturn(Optional.of(snapshot(false)));
+        TenderDocumentStore store = mock(TenderDocumentStore.class);
+        when(store.findByTaskId(TASK_ID)).thenReturn(Optional.of(document(false)));
 
         assertThrows(IllegalStateException.class,
                 () -> new TenderDocumentArtifactService(store, mock(Docx4jMarkdownDocxRenderer.class))
                         .export(TASK_ID, VERSION_ID));
     }
 
-    private ProcurementTaskRedisStore.DocumentVersionSnapshot snapshot(boolean finalized) {
-        DocumentVersion version = new DocumentVersion(
-                VERSION_ID, TASK_ID, null, 2, "MANUAL_EDIT", "tester", Instant.now(), finalized, List.of());
-        return new ProcurementTaskRedisStore.DocumentVersionSnapshot(version, "# 招标文件");
+    private TenderDocumentEntity document(boolean finalized) {
+        TenderDocumentEntity document = new TenderDocumentEntity();
+        document.setId(VERSION_ID);
+        document.setTaskId(TASK_ID);
+        document.setContentRevision(2);
+        document.setFinalized(finalized);
+        document.setDocumentMarkdown("# 招标文件");
+        return document;
     }
 }
