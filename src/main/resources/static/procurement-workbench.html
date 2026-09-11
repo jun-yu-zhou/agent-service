@@ -69,7 +69,7 @@
   </div><div id="toast" class="toast"></div>
 <script src="https://cdn.jsdelivr.net/npm/vditor@3.11.1/dist/index.min.js"></script>
 <script>
-const base='/api/procurement/tender-drafts';let currentVersionId=null,pollTimer=null,overlayKind=null,liveTaskId=null;
+const base='/api/procurement/tender-drafts';let currentVersionId=null,pollTimer=null,overlayKind=null,liveTaskId=null;const exportedTasks=new Set();
 const $=id=>document.getElementById(id);const task=()=>$('taskId').value.trim();
 let editor;
 const editorValue=()=>editor?editor.getValue():'';
@@ -139,7 +139,7 @@ function applyResult(data){
   if(data.draft&&(!editorValue()||$('editor').dataset.version!==currentVersionId)){editor.setValue(data.draft);$('editor').dataset.version=currentVersionId;render()}
   markSteps(data)
 }
-function markSteps(d){$('s1').classList.toggle('done',!!d.draft);$('s4').classList.toggle('done',d.task.currentStage==='已确认定稿')}
+function markSteps(d){$('s1').classList.toggle('done',!!d.draft);$('s4').classList.toggle('done',d.task.currentStage==='已确认定稿');$('s5').classList.toggle('done',exportedTasks.has(d.task.taskId))}
 async function saveVersion(){
   const markdown=editorValue();
   if(!markdown.trim())return notify('正文不能为空');
@@ -155,7 +155,8 @@ async function loadVersions(){
   const list=await api(base+'/tasks/'+task()+'/versions');
   $('versions').innerHTML=list.map(x=>{const v=x.version;return `<div class="version"><span>V${v.versionNumber} · ${esc(v.changeSource)} · ${esc(v.changedBy)}</span><span>${v.finalized?'已定稿':v.versionId.slice(0,8)}</span></div>`}).join('');
   const f=list.find(x=>x.version.finalized);
-  $('s4').classList.toggle('done',!!f)
+  $('s4').classList.toggle('done',!!f);
+  $('s5').classList.toggle('done',exportedTasks.has(task()))
 }
 async function finalizeCurrent(){
   if(!currentVersionId)return notify('请先保存版本');
@@ -179,7 +180,7 @@ async function exportFiles(){
     const disposition=response.headers.get('Content-Disposition')||'';
     const matched=disposition.match(/filename\*=UTF-8''([^;]+)/i);
     saveDownload(await response.blob(),matched?decodeURIComponent(matched[1]):'招标文件.docx');
-    $('s5').classList.add('done');
+    exportedTasks.add(task());$('s5').classList.add('done');
     notify('导出完成，Word 文件已保存到本机')
   }catch(e){notify('导出失败：'+(e.message||'请查看服务日志'))}
   finally{hideOverlay()}
