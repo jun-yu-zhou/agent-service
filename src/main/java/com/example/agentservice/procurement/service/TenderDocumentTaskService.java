@@ -26,16 +26,19 @@ public class TenderDocumentTaskService {
     private final TenderDocumentGenerationService generationService;
     private final TenderProjectDataService projectDataService;
     private final ProcurementTaskRedisStore taskStore;
+    private final TenderReviewTaskService reviewTaskService;
     private final ExecutorService executor;
 
     public TenderDocumentTaskService(
             TenderDocumentGenerationService generationService,
             TenderProjectDataService projectDataService,
             ProcurementTaskRedisStore taskStore,
+            TenderReviewTaskService reviewTaskService,
             @Qualifier("procurementDocumentExecutor") ExecutorService executor) {
         this.generationService = generationService;
         this.projectDataService = projectDataService;
         this.taskStore = taskStore;
+        this.reviewTaskService = reviewTaskService;
         this.executor = executor;
     }
 
@@ -54,6 +57,8 @@ public class TenderDocumentTaskService {
         Instant now = Instant.now();
         DocumentGenerationTask task = snapshot(taskId, GenerationTaskStatus.PENDING, "等待生成", null, now, now);
         taskStore.saveTender(new ProcurementTaskRedisStore.TenderTaskState(task, null));
+        taskStore.saveReviewSource(taskId,
+                new ProcurementTaskRedisStore.TenderReviewSource(templateHtml, projectData));
         executor.execute(() -> generate(taskId, templateHtml, projectData));
         return task;
     }
@@ -127,6 +132,7 @@ public class TenderDocumentTaskService {
             DocumentGenerationTask completedTask = updateVersion(
                     state.task(), GenerationTaskStatus.COMPLETED, "已确认定稿", null, versionId);
             taskStore.saveTender(new ProcurementTaskRedisStore.TenderTaskState(completedTask, finalized.markdown()));
+            reviewTaskService.start(taskId, versionId);
             return Optional.of(finalized.version());
         }
     }

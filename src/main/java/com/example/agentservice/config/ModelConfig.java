@@ -277,6 +277,26 @@ public class ModelConfig {
                 .build();
     }
 
+    /** 长篇招标文件审核使用独立模型配置，保证逐项报告拥有足够的输出空间。 */
+    @Bean
+    @Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)
+    public DashScopeChatModel qwen37PlusTenderReviewModel() {
+        return DashScopeChatModel.builder()
+                .apiKey(AgentServiceConfig.dashScopeApiKey())
+                .modelName(QWEN37_PLUS_MODEL_NAME)
+                .baseUrl(AgentServiceConfig.dashScopeBaseUrl())
+                .endpointType(EndpointType.MULTIMODAL)
+                .httpTransport(newHttpTransport())
+                .stream(true)
+                .enableThinking(false)
+                .defaultOptions(GenerateOptions.builder()
+                        .maxTokens(32768)
+                        .temperature(0.1D)
+                        .executionConfig(longExecutionConfig())
+                        .build())
+                .build();
+    }
+
     /** 使用 AgentScope 默认 HTTP 配置，由 qwen3.8-flash 生成最终报告。 */
     @Bean
     @Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)

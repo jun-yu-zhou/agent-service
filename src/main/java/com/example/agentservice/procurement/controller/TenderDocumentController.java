@@ -3,10 +3,13 @@ package com.example.agentservice.procurement.controller;
 import com.example.agentservice.procurement.domain.DocumentGenerationTask;
 import com.example.agentservice.procurement.domain.DocumentVersion;
 import com.example.agentservice.procurement.domain.GenerationTaskStatus;
+import com.example.agentservice.procurement.domain.TenderReviewSnapshot;
 import com.example.agentservice.procurement.request.TenderManualVersionRequest;
 import com.example.agentservice.procurement.request.TenderProjectTaskRequest;
 import com.example.agentservice.procurement.service.TenderDocumentArtifactService;
 import com.example.agentservice.procurement.service.TenderDocumentTaskService;
+import com.example.agentservice.procurement.service.TenderReviewArtifactService;
+import com.example.agentservice.procurement.service.TenderReviewTaskService;
 import com.example.agentservice.procurement.service.TenderTemplateUploadService;
 import com.fasterxml.jackson.databind.JsonNode;
 import io.swagger.v3.oas.annotations.Operation;
@@ -36,13 +39,18 @@ public class TenderDocumentController {
 
     private final TenderDocumentTaskService taskService;
     private final TenderDocumentArtifactService artifactService;
+    private final TenderReviewTaskService reviewTaskService;
+    private final TenderReviewArtifactService reviewArtifactService;
     private final TenderTemplateUploadService templateUploadService;
 
     public TenderDocumentController(
             TenderDocumentTaskService taskService, TenderDocumentArtifactService artifactService,
+            TenderReviewTaskService reviewTaskService, TenderReviewArtifactService reviewArtifactService,
             TenderTemplateUploadService templateUploadService) {
         this.taskService = taskService;
         this.artifactService = artifactService;
+        this.reviewTaskService = reviewTaskService;
+        this.reviewArtifactService = reviewArtifactService;
         this.templateUploadService = templateUploadService;
     }
 
@@ -92,6 +100,40 @@ public class TenderDocumentController {
             @PathVariable String taskId, @PathVariable String versionId) {
         return taskService.finalizeVersion(taskId, versionId)
                 .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/tasks/{taskId}/versions/{versionId}/review")
+    @Operation(summary = "查询定稿审核状态", description = "返回指定定稿版本的审核进度、报告或失败原因。")
+    public ResponseEntity<TenderReviewSnapshot> getReview(
+            @PathVariable String taskId, @PathVariable String versionId) {
+        return reviewTaskService.find(taskId, versionId)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @PostMapping("/tasks/{taskId}/versions/{versionId}/review/retry")
+    @Operation(summary = "重试定稿审核", description = "重新执行审核失败的定稿版本。")
+    public ResponseEntity<TenderReviewSnapshot> retryReview(
+            @PathVariable String taskId, @PathVariable String versionId) {
+        return reviewTaskService.retry(taskId, versionId)
+                .map(review -> ResponseEntity.accepted().body(review))
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/tasks/{taskId}/versions/{versionId}/review/export")
+    @Operation(summary = "导出定稿审核报告", description = "将审核完成的报告作为 Word 附件直接返回。")
+    public ResponseEntity<byte[]> exportReview(
+            @PathVariable String taskId, @PathVariable String versionId) throws Exception {
+        return reviewArtifactService.export(taskId, versionId)
+                .map(document -> ResponseEntity.ok()
+                        .contentType(MediaType.parseMediaType(document.contentType()))
+                        .contentLength(document.content().length)
+                        .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment()
+                                .filename(document.filename(), StandardCharsets.UTF_8).build().toString())
+                        .header(HttpHeaders.CACHE_CONTROL, "private, no-store")
+                        .header("X-Content-Type-Options", "nosniff")
+                        .body(document.content()))
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 

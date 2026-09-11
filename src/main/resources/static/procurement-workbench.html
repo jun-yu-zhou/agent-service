@@ -48,11 +48,11 @@
     <div class="label">任务 ID</div><input id="taskId" placeholder="输入或生成 taskId">
     <button class="btn ghost wide" onclick="loadAll()">载入任务</button>
     <div class="status"><strong id="statusText">尚未载入任务</strong><span id="stageText">请创建或输入任务 ID</span></div>
-    <ol class="steps"><li id="s1">生成初稿</li><li id="s4">人工确认</li><li id="s5">导出产物</li></ol>
+    <ol class="steps"><li id="s1">生成初稿</li><li id="s4">人工确认</li><li id="sReview">生成审核报告</li><li id="s5">导出产物</li></ol>
   </aside>
   <main>
     <header class="top"><div><h1>招标文件协同工作台</h1><p>上传 HTML 模板，生成初稿，人工编辑后确认定稿。</p></div>
-      <div class="actions"><button class="btn primary" onclick="saveVersion()">保存人工版本</button><button class="btn ghost" onclick="finalizeCurrent()">确认定稿</button><button class="btn ghost" onclick="exportFiles()">导出文件</button></div></header>
+      <div class="actions"><button class="btn primary" onclick="saveVersion()">保存人工版本</button><button class="btn ghost" onclick="finalizeCurrent()">确认定稿</button><button class="btn ghost" onclick="exportFiles()">导出文件</button><button id="exportReviewBtn" class="btn ghost" onclick="exportReview()" disabled>导出审核报告</button><button id="retryReviewBtn" class="btn ghost" onclick="retryReview()" style="display:none">重试审核</button></div></header>
     <section class="workspace" id="workspace">
       <article class="panel"><div class="panel-head"><b>文档编辑</b><span id="charCount">0 字</span></div><div id="editor" class="editor"></div></article>
       <div class="splitter" id="splitter" title="拖动调整两侧宽度"></div>
@@ -69,7 +69,7 @@
   </div><div id="toast" class="toast"></div>
 <script src="https://cdn.jsdelivr.net/npm/vditor@3.11.1/dist/index.min.js"></script>
 <script>
-const base='/api/procurement/tender-drafts';let currentVersionId=null,pollTimer=null,overlayKind=null,liveTaskId=null;const exportedTasks=new Set();
+const base='/api/procurement/tender-drafts';let currentVersionId=null,pollTimer=null,reviewPollTimer=null,reviewStatus=null,overlayKind=null,liveTaskId=null;const exportedTasks=new Set();
 const $=id=>document.getElementById(id);const task=()=>$('taskId').value.trim();
 let editor;
 const editorValue=()=>editor?editor.getValue():'';
@@ -92,7 +92,8 @@ bindDiffSync();
 })();
 async function api(url,options={}){const headers=options.body instanceof FormData?{}:{'Content-Type':'application/json'};const r=await fetch(url,{headers,...options});if(!r.ok){const text=await r.text();let message=text;try{message=JSON.parse(text).message||text}catch(e){}throw new Error(message||('HTTP '+r.status))}return r.status===204?null:r.json()}
 function notify(text){$('toast').textContent=text;$('toast').classList.add('show');setTimeout(()=>$('toast').classList.remove('show'),2400)}
-function setActions(on){[...document.querySelectorAll('button')].forEach(b=>b.disabled=!on);$('projectId').disabled=!on;$('outlineFile').disabled=!on;$('projectData').disabled=!on}
+function setActions(on){[...document.querySelectorAll('button')].forEach(b=>b.disabled=!on);$('projectId').disabled=!on;$('outlineFile').disabled=!on;$('projectData').disabled=!on;if(on)syncReviewActions()}
+function syncReviewActions(){$('exportReviewBtn').disabled=reviewStatus!=='COMPLETED';$('retryReviewBtn').style.display=reviewStatus==='FAILED'?'inline-block':'none';$('retryReviewBtn').disabled=reviewStatus!=='FAILED'}
 function showOverlay(kind,title,hint){overlayKind=kind;$('busyTitle').textContent=title;$('busyHint').textContent=hint||'';setActions(false);$('busyDismiss').disabled=false;$('busyDismiss').style.display=kind==='generating'?'inline-block':'none';$('overlay').classList.add('show')}
 function hideOverlay(){overlayKind=null;$('overlay').classList.remove('show');setActions(true)}
 function dismissWaiting(){hideOverlay();notify('生成仍在后台进行，完成后会自动载入初稿')}
@@ -156,14 +157,47 @@ async function loadVersions(){
   $('versions').innerHTML=list.map(x=>{const v=x.version;return `<div class="version"><span>V${v.versionNumber} · ${esc(v.changeSource)} · ${esc(v.changedBy)}</span><span>${v.finalized?'已定稿':v.versionId.slice(0,8)}</span></div>`}).join('');
   const f=list.find(x=>x.version.finalized);
   $('s4').classList.toggle('done',!!f);
-  $('s5').classList.toggle('done',exportedTasks.has(task()))
+  $('s5').classList.toggle('done',exportedTasks.has(task()));
+  if(f){currentVersionId=f.version.versionId;const status=await refreshReview(false);if(['PENDING','REVIEWING'].includes(status))watchReview(false)}else{reviewStatus=null;$('sReview').classList.remove('done');syncReviewActions()}
 }
 async function finalizeCurrent(){
   if(!currentVersionId)return notify('请先保存版本');
   setActions(false);
-  try{await api(base+'/tasks/'+task()+'/versions/'+currentVersionId+'/finalize',{method:'POST'});await loadVersions();notify('已确认定稿，可点击导出文件生成 DOCX')}
+  try{await api(base+'/tasks/'+task()+'/versions/'+currentVersionId+'/finalize',{method:'POST'});await loadVersions();watchReview(true);notify('已确认定稿，正在生成审核报告')}
   catch(e){notify('定稿失败：'+(e.message||'请查看服务日志'))}
   finally{setActions(true)}
+}
+async function fetchReview(){
+  const response=await fetch(base+'/tasks/'+task()+'/versions/'+currentVersionId+'/review');
+  if(response.status===404)return null;
+  if(!response.ok)throw new Error((await response.text())||('HTTP '+response.status));
+  return response.json()
+}
+async function refreshReview(showBusy){
+  const review=await fetchReview();
+  reviewStatus=review&&review.status;
+  $('sReview').classList.toggle('done',reviewStatus==='COMPLETED');syncReviewActions();
+  if(showBusy&&['PENDING','REVIEWING'].includes(reviewStatus)&&overlayKind!=='reviewing')showOverlay('reviewing','正在审核招标文件…',review.currentStage||'AI 正在逐项核对定稿，请稍候…');
+  if(reviewStatus==='COMPLETED'){
+    clearInterval(reviewPollTimer);reviewPollTimer=null;
+    if(overlayKind==='reviewing')hideOverlay();
+    notify('审核报告已生成，可以导出')
+  }else if(reviewStatus==='FAILED'){
+    clearInterval(reviewPollTimer);reviewPollTimer=null;
+    if(overlayKind==='reviewing')hideOverlay();
+    notify('审核失败：'+(review.errorMessage||'请查看服务日志'))
+  }else if(overlayKind==='reviewing')$('busyHint').textContent=(review&&review.currentStage)||'AI 正在逐项核对定稿，请稍候…';
+  return reviewStatus
+}
+function watchReview(showBusy){
+  clearInterval(reviewPollTimer);reviewPollTimer=null;
+  refreshReview(showBusy).catch(e=>{if(overlayKind==='reviewing')hideOverlay();notify('查询审核状态失败：'+e.message)});
+  reviewPollTimer=setInterval(()=>refreshReview(showBusy).catch(()=>{}),2500)
+}
+async function retryReview(){
+  if(reviewStatus!=='FAILED')return;
+  try{await api(base+'/tasks/'+task()+'/versions/'+currentVersionId+'/review/retry',{method:'POST'});watchReview(true)}
+  catch(e){notify('重试失败：'+(e.message||'请查看服务日志'))}
 }
 function saveDownload(blob,filename){
   const link=document.createElement('a');
@@ -183,6 +217,19 @@ async function exportFiles(){
     exportedTasks.add(task());$('s5').classList.add('done');
     notify('导出完成，Word 文件已保存到本机')
   }catch(e){notify('导出失败：'+(e.message||'请查看服务日志'))}
+  finally{hideOverlay()}
+}
+async function exportReview(){
+  if(reviewStatus!=='COMPLETED')return notify('审核报告尚未生成完成');
+  showOverlay('exporting','正在导出审核报告…','服务端正在生成 Word 审核报告，请稍候…');
+  try{
+    const response=await fetch(base+'/tasks/'+task()+'/versions/'+currentVersionId+'/review/export');
+    if(!response.ok)throw new Error((await response.text())||('HTTP '+response.status));
+    const disposition=response.headers.get('Content-Disposition')||'';
+    const matched=disposition.match(/filename\*=UTF-8''([^;]+)/i);
+    saveDownload(await response.blob(),matched?decodeURIComponent(matched[1]):'招标文件审核报告.docx');
+    notify('审核报告已保存到本机')
+  }catch(e){notify('审核报告导出失败：'+(e.message||'请查看服务日志'))}
   finally{hideOverlay()}
 }
 function esc(s=''){return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
