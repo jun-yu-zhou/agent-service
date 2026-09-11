@@ -6,12 +6,12 @@ import com.fasterxml.jackson.databind.JsonNode;
 import io.agentscope.core.ReActAgent;
 import io.agentscope.core.message.Msg;
 import io.agentscope.core.message.MsgRole;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-
-import java.time.LocalDate;
 
 /** 根据招标文件 HTML 模板和项目数据生成招标文件初稿。 */
 @Service
+@Slf4j
 public class TenderDocumentGenerationService {
 
     private final ModelConfig modelConfig;
@@ -37,7 +37,20 @@ public class TenderDocumentGenerationService {
             throw new IllegalStateException("招标文件生成模型未返回有效内容");
         }
         printModelMetrics("招标初稿生成", response, startNanos);
-        return response.getTextContent().trim();
+        return sanitizeHtmlTags(response.getTextContent().trim());
+    }
+
+    /**
+     * 模板与数据值可能携带 HTML 标签并被模型照抄进 Markdown。
+     *
+     * <p>strong/em 转成 Markdown 加粗斜体，br 转成空格（避免打断表格行），其余标签去除只留文字。</p>
+     */
+    static String sanitizeHtmlTags(String markdown) {
+        return markdown
+                .replaceAll("(?i)</?(strong|b)>", "**")
+                .replaceAll("(?i)</?(em|i)>", "*")
+                .replaceAll("(?i)<br\\s*/?>", " ")
+                .replaceAll("</?[a-zA-Z][a-zA-Z0-9]*(?:\\s[^<>]*)?/?>", "");
     }
 
     private String generationInput(String templateHtml, JsonNode projectData) {
@@ -46,18 +59,16 @@ public class TenderDocumentGenerationService {
             input.append("\n\n招标单位确认的完整结构化项目数据（同一字段冲突时以此处为准）：\n\n")
                     .append(projectData);
         }
-        return input.append("\n\n今天的日期（用于模板中“当前日期、发布日期”这类变量）：")
-                .append(LocalDate.now())
-                .toString();
+        return input.toString();
     }
 
     private void printModelMetrics(String stage, Msg response, long startNanos) {
-        System.out.println(stage + "耗时毫秒: " + (System.nanoTime() - startNanos) / 1_000_000);
+        log.info("{}耗时毫秒: {}", stage, (System.nanoTime() - startNanos) / 1_000_000);
         if (response.getChatUsage() == null) {
-            System.out.println(stage + "Token使用量：模型未返回usage");
+            log.info("{}Token使用量：模型未返回usage", stage);
             return;
         }
-        System.out.println(stage + "输入Token: " + response.getChatUsage().getInputTokens());
-        System.out.println(stage + "输出Token: " + response.getChatUsage().getOutputTokens());
+        log.info("{}输入Token: {}", stage, response.getChatUsage().getInputTokens());
+        log.info("{}输出Token: {}", stage, response.getChatUsage().getOutputTokens());
     }
 }
