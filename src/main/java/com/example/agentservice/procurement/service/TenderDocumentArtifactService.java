@@ -12,23 +12,24 @@ public class TenderDocumentArtifactService {
     private static final String DOCX_CONTENT_TYPE =
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
-    private final ProcurementTaskRedisStore taskStore;
+    private final TenderDocumentStore documentStore;
     private final Docx4jMarkdownDocxRenderer docxRenderer;
 
     public TenderDocumentArtifactService(
-            ProcurementTaskRedisStore taskStore, Docx4jMarkdownDocxRenderer docxRenderer) {
-        this.taskStore = taskStore;
+            TenderDocumentStore documentStore, Docx4jMarkdownDocxRenderer docxRenderer) {
+        this.documentStore = documentStore;
         this.docxRenderer = docxRenderer;
     }
 
     public Optional<ExportedDocument> export(String taskId, String versionId) throws IOException {
-        Optional<ProcurementTaskRedisStore.DocumentVersionSnapshot> optional = taskStore.findVersion(taskId, versionId);
+        var optional = documentStore.findByTaskId(taskId);
         if (optional.isEmpty()) return Optional.empty();
-        ProcurementTaskRedisStore.DocumentVersionSnapshot snapshot = optional.get();
-        if (!snapshot.version().finalized()) throw new IllegalStateException("仅已确认定稿版本可导出产物");
-        byte[] content = docxRenderer.render(snapshot.markdown());
+        var document = optional.get();
+        if (!versionId.equals(document.getId())) return Optional.empty();
+        if (!Boolean.TRUE.equals(document.getFinalized())) throw new IllegalStateException("仅已确认定稿版本可导出产物");
+        byte[] content = docxRenderer.render(document.getDocumentMarkdown());
         return Optional.of(new ExportedDocument(
-                "招标文件_V" + snapshot.version().versionNumber() + ".docx",
+                "招标文件_V" + document.getContentRevision() + ".docx",
                 DOCX_CONTENT_TYPE, content));
     }
 

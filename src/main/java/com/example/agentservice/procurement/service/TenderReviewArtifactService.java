@@ -12,28 +12,27 @@ public class TenderReviewArtifactService {
     private static final String DOCX_CONTENT_TYPE =
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
-    private final ProcurementTaskRedisStore taskStore;
+    private final TenderDocumentStore documentStore;
     private final Docx4jMarkdownDocxRenderer docxRenderer;
 
     public TenderReviewArtifactService(
-            ProcurementTaskRedisStore taskStore, Docx4jMarkdownDocxRenderer docxRenderer) {
-        this.taskStore = taskStore;
+            TenderDocumentStore documentStore, Docx4jMarkdownDocxRenderer docxRenderer) {
+        this.documentStore = documentStore;
         this.docxRenderer = docxRenderer;
     }
 
     public Optional<ExportedReview> export(String taskId, String versionId) throws IOException {
-        var review = taskStore.findReview(taskId, versionId);
-        var version = taskStore.findVersion(taskId, versionId);
-        if (review.isEmpty() || version.isEmpty()) return Optional.empty();
-        if (review.get().status() != TenderReviewStatus.COMPLETED
-                || review.get().reportMarkdown() == null
-                || review.get().reportMarkdown().isBlank()) {
+        var optional = documentStore.findByTaskId(taskId);
+        if (optional.isEmpty() || !versionId.equals(optional.get().getId())) return Optional.empty();
+        var document = optional.get();
+        if (!TenderReviewStatus.COMPLETED.name().equals(document.getReviewStatus())
+                || document.getReviewReport() == null || document.getReviewReport().isBlank()) {
             throw new IllegalStateException("审核报告尚未生成完成");
         }
 
-        byte[] content = docxRenderer.render(review.get().reportMarkdown());
+        byte[] content = docxRenderer.render(document.getReviewReport());
         return Optional.of(new ExportedReview(
-                "招标文件审核报告_V" + version.get().version().versionNumber() + ".docx",
+                "招标文件审核报告_V" + document.getContentRevision() + ".docx",
                 DOCX_CONTENT_TYPE, content));
     }
 

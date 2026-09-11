@@ -4,8 +4,10 @@ import com.example.agentservice.procurement.domain.DocumentGenerationTask;
 import com.example.agentservice.procurement.domain.DocumentType;
 import com.example.agentservice.procurement.domain.DocumentVersion;
 import com.example.agentservice.procurement.domain.GenerationTaskStatus;
+import com.example.agentservice.procurement.persistence.TenderDocumentEntity;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.time.Instant;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -25,6 +27,7 @@ public class TenderDocumentTaskService {
 
     private final TenderDocumentGenerationService generationService;
     private final TenderProjectDataService projectDataService;
+    private final TenderDocumentStore documentStore;
     private final ProcurementTaskRedisStore taskStore;
     private final TenderReviewTaskService reviewTaskService;
     private final ExecutorService executor;
@@ -32,11 +35,13 @@ public class TenderDocumentTaskService {
     public TenderDocumentTaskService(
             TenderDocumentGenerationService generationService,
             TenderProjectDataService projectDataService,
+            TenderDocumentStore documentStore,
             ProcurementTaskRedisStore taskStore,
             TenderReviewTaskService reviewTaskService,
             @Qualifier("procurementDocumentExecutor") ExecutorService executor) {
         this.generationService = generationService;
         this.projectDataService = projectDataService;
+        this.documentStore = documentStore;
         this.taskStore = taskStore;
         this.reviewTaskService = reviewTaskService;
         this.executor = executor;
@@ -45,7 +50,13 @@ public class TenderDocumentTaskService {
     /** 根据旧业务项目 ID 自动读取模板和项目资料后创建生成任务。 */
     public DocumentGenerationTask submitProject(String projectId) {
         TenderProjectDataService.GenerationInput input = projectDataService.load(projectId);
-        return submitTemplate(input.templateHtml(), input.projectData());
+        String taskId = UUID.randomUUID().toString();
+        Instant now = Instant.now();
+        DocumentGenerationTask task = snapshot(
+                taskId, GenerationTaskStatus.PENDING, "等待生成", null, now, now);
+        documentStore.create(taskId, projectId, input.templateId(), input.projectData());
+        executor.execute(() -> generateDatabase(taskId, input.templateHtml(), input.projectData()));
+        return task;
     }
 
     /** 创建生成任务：先写入等待中的任务快照，再交由线程池异步生成。 */
@@ -63,77 +74,57 @@ public class TenderDocumentTaskService {
         return task;
     }
 
-    /** 查询任务快照，任务不存在时返回空。 */
+    /** 从数据库查询任务状态，供前端轮询生成进度。 */
     public Optional<DocumentGenerationTask> findTask(String taskId) {
-        return taskStore.findTender(taskId).map(ProcurementTaskRedisStore.TenderTaskState::task);
+        return documentStore.findByTaskId(taskId).map(this::taskSnapshot);
     }
 
-    /** 从同一个 Redis 值中读取任务状态及生成结果。 */
+    /** 从数据库的同一条记录读取任务状态和当前最新正文。 */
     public Optional<TaskSnapshot> findSnapshot(String taskId) {
-        return taskStore.findTender(taskId).map(state -> new TaskSnapshot(state.task(), state.draft()));
+        return documentStore.findByTaskId(taskId)
+                .map(document -> new TaskSnapshot(taskSnapshot(document), document.getDocumentMarkdown()));
     }
 
-    /** 返回全部已保存的 Markdown 版本，并按创建顺序排列。 */
-    public Optional<List<ProcurementTaskRedisStore.DocumentVersionSnapshot>> findVersions(String taskId) {
-        return taskStore.findTender(taskId).map(ignored -> taskStore.findVersions(taskId));
+    /** 返回数据库中的当前正文，保持前端原有版本列表响应结构。 */
+    public Optional<List<DocumentVersionSnapshot>> findVersions(String taskId) {
+        return documentStore.findByTaskId(taskId).map(document -> List.of(new DocumentVersionSnapshot(
+                currentVersion(document), document.getDocumentMarkdown())));
     }
 
-    /** 将人工编辑后的 Markdown 保存为当前版本的子版本。 */
+    /** 直接覆盖当前 Markdown，不再为每次人工保存创建历史版本。 */
     public Optional<DocumentVersion> saveManualVersion(String taskId, String markdown, String changedBy) {
         if (markdown == null || markdown.isBlank()) {
             throw new IllegalArgumentException("人工编辑后的招标文件不能为空");
         }
         synchronized (lock(taskId)) {
-            Optional<ProcurementTaskRedisStore.TenderTaskState> optionalState = taskStore.findTender(taskId);
-            if (optionalState.isEmpty()) {
-                return Optional.empty();
-            }
-            ProcurementTaskRedisStore.TenderTaskState state = optionalState.get();
-            if (state.draft() == null || state.draft().isBlank()) {
+            Optional<TenderDocumentEntity> optional = documentStore.findByTaskId(taskId);
+            if (optional.isEmpty()) return Optional.empty();
+            TenderDocumentEntity document = optional.get();
+            if (document.getDocumentMarkdown() == null || document.getDocumentMarkdown().isBlank()) {
                 throw new IllegalStateException("初稿尚未生成完成，不能保存人工版本");
             }
-            if (state.task().status() != GenerationTaskStatus.COMPLETED) {
-                throw new IllegalStateException("当前任务状态不能保存人工版本: " + state.task().status());
+            if (!GenerationTaskStatus.COMPLETED.name().equals(document.getGenerationStatus())) {
+                throw new IllegalStateException("当前任务状态不能保存人工版本: " + document.getGenerationStatus());
             }
-            // 首次人工保存时补建初稿版本，保证版本链从第 1 版开始。
-            state = ensureCurrentVersion(state);
-            List<ProcurementTaskRedisStore.DocumentVersionSnapshot> versions = taskStore.findVersions(taskId);
-            String versionId = UUID.randomUUID().toString();
-            String draft = markdown.trim();
-            DocumentGenerationTask updatedTask = updateVersion(
-                    state.task(), GenerationTaskStatus.COMPLETED, "人工编辑版本已保存", null, versionId);
-            taskStore.saveTender(new ProcurementTaskRedisStore.TenderTaskState(updatedTask, draft));
-            ProcurementTaskRedisStore.DocumentVersionSnapshot snapshot = versionSnapshot(
-                    updatedTask, versionId, state.task().currentVersionId(), versions.size() + 1,
-                    "MANUAL_EDIT", normalizeEditor(changedBy), draft, false);
-            taskStore.saveVersion(snapshot);
-            return Optional.of(snapshot.version());
+            return documentStore.saveMarkdown(taskId, markdown.trim()).map(saved -> new DocumentVersion(
+                    saved.getId(), saved.getTaskId(), null, saved.getContentRevision(),
+                    "MANUAL_EDIT", normalizeEditor(changedBy), Instant.now(), false, List.of()));
         }
     }
 
     /** 将指定的已保存版本确认为当前任务的定稿版本。 */
     public Optional<DocumentVersion> finalizeVersion(String taskId, String versionId) {
         synchronized (lock(taskId)) {
-            Optional<ProcurementTaskRedisStore.TenderTaskState> optionalState = taskStore.findTender(taskId);
-            Optional<ProcurementTaskRedisStore.DocumentVersionSnapshot> optionalVersion = taskStore.findVersion(taskId, versionId);
-            if (optionalState.isEmpty() || optionalVersion.isEmpty()) {
-                return Optional.empty();
+            Optional<TenderDocumentEntity> optional = documentStore.findByTaskId(taskId);
+            if (optional.isEmpty() || !versionId.equals(optional.get().getId())) return Optional.empty();
+            TenderDocumentEntity document = optional.get();
+            if (document.getDocumentMarkdown() == null || document.getDocumentMarkdown().isBlank()) {
+                throw new IllegalStateException("招标文件正文为空，不能确认定稿");
             }
-            ProcurementTaskRedisStore.TenderTaskState state = optionalState.get();
-            ProcurementTaskRedisStore.DocumentVersionSnapshot selected = optionalVersion.get();
-            // 定稿是互斥状态：先清除其余版本的定稿标记，保证同一任务只有一个定稿版本。
-            for (ProcurementTaskRedisStore.DocumentVersionSnapshot version : taskStore.findVersions(taskId)) {
-                if (version.version().finalized()) {
-                    taskStore.saveVersion(withFinalized(version, false));
-                }
-            }
-            ProcurementTaskRedisStore.DocumentVersionSnapshot finalized = withFinalized(selected, true);
-            taskStore.saveVersion(finalized);
-            DocumentGenerationTask completedTask = updateVersion(
-                    state.task(), GenerationTaskStatus.COMPLETED, "已确认定稿", null, versionId);
-            taskStore.saveTender(new ProcurementTaskRedisStore.TenderTaskState(completedTask, finalized.markdown()));
-            reviewTaskService.start(taskId, versionId);
-            return Optional.of(finalized.version());
+            return documentStore.finalizeDocument(taskId).map(saved -> {
+                reviewTaskService.start(taskId, versionId);
+                return currentVersion(saved);
+            });
         }
     }
 
@@ -157,6 +148,16 @@ public class TenderDocumentTaskService {
         }
     }
 
+    /** 旧项目入口生成的正文和状态直接写入数据库。 */
+    private void generateDatabase(String taskId, String templateHtml, JsonNode projectData) {
+        try {
+            documentStore.markGenerating(taskId);
+            documentStore.completeGeneration(taskId, generationService.generateDraft(templateHtml, projectData));
+        } catch (Exception exception) {
+            documentStore.failGeneration(taskId, exception.getMessage());
+        }
+    }
+
     /** 只更新状态与阶段，保留已写入的初稿正文。 */
     private void updateTask(String taskId, GenerationTaskStatus status, String stage, String errorMessage) {
         synchronized (lock(taskId)) {
@@ -169,6 +170,39 @@ public class TenderDocumentTaskService {
     private DocumentGenerationTask snapshot(
             String taskId, GenerationTaskStatus status, String stage, String errorMessage, Instant createdAt, Instant updatedAt) {
         return new DocumentGenerationTask(taskId, DocumentType.TENDER, status, stage, null, errorMessage, createdAt, updatedAt);
+    }
+
+    /** 将数据库记录转换为现有 REST 接口使用的任务快照。 */
+    private DocumentGenerationTask taskSnapshot(TenderDocumentEntity document) {
+        Instant createdAt = toInstant(document.getCreatedAt());
+        Instant updatedAt = toInstant(document.getUpdatedAt());
+        return new DocumentGenerationTask(
+                document.getTaskId(),
+                DocumentType.TENDER,
+                GenerationTaskStatus.valueOf(document.getGenerationStatus()),
+                document.getGenerationStage(),
+                document.getId(),
+                document.getGenerationError(),
+                createdAt,
+                updatedAt == null ? createdAt : updatedAt);
+    }
+
+    private DocumentVersion currentVersion(TenderDocumentEntity document) {
+        int revision = document.getContentRevision() == null ? 0 : document.getContentRevision();
+        return new DocumentVersion(
+                document.getId(),
+                document.getTaskId(),
+                null,
+                revision,
+                revision > 1 ? "MANUAL_EDIT" : "AI_GENERATED",
+                revision > 1 ? "operator" : "system",
+                toInstant(document.getCreatedAt()),
+                Boolean.TRUE.equals(document.getFinalized()),
+                List.of());
+    }
+
+    private Instant toInstant(java.time.LocalDateTime value) {
+        return value == null ? null : value.atZone(ZoneId.systemDefault()).toInstant();
     }
 
     /** 保留原有当前版本的状态更新。 */
@@ -238,6 +272,16 @@ public class TenderDocumentTaskService {
     public record TaskSnapshot(
             DocumentGenerationTask task,
             String draft
+    ) {
+    }
+
+    /** 当前正文及其兼容版本元数据。 */
+    public record DocumentVersionSnapshot(
+            /** 当前正文的版本元数据。 */
+            DocumentVersion version,
+
+            /** 用户当前编辑的完整 Markdown 正文。 */
+            String markdown
     ) {
     }
 }

@@ -35,8 +35,10 @@ public class TenderProjectDataService {
         if (templateType == null) {
             throw new IllegalArgumentException("不支持的招标项目类型：" + project.getProjectType());
         }
-        String template = mapper.selectTemplate(project.getCollegeId(), templateType);
-        if (template == null || template.isBlank()) {
+        Map<String, Object> template = mapper.selectTemplate(project.getCollegeId(), templateType);
+        if (template == null || template.get("templateId") == null
+                || template.get("templateHtml") == null
+                || String.valueOf(template.get("templateHtml")).isBlank()) {
             throw new IllegalArgumentException("未设置招标文件模板");
         }
 
@@ -50,7 +52,10 @@ public class TenderProjectDataService {
         data.set("projectComments", tree(mapper.selectComments(projectId)));
         data.set("requirements", tree(mapper.selectRequirements(projectId)));
         data.set("requirementDetails", tree(mapper.selectRequirementDetails(projectId)));
-        return new GenerationInput(cleanupTemplate(template), data);
+        return new GenerationInput(
+                String.valueOf(template.get("templateId")),
+                cleanupTemplate(String.valueOf(template.get("templateHtml"))),
+                data);
     }
 
     /**
@@ -111,6 +116,14 @@ public class TenderProjectDataService {
         return result.toString();
     }
 
-    public record GenerationInput(String templateHtml, JsonNode projectData) {
+    public record GenerationInput(
+            /** 本次生成使用的数据库模板 ID。 */
+            String templateId,
+
+            /** 清理 FreeMarker 指令后的 HTML 模板正文。 */
+            String templateHtml,
+
+            /** 从旧业务表汇总出的结构化项目数据。 */
+            JsonNode projectData) {
     }
 }

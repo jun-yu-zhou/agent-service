@@ -45,10 +45,14 @@ public interface TenderProjectMapper extends BaseMapper<TenderProjectEntity> {
     List<Map<String, Object>> selectRequirementDetails(@Param("id") String projectId);
 
     @Select("""
-            SELECT COMMENTS FROM zb_project_template
+            SELECT TEMPLATE_ID AS templateId, COMMENTS AS templateHtml FROM zb_project_template
             WHERE COLLEGE_ID IN (#{collegeId}, 'ALL') AND TEMPLATE_TYPE = #{templateType}
             ORDER BY CASE WHEN COLLEGE_ID = #{collegeId} THEN 0 ELSE 1 END
             LIMIT 1
             """)
-    String selectTemplate(@Param("collegeId") String collegeId, @Param("templateType") String templateType);
+    Map<String, Object> selectTemplate(
+            @Param("collegeId") String collegeId, @Param("templateType") String templateType);
+
+    @Select("SELECT COMMENTS FROM zb_project_template WHERE TEMPLATE_ID = #{id} LIMIT 1")
+    String selectTemplateHtml(@Param("id") String templateId);
 }
