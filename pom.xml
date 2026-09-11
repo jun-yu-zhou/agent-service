@@ -76,11 +76,38 @@
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
 
-        <!-- 将生成的 Markdown 内容渲染为 DOCX。 -->
+        <!-- Markdown 转 DOCX；该模块会传递引入 docx4j-core。 -->
         <dependency>
-            <groupId>org.apache.poi</groupId>
-            <artifactId>poi-ooxml</artifactId>
-            <version>5.5.1</version>
+            <groupId>org.docx4j</groupId>
+            <artifactId>docx4j-markdown</artifactId>
+            <version>17.1.0</version>
+        </dependency>
+        <!-- Java 17 运行 docx4j 所需的 JAXB 实现。 -->
+        <dependency>
+            <groupId>org.docx4j</groupId>
+            <artifactId>docx4j-JAXB-ReferenceImpl</artifactId>
+            <version>17.1.0</version>
+        </dependency>
+        <!-- 提供分页布局能力，使服务端可以计算目录中的真实页码。 -->
+        <dependency>
+            <groupId>org.docx4j</groupId>
+            <artifactId>docx4j-export-fo</artifactId>
+            <version>17.1.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.commonmark</groupId>
+            <artifactId>commonmark</artifactId>
+            <version>0.22.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.commonmark</groupId>
+            <artifactId>commonmark-ext-gfm-tables</artifactId>
+            <version>0.22.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.commonmark</groupId>
+            <artifactId>commonmark-ext-gfm-strikethrough</artifactId>
+            <version>0.22.0</version>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -118,18 +145,6 @@
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
             <version>2.1.0</version>
-        </dependency>
-
-        <!-- POI-TL 生成 DOCX -->
-        <dependency>
-            <groupId>com.deepoove</groupId>
-            <artifactId>poi-tl</artifactId>
-            <version>1.12.2</version>
-        </dependency>
-        <dependency>
-            <groupId>com.deepoove</groupId>
-            <artifactId>poi-tl-plugin-markdown</artifactId>
-            <version>1.0.3</version>
         </dependency>
 
         <dependency>
