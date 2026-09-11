@@ -23,7 +23,7 @@ class TenderDocumentArtifactServiceTest {
     void shouldRenderFinalizedVersionInMemory() throws Exception {
         byte[] expected = "docx-content".getBytes();
         ProcurementTaskRedisStore store = mock(ProcurementTaskRedisStore.class);
-        PoiMarkdownDocxRenderer renderer = mock(PoiMarkdownDocxRenderer.class);
+        Docx4jMarkdownDocxRenderer renderer = mock(Docx4jMarkdownDocxRenderer.class);
         when(store.findVersion(TASK_ID, VERSION_ID)).thenReturn(Optional.of(snapshot(true)));
         when(renderer.render("# 招标文件")).thenReturn(expected);
 
@@ -42,7 +42,7 @@ class TenderDocumentArtifactServiceTest {
         when(store.findVersion(TASK_ID, VERSION_ID)).thenReturn(Optional.of(snapshot(false)));
 
         assertThrows(IllegalStateException.class,
-                () -> new TenderDocumentArtifactService(store, mock(PoiMarkdownDocxRenderer.class))
+                () -> new TenderDocumentArtifactService(store, mock(Docx4jMarkdownDocxRenderer.class))
                         .export(TASK_ID, VERSION_ID));
     }
 
