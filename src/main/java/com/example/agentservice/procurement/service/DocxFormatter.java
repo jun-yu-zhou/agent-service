@@ -170,12 +170,11 @@ public final class DocxFormatter {
 
     /** 删除模型生成的静态目录内容，保留“目录”标题，避免导出后出现两份目录。 */
     private void removeExistingDirectoryEntries(List<Object> content, int directoryIndex) {
-        int directoryLevel = headingLevel((P) org.docx4j.XmlUtils.unwrap(content.get(directoryIndex)));
         int end = directoryIndex + 1;
         while (end < content.size()) {
             Object value = org.docx4j.XmlUtils.unwrap(content.get(end));
-            if (value instanceof P paragraph && headingLevel(paragraph) > 0
-                    && (directoryLevel == 0 || headingLevel(paragraph) <= directoryLevel)) break;
+            // 无论正文从哪一级标题开始，都不能把标题及其后内容当成静态目录删除。
+            if (value instanceof P paragraph && headingLevel(paragraph) > 0) break;
             end++;
         }
         content.subList(directoryIndex + 1, end).clear();
