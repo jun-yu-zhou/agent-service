@@ -34,26 +34,22 @@ public class TenderDocumentReviewService {
                 .sysPrompt(TenderGenerationPrompts.TENDER_REVIEW_SYSTEM_PROMPT)
                 .model(modelConfig.qwen37PlusTenderReviewModel())
                 .build();
+        String projectJson = projectData == null || projectData.isNull()
+                ? "未提供项目资料"
+                : projectData.toString();
+        String reviewInput = "【原招标文件要求开始】\n" + templateHtml
+                + "\n【原招标文件要求结束】\n\n【项目资料开始】\n" + projectJson
+                + "\n【项目资料结束】\n\n【招标文件定稿开始】\n" + finalizedMarkdown
+                + "\n【招标文件定稿结束】";
         Msg response = agent.call(Msg.builder()
                 .role(MsgRole.USER)
-                .textContent(reviewInput(templateHtml, projectData, finalizedMarkdown))
+                .textContent(reviewInput)
                 .build()).block();
         if (response == null || response.getTextContent() == null || response.getTextContent().isBlank()) {
             throw new IllegalStateException("招标文件审核模型未返回有效报告");
         }
         printModelMetrics(response, startNanos);
         return response.getTextContent().trim();
-    }
-
-    /** 使用清晰边界隔离三类材料，避免模型混淆审核基准与待审核正文。 */
-    private String reviewInput(String templateHtml, JsonNode projectData, String finalizedMarkdown) {
-        String projectJson = projectData == null || projectData.isNull()
-                ? "未提供结构化项目数据"
-                : projectData.toString();
-        return "【原始 HTML 模板开始】\n" + templateHtml
-                + "\n【原始 HTML 模板结束】\n\n【结构化项目数据开始】\n" + projectJson
-                + "\n【结构化项目数据结束】\n\n【招标文件定稿开始】\n" + finalizedMarkdown
-                + "\n【招标文件定稿结束】";
     }
 
     private void printModelMetrics(Msg response, long startNanos) {
