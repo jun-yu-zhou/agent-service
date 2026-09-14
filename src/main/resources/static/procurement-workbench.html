@@ -51,20 +51,14 @@
     <div class="brand">采 购 文 牍<small>PROCUREMENT STUDIO</small></div><div class="rule"></div>
     <div class="label">招标项目 ID</div><input id="projectId" placeholder="输入 zbProjectId">
     <button class="btn primary wide" onclick="createProjectTask()">读取项目并生成招标初稿</button>
-    <div class="rule"></div>
-    <div class="label">选择招标文件 HTML 模板</div><input id="outlineFile" type="file" accept=".html,.htm">
-    <div class="label">结构化项目 JSON（可选）</div>
-    <textarea id="projectData" spellcheck="false" placeholder='粘贴完整项目对象，例如：&#10;{&#10;  "projectName": "家具采购项目",&#10;  "purchaseMoney": "550000.00",&#10;  "classifyCode": "1",&#10;  "projectType": "1"&#10;}'></textarea>
-    <div class="hint">可直接粘贴 ZbProjectCommonDto 的完整 JSON。</div>
-    <button class="btn primary wide" onclick="createTask()">上传模板并生成招标初稿</button>
     <div class="label">任务 ID</div><input id="taskId" placeholder="输入或生成 taskId">
     <button class="btn ghost wide" onclick="loadAll()">载入任务</button>
     <div class="status"><strong id="statusText">尚未载入任务</strong><span id="stageText">请创建或输入任务 ID</span></div>
     <ol class="steps"><li id="s1">生成初稿</li><li id="s4">人工确认</li><li id="sReview">生成审核报告</li><li id="s5">导出产物</li></ol>
   </aside>
   <main>
-    <header class="top"><div><h1>招标文件协同工作台</h1><p>上传 HTML 模板，生成初稿，人工编辑后确认定稿。</p></div>
-      <div class="actions"><button class="btn primary" onclick="saveVersion()">保存人工版本</button><button class="btn ghost" onclick="finalizeCurrent()">确认定稿</button><button class="btn ghost" onclick="exportFiles()">导出文件</button><button id="exportReviewBtn" class="btn ghost" onclick="exportReview()" disabled>导出审核报告</button><button id="retryReviewBtn" class="btn ghost" onclick="retryReview()" style="display:none">重试审核</button></div></header>
+    <header class="top"><div><h1>招标文件协同工作台</h1><p>读取招标项目，生成初稿，人工编辑后确认定稿。</p></div>
+      <div class="actions"><button class="btn primary" onclick="saveVersion()">保存</button><button class="btn ghost" onclick="finalizeCurrent()">确认并审核</button><button class="btn ghost" onclick="exportFiles()">导出招标文件</button><button id="exportReviewBtn" class="btn ghost" onclick="exportReview()" disabled>导出审核报告</button><button id="retryReviewBtn" class="btn ghost" onclick="retryReview()" style="display:none">重试审核</button></div></header>
     <section class="workspace" id="workspace">
       <div class="panel-head"><b>文档编辑</b><span id="charCount">0 字</span></div>
       <div id="editor" class="editor"></div>
@@ -89,7 +83,7 @@ editor=new Vditor('editor',{mode:'wysiwyg',lang:'zh_CN',height:editorHeight(),ca
 window.addEventListener('resize',()=>{$('editor').style.height=editorHeight()+'px';const vd=$('editor').querySelector('.vditor');if(vd)vd.style.height=editorHeight()+'px'});
 async function api(url,options={}){const headers=options.body instanceof FormData?{}:{'Content-Type':'application/json'};const r=await fetch(url,{headers,...options});if(!r.ok){const text=await r.text();let message=text;try{message=JSON.parse(text).message||text}catch(e){}throw new Error(message||('HTTP '+r.status))}return r.status===204?null:r.json()}
 function notify(text){$('toast').textContent=text;$('toast').classList.add('show');setTimeout(()=>$('toast').classList.remove('show'),2400)}
-function setActions(on){[...document.querySelectorAll('button')].forEach(b=>b.disabled=!on);$('projectId').disabled=!on;$('outlineFile').disabled=!on;$('projectData').disabled=!on;if(on)syncReviewActions()}
+function setActions(on){[...document.querySelectorAll('button')].forEach(b=>b.disabled=!on);$('projectId').disabled=!on;if(on)syncReviewActions()}
 function syncReviewActions(){$('exportReviewBtn').disabled=reviewStatus!=='COMPLETED';$('retryReviewBtn').style.display=reviewStatus==='FAILED'?'inline-block':'none';$('retryReviewBtn').disabled=reviewStatus!=='FAILED'}
 function showOverlay(kind,title,hint){overlayKind=kind;$('busyTitle').textContent=title;$('busyHint').textContent=hint||'';setActions(false);$('busyDismiss').disabled=false;$('busyDismiss').style.display=kind==='generating'?'inline-block':'none';$('overlay').classList.add('show')}
 function hideOverlay(){overlayKind=null;$('overlay').classList.remove('show');setActions(true)}
@@ -105,22 +99,6 @@ async function createProjectTask(){
     $('busyHint').textContent='AI 正在处理项目资料和模板正文，通常需要数十秒，请耐心等待…';
     watch();
   }catch(e){hideOverlay();notify('创建失败：'+(e.message||'请查看服务日志'))}
-}
-async function createTask(){
-  const file=$('outlineFile').files[0];
-  if(!file)return notify('请选择招标文件 HTML 模板');
-  const json=$('projectData').value.trim();let parsed=null;
-  if(json){try{parsed=JSON.parse(json)}catch(e){return notify('结构化项目数据不是有效 JSON')}}
-  showOverlay('generating','正在上传模板并创建生成任务…','正在提交模板与项目数据，请稍候…');
-  try{
-    const form=new FormData();form.append('file',file);
-    if(parsed)form.append('projectData',new Blob([JSON.stringify(parsed)],{type:'application/json'}));
-    const created=await api(base+'/tasks/upload',{method:'POST',body:form});
-    $('taskId').value=created.taskId;liveTaskId=created.taskId;
-    $('busyTitle').textContent='正在生成招标初稿';
-    $('busyHint').textContent='AI 正在处理模板正文，通常需要数十秒，请耐心等待…';
-    watch();
-  }catch(e){hideOverlay();notify('上传失败：'+(e.message||'请查看服务日志'))}
 }
 async function loadAll(){if(!task())return notify('请填写任务 ID');try{const data=await api(base+'/tasks/'+task()+'/result');applyResult(data);await loadVersions()}catch(e){notify('载入失败：'+(e.message||'请检查任务 ID 与服务是否可用'))}}
 async function refreshResult(){const d=await api(base+'/tasks/'+task()+'/result');applyResult(d);if(['COMPLETED','FAILED'].includes(d.task.status)){clearInterval(pollTimer);pollTimer=null;return true}return false}
@@ -143,7 +121,7 @@ async function saveVersion(){
   if(!markdown.trim())return notify('正文不能为空');
   setActions(false);
   try{
-    const v=await api(base+'/tasks/'+task()+'/versions',{method:'POST',body:JSON.stringify({markdown,changedBy:'web-operator'})});
+    const v=await api(base+'/tasks/'+task()+'/versions',{method:'POST',body:JSON.stringify({markdown})});
     currentVersionId=v.versionId;$('editor').dataset.version=currentVersionId;
     await loadVersions();notify('人工版本已保存')
   }catch(e){notify('保存失败：'+(e.message||'请查看服务日志'))}
@@ -151,7 +129,7 @@ async function saveVersion(){
 }
 async function loadVersions(){
   const list=await api(base+'/tasks/'+task()+'/versions');
-  $('versions').innerHTML=list.map(x=>{const v=x.version;return `<div class="version"><span>V${v.versionNumber} · ${esc(v.changeSource)} · ${esc(v.changedBy)}</span><span>${v.finalized?'已定稿':v.versionId.slice(0,8)}</span></div>`}).join('');
+  $('versions').innerHTML=list.map(x=>{const v=x.version;return `<div class="version"><span>V${v.versionNumber} · ${esc(v.changeSource)}</span><span>${v.finalized?'已定稿':v.versionId.slice(0,8)}</span></div>`}).join('');
   const f=list.find(x=>x.version.finalized);
   $('s4').classList.toggle('done',!!f);
   $('s5').classList.toggle('done',exportedTasks.has(task()));
