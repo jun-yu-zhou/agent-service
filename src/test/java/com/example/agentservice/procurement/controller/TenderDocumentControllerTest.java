@@ -1,7 +1,6 @@
 package com.example.agentservice.procurement.controller;
 
 import com.example.agentservice.procurement.domain.DocumentGenerationTask;
-import com.example.agentservice.procurement.domain.DocumentType;
 import com.example.agentservice.procurement.domain.GenerationTaskStatus;
 import com.example.agentservice.procurement.domain.TenderReviewSnapshot;
 import com.example.agentservice.procurement.domain.TenderReviewStatus;
@@ -10,7 +9,6 @@ import com.example.agentservice.procurement.service.TenderDocumentArtifactServic
 import com.example.agentservice.procurement.service.TenderDocumentTaskService;
 import com.example.agentservice.procurement.service.TenderReviewArtifactService;
 import com.example.agentservice.procurement.service.TenderReviewTaskService;
-import com.example.agentservice.procurement.service.TenderTemplateUploadService;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -31,12 +29,12 @@ class TenderDocumentControllerTest {
     void shouldCreateTaskByLegacyProjectId() {
         TenderDocumentTaskService taskService = mock(TenderDocumentTaskService.class);
         DocumentGenerationTask task = new DocumentGenerationTask(
-                "task-1", DocumentType.TENDER, GenerationTaskStatus.PENDING,
+                "task-1", GenerationTaskStatus.PENDING,
                 "等待生成", null, null, Instant.now(), Instant.now());
         when(taskService.submitProject("project-1")).thenReturn(task);
         TenderDocumentController controller = new TenderDocumentController(
                 taskService, mock(TenderDocumentArtifactService.class), mock(TenderReviewTaskService.class),
-                mock(TenderReviewArtifactService.class), mock(TenderTemplateUploadService.class));
+                mock(TenderReviewArtifactService.class));
 
         ResponseEntity<DocumentGenerationTask> response =
                 controller.createTask(new TenderProjectTaskRequest("project-1"));
@@ -56,7 +54,7 @@ class TenderDocumentControllerTest {
                         content)));
         TenderDocumentController controller = new TenderDocumentController(
                 mock(TenderDocumentTaskService.class), artifactService, mock(TenderReviewTaskService.class),
-                mock(TenderReviewArtifactService.class), mock(TenderTemplateUploadService.class));
+                mock(TenderReviewArtifactService.class));
 
         ResponseEntity<byte[]> response = controller.exportArtifacts("task-1", "version-1");
 
@@ -79,7 +77,7 @@ class TenderDocumentControllerTest {
         when(reviewService.find("task-1", "version-1")).thenReturn(Optional.of(review));
         TenderDocumentController controller = new TenderDocumentController(
                 mock(TenderDocumentTaskService.class), mock(TenderDocumentArtifactService.class), reviewService,
-                mock(TenderReviewArtifactService.class), mock(TenderTemplateUploadService.class));
+                mock(TenderReviewArtifactService.class));
 
         ResponseEntity<TenderReviewSnapshot> response = controller.getReview("task-1", "version-1");
 
@@ -98,7 +96,7 @@ class TenderDocumentControllerTest {
                         content)));
         TenderDocumentController controller = new TenderDocumentController(
                 mock(TenderDocumentTaskService.class), mock(TenderDocumentArtifactService.class),
-                mock(TenderReviewTaskService.class), artifactService, mock(TenderTemplateUploadService.class));
+                mock(TenderReviewTaskService.class), artifactService);
 
         ResponseEntity<byte[]> response = controller.exportReview("task-1", "version-1");
 

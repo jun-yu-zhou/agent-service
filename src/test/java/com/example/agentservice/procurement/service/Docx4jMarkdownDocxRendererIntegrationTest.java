@@ -12,7 +12,7 @@ import java.util.zip.ZipFile;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** 使用 Redis 中已有初稿验证 docx4j 的 Markdown 渲染与排版效果。 */
+/** 使用数据库中已有初稿验证 docx4j 的 Markdown 渲染与排版效果。 */
 @SpringBootTest
 class Docx4jMarkdownDocxRendererIntegrationTest {
 
@@ -20,17 +20,17 @@ class Docx4jMarkdownDocxRendererIntegrationTest {
     private static final Path OUTPUT = Path.of("target", "docx4j-markdown-preview.docx");
 
     @Autowired
-    private ProcurementTaskRedisStore taskStore;
+    private TenderDocumentStore documentStore;
 
     @Autowired
     private Docx4jMarkdownDocxRenderer renderer;
 
     @Test
-    void rendersDraftFromRedis() throws Exception {
-        String draft = taskStore.findTender(TASK_ID)
-                .map(ProcurementTaskRedisStore.TenderTaskState::draft)
+    void rendersDraftFromDatabase() throws Exception {
+        String draft = documentStore.findByTaskId(TASK_ID)
+                .map(document -> document.getDocumentMarkdown())
                 .filter(value -> !value.isBlank())
-                .orElseThrow(() -> new IllegalStateException("Redis 中未找到测试初稿：" + TASK_ID));
+                .orElseThrow(() -> new IllegalStateException("数据库中未找到测试初稿：" + TASK_ID));
 
         renderer.render(draft, OUTPUT);
 

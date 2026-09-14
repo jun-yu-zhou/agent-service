@@ -8,7 +8,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.example.agentservice.procurement.domain.DocumentGenerationTask;
-import com.example.agentservice.procurement.domain.DocumentType;
 import com.example.agentservice.procurement.domain.DocumentVersion;
 import com.example.agentservice.procurement.domain.GenerationTaskStatus;
 import com.example.agentservice.procurement.persistence.TenderDocumentEntity;
@@ -38,7 +37,7 @@ class TenderDocumentTaskServiceTest {
         when(documentStore.finalizeDocument("task-1")).thenReturn(Optional.of(document));
         TenderDocumentTaskService service = new TenderDocumentTaskService(
                 mock(TenderDocumentGenerationService.class), mock(TenderProjectDataService.class), documentStore,
-                mock(ProcurementTaskRedisStore.class), mock(TenderReviewTaskService.class),
+                mock(TenderReviewTaskService.class),
                 mock(ExecutorService.class));
 
         DocumentVersion version = service.finalizeVersion("task-1", "document-1").orElseThrow();
@@ -61,7 +60,7 @@ class TenderDocumentTaskServiceTest {
         when(documentStore.findByTaskId("task-1")).thenReturn(Optional.of(document));
         TenderDocumentTaskService service = new TenderDocumentTaskService(
                 mock(TenderDocumentGenerationService.class), mock(TenderProjectDataService.class), documentStore,
-                mock(ProcurementTaskRedisStore.class), mock(TenderReviewTaskService.class),
+                mock(TenderReviewTaskService.class),
                 mock(ExecutorService.class));
 
         TenderDocumentTaskService.TaskSnapshot snapshot = service.findSnapshot("task-1").orElseThrow();
@@ -87,7 +86,7 @@ class TenderDocumentTaskServiceTest {
                 "template-1", "<h1>招标文件</h1>", projectData));
         TenderDocumentTaskService service = new TenderDocumentTaskService(
                 mock(TenderDocumentGenerationService.class), projectService, documentStore,
-                mock(ProcurementTaskRedisStore.class), mock(TenderReviewTaskService.class), executor);
+                mock(TenderReviewTaskService.class), executor);
 
         DocumentGenerationTask task = service.submitProject("project-1");
 
@@ -97,32 +96,12 @@ class TenderDocumentTaskServiceTest {
     }
 
     @Test
-    void shouldSaveReviewSourceWhenCreatingTask() throws Exception {
-        ProcurementTaskRedisStore store = mock(ProcurementTaskRedisStore.class);
-        ExecutorService executor = mock(ExecutorService.class);
-        TenderDocumentTaskService service = new TenderDocumentTaskService(
-                mock(TenderDocumentGenerationService.class), mock(TenderProjectDataService.class),
-                mock(TenderDocumentStore.class), store,
-                mock(TenderReviewTaskService.class), executor);
-        JsonNode projectData = new ObjectMapper().readTree("{\"projectName\":\"测试项目\"}");
-
-        var task = service.submitTemplate("<h1>招标文件</h1>", projectData);
-
-        ArgumentCaptor<ProcurementTaskRedisStore.TenderReviewSource> sourceCaptor =
-                ArgumentCaptor.forClass(ProcurementTaskRedisStore.TenderReviewSource.class);
-        verify(store).saveReviewSource(org.mockito.ArgumentMatchers.eq(task.taskId()), sourceCaptor.capture());
-        assertEquals("<h1>招标文件</h1>", sourceCaptor.getValue().templateHtml());
-        assertEquals(projectData, sourceCaptor.getValue().projectData());
-        verify(executor).execute(any(Runnable.class));
-    }
-
-    @Test
     void shouldStartReviewAfterFinalizingVersion() {
         TenderDocumentStore documentStore = mock(TenderDocumentStore.class);
         TenderReviewTaskService reviewTaskService = mock(TenderReviewTaskService.class);
         TenderDocumentTaskService service = new TenderDocumentTaskService(
                 mock(TenderDocumentGenerationService.class), mock(TenderProjectDataService.class),
-                documentStore, mock(ProcurementTaskRedisStore.class),
+                documentStore,
                 reviewTaskService, mock(ExecutorService.class));
         TenderDocumentEntity document = new TenderDocumentEntity();
         document.setId("version-1");
