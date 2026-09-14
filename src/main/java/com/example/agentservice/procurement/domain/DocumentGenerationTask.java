@@ -7,9 +7,6 @@ public record DocumentGenerationTask(
         /** 文档生成任务的唯一标识。 */
         String taskId,
 
-        /** 当前任务生成的采购文档类型。 */
-        DocumentType documentType,
-
         /** 文档生成任务当前状态。 */
         GenerationTaskStatus status,
 

@@ -20,11 +20,3 @@ app:
   procurement-document:
     generation-model: "qwen3.7-plus"
     max-concurrency: 4
-    task-ttl-hours: 24
-
-spring:
-  data:
-    redis:
-      host: localhost
-      port: 6379
-      password: ""

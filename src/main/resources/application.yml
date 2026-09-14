@@ -15,13 +15,6 @@ spring:
     multipart:
       max-file-size: 200MB
       max-request-size: 200MB
-  data:
-    redis:
-      host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
-      password: ${REDIS_PASSWORD:}
-      connect-timeout: ${REDIS_CONNECT_TIMEOUT:5s}
-      timeout: ${REDIS_COMMAND_TIMEOUT:10s}
 
 # Do not put real credentials here. Use application-local.yml for local-only values.
 app:
@@ -41,7 +34,5 @@ app:
     workspace-id: ${ALIYUN_BAILIAN_WORKSPACE_ID:}
     knowledge-base-id: ${ALIYUN_BAILIAN_KNOWLEDGE_BASE_ID:}
   procurement-document:
-    template-location: ${PROCUREMENT_TEMPLATE_LOCATION:classpath:/templates/procurement/}
     generation-model: ${PROCUREMENT_GENERATION_MODEL:qwen3.7-plus}
     max-concurrency: ${PROCUREMENT_MAX_CONCURRENCY:4}
-    task-ttl-hours: ${PROCUREMENT_TASK_TTL_HOURS:24}

@@ -2,12 +2,10 @@ package com.example.agentservice.procurement.request;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
-/** 人工编辑并保存为招标文件初稿子版本的 Markdown 内容。 */
+/** 人工编辑后覆盖保存的完整 Markdown 正文。 */
 public record TenderManualVersionRequest(
         @Schema(description = "人工编辑后的完整 Markdown 招标文件", requiredMode = Schema.RequiredMode.REQUIRED)
-        String markdown,
-        @Schema(description = "修改人标识；未传时记为 operator", example = "zhangsan")
-        String changedBy
+        String markdown
 ) {
     public TenderManualVersionRequest {
         if (markdown == null || markdown.isBlank()) {

@@ -11,7 +11,6 @@ public class ProcurementDocumentProperties {
     private String templateLocation = "classpath:/templates/procurement/";
     private String generationModel = "qwen3.7-plus";
     private int maxConcurrency = 4;
-    private int taskTtlHours = 24;
 
     public String getTemplateLocation() {
         return templateLocation;
@@ -37,11 +36,4 @@ public class ProcurementDocumentProperties {
         this.maxConcurrency = maxConcurrency;
     }
 
-    public int getTaskTtlHours() {
-        return taskTtlHours;
-    }
-
-    public void setTaskTtlHours(int taskTtlHours) {
-        this.taskTtlHours = taskTtlHours;
-    }
 }

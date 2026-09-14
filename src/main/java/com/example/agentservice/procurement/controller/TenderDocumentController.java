@@ -10,8 +10,6 @@ import com.example.agentservice.procurement.service.TenderDocumentArtifactServic
 import com.example.agentservice.procurement.service.TenderDocumentTaskService;
 import com.example.agentservice.procurement.service.TenderReviewArtifactService;
 import com.example.agentservice.procurement.service.TenderReviewTaskService;
-import com.example.agentservice.procurement.service.TenderTemplateUploadService;
-import com.fasterxml.jackson.databind.JsonNode;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -26,10 +24,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.multipart.MultipartFile;
 
 /** 根据上传 HTML 模板和结构化项目数据生成招标文件初稿并管理人工编辑版本。 */
 @RestController
@@ -41,32 +36,20 @@ public class TenderDocumentController {
     private final TenderDocumentArtifactService artifactService;
     private final TenderReviewTaskService reviewTaskService;
     private final TenderReviewArtifactService reviewArtifactService;
-    private final TenderTemplateUploadService templateUploadService;
 
     public TenderDocumentController(
             TenderDocumentTaskService taskService, TenderDocumentArtifactService artifactService,
-            TenderReviewTaskService reviewTaskService, TenderReviewArtifactService reviewArtifactService,
-            TenderTemplateUploadService templateUploadService) {
+            TenderReviewTaskService reviewTaskService, TenderReviewArtifactService reviewArtifactService) {
         this.taskService = taskService;
         this.artifactService = artifactService;
         this.reviewTaskService = reviewTaskService;
         this.reviewArtifactService = reviewArtifactService;
-        this.templateUploadService = templateUploadService;
     }
 
     @PostMapping("/tasks")
     @Operation(summary = "根据项目创建招标初稿任务", description = "按旧业务项目 ID 读取项目资料和 HTML 模板，异步生成初稿。")
     public ResponseEntity<DocumentGenerationTask> createTask(@RequestBody TenderProjectTaskRequest request) {
         return ResponseEntity.accepted().body(taskService.submitProject(request.id()));
-    }
-
-    @PostMapping(value = "/tasks/upload", consumes = "multipart/form-data")
-    @Operation(summary = "上传 HTML 模板并创建招标初稿任务", description = "上传 html、htm 招标文件模板和可选项目数据，异步生成初稿。")
-    public ResponseEntity<DocumentGenerationTask> uploadTemplate(
-            @RequestParam("file") MultipartFile file,
-            @RequestPart(value = "projectData", required = false) JsonNode projectData) throws Exception {
-        return ResponseEntity.accepted().body(
-                taskService.submitTemplate(templateUploadService.readTemplate(file), projectData));
     }
 
     @GetMapping("/tasks/{taskId}")
@@ -78,7 +61,7 @@ public class TenderDocumentController {
     }
 
     @GetMapping("/tasks/{taskId}/versions")
-    @Operation(summary = "查询招标文件版本列表", description = "返回初稿和人工保存的版本元数据及 Markdown 内容。")
+    @Operation(summary = "查询当前招标文件", description = "返回当前正文的修订信息及 Markdown 内容。")
     public ResponseEntity<?> getVersions(@PathVariable String taskId) {
         return taskService.findVersions(taskId)
                 .map(ResponseEntity::ok)
@@ -86,10 +69,10 @@ public class TenderDocumentController {
     }
 
     @PostMapping("/tasks/{taskId}/versions")
-    @Operation(summary = "保存人工编辑版本", description = "将完整 Markdown 保存为当前版本的子版本；不会自动调用模型。")
+    @Operation(summary = "保存人工编辑内容", description = "用完整 Markdown 覆盖当前正文；不会自动调用模型。")
     public ResponseEntity<DocumentVersion> saveManualVersion(
             @PathVariable String taskId, @RequestBody TenderManualVersionRequest request) {
-        return taskService.saveManualVersion(taskId, request.markdown(), request.changedBy())
+        return taskService.saveManualVersion(taskId, request.markdown())
                 .map(version -> ResponseEntity.status(HttpStatus.CREATED).body(version))
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
