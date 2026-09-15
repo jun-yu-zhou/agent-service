@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 /** 将可预期的流程异常转换为稳定的 API 错误响应。 */
-@RestControllerAdvice(basePackages = "com.example.agentservice.procurement.controller")
+@RestControllerAdvice(basePackages = "com.example.agentservice.procurement")
 public class ProcurementApiExceptionHandler {
 
     @ExceptionHandler(IllegalStateException.class)

@@ -1,0 +1,157 @@
+package com.example.agentservice.procurement.tender.controller;
+
+import com.example.agentservice.procurement.tender.domain.DocumentGenerationTask;
+import com.example.agentservice.procurement.tender.domain.DocumentVersion;
+import com.example.agentservice.procurement.tender.domain.GenerationTaskStatus;
+import com.example.agentservice.procurement.tender.domain.TenderReviewSnapshot;
+import com.example.agentservice.procurement.tender.request.TenderManualVersionRequest;
+import com.example.agentservice.procurement.tender.request.TenderProjectTaskRequest;
+import com.example.agentservice.procurement.tender.service.TenderDocumentArtifactService;
+import com.example.agentservice.procurement.tender.service.TenderDocumentTaskService;
+import com.example.agentservice.procurement.tender.service.TenderReviewArtifactService;
+import com.example.agentservice.procurement.tender.service.TenderReviewTaskService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import java.nio.charset.StandardCharsets;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+/** 根据上传 HTML 模板和结构化项目数据生成招标文件初稿并管理人工编辑版本。 */
+@RestController
+@RequestMapping("/api/procurement/tender-drafts")
+@Tag(name = "招标文件", description = "招标文件初稿生成与人工定稿")
+public class TenderDocumentController {
+
+    private final TenderDocumentTaskService taskService;
+    private final TenderDocumentArtifactService artifactService;
+    private final TenderReviewTaskService reviewTaskService;
+    private final TenderReviewArtifactService reviewArtifactService;
+
+    public TenderDocumentController(
+            TenderDocumentTaskService taskService, TenderDocumentArtifactService artifactService,
+            TenderReviewTaskService reviewTaskService, TenderReviewArtifactService reviewArtifactService) {
+        this.taskService = taskService;
+        this.artifactService = artifactService;
+        this.reviewTaskService = reviewTaskService;
+        this.reviewArtifactService = reviewArtifactService;
+    }
+
+    @PostMapping("/tasks")
+    @Operation(summary = "根据项目创建招标初稿任务", description = "按旧业务项目 ID 读取项目资料和 HTML 模板，异步生成初稿。")
+    public ResponseEntity<DocumentGenerationTask> createTask(@RequestBody TenderProjectTaskRequest request) {
+        return ResponseEntity.accepted().body(taskService.submitProject(request.id()));
+    }
+
+    @GetMapping("/tasks/{taskId}")
+    @Operation(summary = "查询招标生成任务状态", description = "查询当前招标文件初稿的生成状态。")
+    public ResponseEntity<DocumentGenerationTask> getTask(@PathVariable String taskId) {
+        return taskService.findTask(taskId)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/tasks/{taskId}/versions")
+    @Operation(summary = "查询当前招标文件", description = "返回当前正文的修订信息及 Markdown 内容。")
+    public ResponseEntity<?> getVersions(@PathVariable String taskId) {
+        return taskService.findVersions(taskId)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @PostMapping("/tasks/{taskId}/versions")
+    @Operation(summary = "保存人工编辑内容", description = "用完整 Markdown 覆盖当前正文；不会自动调用模型。")
+    public ResponseEntity<DocumentVersion> saveManualVersion(
+            @PathVariable String taskId, @RequestBody TenderManualVersionRequest request) {
+        return taskService.saveManualVersion(taskId, request.markdown())
+                .map(version -> ResponseEntity.status(HttpStatus.CREATED).body(version))
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @PostMapping("/tasks/{taskId}/versions/{versionId}/finalize")
+    @Operation(summary = "确认招标文件定稿", description = "将指定版本标记为唯一已定稿版本，并切换任务当前版本。")
+    public ResponseEntity<DocumentVersion> finalizeVersion(
+            @PathVariable String taskId, @PathVariable String versionId) {
+        return taskService.finalizeVersion(taskId, versionId)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/tasks/{taskId}/versions/{versionId}/review")
+    @Operation(summary = "查询定稿审核状态", description = "返回指定定稿版本的审核进度、报告或失败原因。")
+    public ResponseEntity<TenderReviewSnapshot> getReview(
+            @PathVariable String taskId, @PathVariable String versionId) {
+        return reviewTaskService.find(taskId, versionId)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @PostMapping("/tasks/{taskId}/versions/{versionId}/review/retry")
+    @Operation(summary = "重试定稿审核", description = "重新执行审核失败的定稿版本。")
+    public ResponseEntity<TenderReviewSnapshot> retryReview(
+            @PathVariable String taskId, @PathVariable String versionId) {
+        return reviewTaskService.retry(taskId, versionId)
+                .map(review -> ResponseEntity.accepted().body(review))
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/tasks/{taskId}/versions/{versionId}/review/export")
+    @Operation(summary = "导出定稿审核报告", description = "将审核完成的报告作为 Word 附件直接返回。")
+    public ResponseEntity<byte[]> exportReview(
+            @PathVariable String taskId, @PathVariable String versionId) throws Exception {
+        return reviewArtifactService.export(taskId, versionId)
+                .map(document -> ResponseEntity.ok()
+                        .contentType(MediaType.parseMediaType(document.contentType()))
+                        .contentLength(document.content().length)
+                        .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment()
+                                .filename(document.filename(), StandardCharsets.UTF_8).build().toString())
+                        .header(HttpHeaders.CACHE_CONTROL, "private, no-store")
+                        .header("X-Content-Type-Options", "nosniff")
+                        .body(document.content()))
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @PostMapping("/tasks/{taskId}/versions/{versionId}/artifacts/export")
+    @Operation(summary = "导出定稿 DOCX", description = "在内存中生成已确认定稿版本，并直接作为附件返回。")
+    public ResponseEntity<byte[]> exportArtifacts(
+            @PathVariable String taskId, @PathVariable String versionId) throws Exception {
+        return artifactService.export(taskId, versionId)
+                .map(document -> ResponseEntity.ok()
+                        .contentType(MediaType.parseMediaType(document.contentType()))
+                        .contentLength(document.content().length)
+                        .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment()
+                                .filename(document.filename(), StandardCharsets.UTF_8).build().toString())
+                        .header(HttpHeaders.CACHE_CONTROL, "private, no-store")
+                        .header("X-Content-Type-Options", "nosniff")
+                        .body(document.content()))
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/tasks/{taskId}/result")
+    @Operation(summary = "获取招标生成任务结果", description = "任务完成后返回初稿；尚未完成时返回当前任务快照。")
+    public ResponseEntity<TenderTaskResultResponse> getTaskResult(@PathVariable String taskId) {
+        return taskService.findSnapshot(taskId)
+                .map(snapshot -> snapshot.draft() == null
+                        ? ResponseEntity.status(snapshot.task().status() == GenerationTaskStatus.FAILED
+                                        ? HttpStatus.INTERNAL_SERVER_ERROR
+                                        : HttpStatus.ACCEPTED)
+                                .body(new TenderTaskResultResponse(snapshot.task(), null))
+                        : ResponseEntity.ok(new TenderTaskResultResponse(snapshot.task(), snapshot.draft())))
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    public record TenderTaskResultResponse(
+            @Schema(description = "任务当前快照") DocumentGenerationTask task,
+            @Schema(description = "任务完成后生成的 Markdown 招标文件初稿") String draft
+    ) {
+    }
+}
