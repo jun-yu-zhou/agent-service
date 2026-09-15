@@ -18,6 +18,8 @@ spring:
 
 # Do not put real credentials here. Use application-local.yml for local-only values.
 app:
+  bid:
+    supplier-lookup-enabled: false
   dashscope:
     api-key: ""
   oss:

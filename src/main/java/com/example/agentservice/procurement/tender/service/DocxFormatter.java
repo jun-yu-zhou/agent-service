@@ -56,6 +56,8 @@ public final class DocxFormatter {
     private boolean pageNumber;
     private boolean tableLayout;
     private boolean majorChapterPageBreak;
+    private boolean allHeadingsPageBreak;
+    private boolean autoTocHeading;
 
     private DocxFormatter(WordprocessingMLPackage document) {
         if (document == null) throw new IllegalArgumentException("DOCX 文档不能为空");
@@ -96,6 +98,18 @@ public final class DocxFormatter {
         return this;
     }
 
+    /** 让每一级 Heading 标题从新页开始，供投标技术方案导出使用。 */
+    public DocxFormatter allHeadingsPageBreak() {
+        allHeadingsPageBreak = true;
+        return this;
+    }
+
+    /** 投标文件未提供静态目录时，在封面后自动插入目录页。 */
+    public DocxFormatter autoTocHeading() {
+        autoTocHeading = true;
+        return this;
+    }
+
     /**
      * 按链式调用选中的能力统一修改文档。
      *
@@ -105,9 +119,11 @@ public final class DocxFormatter {
         SectPr section = section();
         if (a4) configureA4(section);
         List<Object> content = body();
+        if (autoTocHeading) ensureTocHeading(content);
         int directoryIndex = directoryIndex(content);
         formatCover(content, directoryIndex);
-        if (majorChapterPageBreak) breakMajorChapters(content, directoryIndex + 1);
+        if (allHeadingsPageBreak) breakAllHeadings(content);
+        else if (majorChapterPageBreak) breakMajorChapters(content, directoryIndex + 1);
         if (toc) insertToc(content, directoryIndex);
         if (pageNumber) insertPageNumber(section);
         if (tableLayout) formatTables();
@@ -153,6 +169,35 @@ public final class DocxFormatter {
         content.stream().skip(Math.max(0, startIndex))
                 .map(org.docx4j.XmlUtils::unwrap).filter(P.class::isInstance).map(P.class::cast)
                 .filter(paragraph -> headingLevel(paragraph) == majorLevel)
+                .forEach(paragraph -> properties(paragraph).setPageBreakBefore(FACTORY.createBooleanDefaultTrue()));
+    }
+
+    /** 在第一个标题后加入目录标题，正文目录条目仍由 docx4j 生成。 */
+    private void ensureTocHeading(List<Object> content) {
+        if (directoryIndex(content) >= 0) return;
+        int afterTitle = 0;
+        for (int index = 0; index < content.size(); index++) {
+            Object value = org.docx4j.XmlUtils.unwrap(content.get(index));
+            if (value instanceof P paragraph && headingLevel(paragraph) > 0) {
+                afterTitle = index + 1;
+                break;
+            }
+        }
+        P heading = FACTORY.createP();
+        properties(heading).setJc(alignment(JcEnumeration.CENTER));
+        R run = FACTORY.createR();
+        Text text = FACTORY.createText();
+        text.setValue("目录");
+        run.getContent().add(text);
+        heading.getContent().add(run);
+        content.add(afterTitle, heading);
+    }
+
+    /** 仅依据 Markdown 转换得到的 Heading 样式分页，不分析标题文字。 */
+    private void breakAllHeadings(List<Object> content) {
+        content.stream().map(org.docx4j.XmlUtils::unwrap)
+                .filter(P.class::isInstance).map(P.class::cast)
+                .filter(paragraph -> headingLevel(paragraph) > 0)
                 .forEach(paragraph -> properties(paragraph).setPageBreakBefore(FACTORY.createBooleanDefaultTrue()));
     }
 

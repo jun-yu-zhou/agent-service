@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>投标技术方案工作台</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/vditor@3.11.1/dist/index.css">
+  <style>
+    :root{--blue:#2563eb;--line:#dbe2ea;--bg:#f4f6f9;--text:#1f2937;--sub:#64748b}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.6 "Microsoft YaHei",sans-serif}button,input,textarea{font:inherit}
+    .layout{display:grid;grid-template-columns:340px 1fr;min-height:100vh}.side{padding:20px;background:#fff;border-right:1px solid var(--line)}main{padding:20px;min-width:0}
+    h1{margin:0 0 4px;font-size:20px}.sub{color:var(--sub);font-size:12px}.label{margin:14px 0 5px;color:var(--sub);font-size:12px}
+    input,textarea{width:100%;padding:8px;border:1px solid var(--line);border-radius:5px}textarea{height:130px;font:12px/1.5 Consolas,monospace;resize:vertical}
+    button{padding:8px 12px;border:1px solid var(--line);border-radius:5px;background:#fff;cursor:pointer}button.primary{color:#fff;border-color:var(--blue);background:var(--blue)}button:disabled{opacity:.45;cursor:not-allowed}.wide{width:100%;margin-top:10px}
+    .status{margin-top:16px;padding:10px;background:var(--bg);border-radius:5px}.status b{display:block}.toolbar{display:flex;gap:8px;align-items:center;justify-content:space-between;margin-bottom:12px}.actions{display:flex;gap:8px}
+    .panel{margin-bottom:16px;background:#fff;border:1px solid var(--line);border-radius:6px;overflow:hidden}.head{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#fafafa;border-bottom:1px solid var(--line)}
+    #outline{padding:14px}.node{margin:8px 0 8px 20px;padding:10px;border-left:3px solid #bfdbfe;background:#f8fafc}.node-row{display:grid;grid-template-columns:120px 1fr 2fr 1fr auto;gap:8px}.node input{min-width:0}.node-actions{display:flex;gap:5px}.node-actions button{padding:5px 8px}
+    #editor{min-height:650px}.review{padding:14px}.review table{width:100%;border-collapse:collapse}.review th,.review td{padding:7px;border:1px solid var(--line);text-align:left;vertical-align:top}
+    .toast{position:fixed;right:20px;bottom:20px;padding:10px 16px;background:#111827;color:#fff;border-radius:5px;opacity:0;transition:.2s;pointer-events:none}.toast.show{opacity:1}
+    @media(max-width:1000px){.layout{grid-template-columns:1fr}.node-row{grid-template-columns:1fr}.side{border-right:0;border-bottom:1px solid var(--line)}}
+  </style>
+</head>
+<body>
+<div class="layout">
+  <aside class="side">
+    <h1>投标技术方案工作台</h1><div class="sub">招标文件解析、目录确认、正文生成与检查</div>
+    <div class="label">原文件名</div><input id="fileName" placeholder="例如：项目招标文件.pdf">
+    <div class="label">OSS 文件地址</div><textarea id="sourceUrl" placeholder="前端直传 OSS 后得到的访问地址"></textarea>
+    <div class="label">招标项目 ID</div><input id="zbProjectId" placeholder="输入旧系统的 zbProjectId">
+    <div class="label">投标企业 ID</div><input id="companyId" placeholder="输入旧系统的 companyId">
+    <div class="label">本地对照资料 JSON（仅未填 ID 时使用）</div><textarea id="supplierFacts">{}</textarea>
+    <button class="primary wide" onclick="createTask()">创建生成任务</button>
+    <div class="label">任务 ID</div><input id="taskId" placeholder="可粘贴已有任务 ID">
+    <button class="wide" onclick="loadTask()">载入任务</button>
+    <div class="status"><b id="stage">尚未载入任务</b><span id="message" class="sub">请创建或载入任务</span></div>
+  </aside>
+  <main>
+    <div class="toolbar"><div><b>人机协同编辑</b><div class="sub">目录确认后生成正文；正文仅在点击保存时提交。</div></div>
+      <div class="actions"><button id="saveOutline" onclick="saveOutline()" disabled>保存目录</button><button id="confirmOutline" class="primary" onclick="confirmOutline()" disabled>确认目录并生成</button><button id="saveDocument" class="primary" onclick="saveDocument()" disabled>保存正文并复查</button><button id="downloadDocument" onclick="downloadDocument()" disabled>导出 Word</button></div>
+    </div>
+    <section class="panel"><div class="head"><b>技术方案目录</b><button id="addRoot" onclick="addRoot()" disabled>新增一级章节</button></div><div id="outline" class="sub">目录生成后将在这里显示</div></section>
+    <section class="panel"><div class="head"><b>技术方案正文</b><span class="sub">Vditor 所见即所得编辑</span></div><div id="editor"></div></section>
+    <section class="panel"><div class="head"><b>一致性检查</b></div><div id="review" class="review sub">正文生成并检查后将在这里显示</div></section>
+  </main>
+</div>
+<div id="toast" class="toast"></div>
+<script src="https://cdn.jsdelivr.net/npm/vditor@3.11.1/dist/index.min.js"></script>
+<script>
+const base='/api/procurement/bid-documents/tasks';const $=id=>document.getElementById(id);let outline=null,timer=null;
+const editor=new Vditor('editor',{mode:'wysiwyg',lang:'zh_CN',height:650,cache:{enable:false},toolbar:['headings','bold','italic','|','list','ordered-list','quote','table','|','undo','redo','fullscreen']});
+function notify(text){$('toast').textContent=text;$('toast').classList.add('show');setTimeout(()=>$('toast').classList.remove('show'),2500)}
+async function api(url,options={}){const response=await fetch(url,{headers:{'Content-Type':'application/json'},...options});if(!response.ok){const text=await response.text();let msg=text;try{msg=JSON.parse(text).message||text}catch(e){}throw new Error(msg||`HTTP ${response.status}`)}return response.status===204?null:response.json()}
+function taskId(){return $('taskId').value.trim()}function setEnabled(id,on){$(id).disabled=!on}
+async function createTask(){try{const supplier=JSON.parse($('supplierFacts').value||'{}');const task=await api(base,{method:'POST',body:JSON.stringify({sourceFileName:$('fileName').value.trim(),sourceUrl:$('sourceUrl').value.trim(),zbProjectId:$('zbProjectId').value.trim()||null,companyId:$('companyId').value.trim()||null,supplierFacts:supplier})});$('taskId').value=task.taskId;applyTask(task);watch()}catch(e){notify('创建失败：'+e.message)}}
+async function loadTask(){if(!taskId())return notify('请填写任务 ID');try{applyTask(await api(base+'/'+taskId()));await loadStageContent()}catch(e){notify('载入失败：'+e.message)}}
+function watch(){clearInterval(timer);loadTask();timer=setInterval(loadTask,2500)}
+function applyTask(task){$('stage').textContent=task.stage;$('message').textContent=task.errorMessage||task.sourceFileName||'';const editing=task.stage==='WAITING_OUTLINE_CONFIRMATION'&&!task.outlineConfirmed;setEnabled('saveOutline',editing);setEnabled('confirmOutline',editing);setEnabled('addRoot',editing);setEnabled('saveDocument',task.stage==='COMPLETED');setEnabled('downloadDocument',task.stage==='COMPLETED');if(['WAITING_OUTLINE_CONFIRMATION','COMPLETED','FAILED'].includes(task.stage)){clearInterval(timer);timer=null}}
+async function loadStageContent(){const task=await api(base+'/'+taskId());if(task.stage==='WAITING_OUTLINE_CONFIRMATION'){outline=await api(base+'/'+taskId()+'/outline');renderOutline()}if(task.stage==='COMPLETED'){const result=await api(base+'/'+taskId()+'/result');editor.setValue(result.documentMarkdown||'');renderReview(result.consistencyReview)}}
+function childrenAt(path){let list=outline.sections;for(const index of path.slice(0,-1))list=list[index].children;return list}function nodeAt(path){return childrenAt(path)[path[path.length-1]]}
+function change(path,key,value){nodeAt(path)[key]=key==='requirementRefs'?value.split('、').map(x=>x.trim()).filter(Boolean):value}
+function addChild(path){nodeAt(path).children.push(newNode());renderOutline()}function removeNode(path){childrenAt(path).splice(path[path.length-1],1);renderOutline()}function addRoot(){outline.sections.push(newNode());renderOutline()}
+function newNode(){return{id:'section-'+Date.now(),title:'新章节',writingFocus:'',requirementRefs:[],children:[]}}
+function esc(value){return String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function renderOutline(){if(!outline)return;$('outline').innerHTML=`<input value="${esc(outline.title)}" oninput="outline.title=this.value" placeholder="方案标题">`+outline.sections.map((node,index)=>nodeHtml(node,[index])).join('')}
+function nodeHtml(node,path){const p=JSON.stringify(path);return `<div class="node"><div class="node-row"><input value="${esc(node.id)}" oninput='change(${p},"id",this.value)' placeholder="章节ID"><input value="${esc(node.title)}" oninput='change(${p},"title",this.value)' placeholder="章节标题"><input value="${esc(node.writingFocus)}" oninput='change(${p},"writingFocus",this.value)' placeholder="正文编写重点"><input value="${esc((node.requirementRefs||[]).join('、'))}" oninput='change(${p},"requirementRefs",this.value)' placeholder="对应要求，以、分隔"><span class="node-actions"><button onclick='addChild(${p})'>子级</button><button onclick='removeNode(${p})'>删除</button></span></div>${(node.children||[]).map((child,index)=>nodeHtml(child,[...path,index])).join('')}</div>`}
+async function persistOutline(){outline=await api(base+'/'+taskId()+'/outline',{method:'PUT',body:JSON.stringify(outline)});renderOutline()}
+async function saveOutline(){try{await persistOutline();notify('目录已保存')}catch(e){notify('保存失败：'+e.message)}}
+async function confirmOutline(){try{await persistOutline();applyTask(await api(base+'/'+taskId()+'/outline/confirm',{method:'POST'}));watch();notify('目录已确认，正在生成正文')}catch(e){notify('确认失败：'+e.message)}}
+async function saveDocument(){try{const task=await api(base+'/'+taskId()+'/document',{method:'PUT',body:JSON.stringify({documentMarkdown:editor.getValue()})});applyTask(task);watch();notify('正文已保存，正在重新检查')}catch(e){notify('保存失败：'+e.message)}}
+async function downloadDocument(){try{const response=await fetch(base+'/'+taskId()+'/document/download');if(!response.ok)throw new Error(`HTTP ${response.status}`);const url=URL.createObjectURL(await response.blob());const link=document.createElement('a');link.href=url;link.download='投标技术方案.docx';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}catch(e){notify('导出失败：'+e.message)}}
+function renderReview(review){if(!review){$('review').textContent='暂无检查结果';return}const rows=(review.items||[]).map(x=>`<tr><td>${esc(x.requirement)}</td><td>${esc(x.status)}</td><td>${esc(x.issue)}</td><td>${esc(x.suggestion)}</td></tr>`).join('');$('review').innerHTML=`<p><b>${esc(review.conclusion)}</b>　${esc(review.summary)}</p><table><thead><tr><th>招标要求</th><th>状态</th><th>问题</th><th>修改建议</th></tr></thead><tbody>${rows}</tbody></table>`}
+</script>
+</body>
+</html>

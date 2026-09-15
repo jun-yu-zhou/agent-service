@@ -32,6 +32,7 @@ import java.util.Map;
 public class ModelConfig {
 
     public static final String QWEN37_PLUS_MODEL_NAME = "qwen3.7-plus";
+    public static final String QWEN37_FLASH_MODEL_NAME = "qwen3.7-flash";
     public static final String QWEN38_FLASH_MODEL_NAME = "qwen3.8-flash";
 
     private static final String DASH_SCOPE_COMPATIBLE_BASE_URL =
@@ -272,6 +273,85 @@ public class ModelConfig {
                 .defaultOptions(GenerateOptions.builder()
                         .maxTokens(32768)
                         .temperature(0.2D)
+                        .executionConfig(longExecutionConfig())
+                        .build())
+                .build();
+    }
+
+    /** 根据招标要求和企业资料生成可编辑的投标技术方案目录。 */
+    @Bean
+    @Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)
+    public DashScopeChatModel qwen37FlashBidOutlineModel() {
+        return DashScopeChatModel.builder()
+                .apiKey(AgentServiceConfig.dashScopeApiKey())
+                .modelName(QWEN37_FLASH_MODEL_NAME)
+                .baseUrl(AgentServiceConfig.dashScopeBaseUrl())
+                .endpointType(EndpointType.MULTIMODAL)
+                .httpTransport(newHttpTransport())
+                .stream(true)
+                .enableThinking(false)
+                .defaultOptions(GenerateOptions.builder()
+                        .maxTokens(8192)
+                        .temperature(0.2D)
+                        .executionConfig(longExecutionConfig())
+                        .build())
+                .build();
+    }
+
+    /** 按已确认目录逐章生成投标技术方案正文。 */
+    @Bean
+    @Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)
+    public DashScopeChatModel qwen37FlashBidContentModel() {
+        return DashScopeChatModel.builder()
+                .apiKey(AgentServiceConfig.dashScopeApiKey())
+                .modelName(QWEN37_FLASH_MODEL_NAME)
+                .baseUrl(AgentServiceConfig.dashScopeBaseUrl())
+                .endpointType(EndpointType.MULTIMODAL)
+                .httpTransport(newHttpTransport())
+                .stream(true)
+                .enableThinking(false)
+                .defaultOptions(GenerateOptions.builder()
+                        .maxTokens(8192)
+                        .temperature(0.25D)
+                        .executionConfig(longExecutionConfig())
+                        .build())
+                .build();
+    }
+
+    /** 检查完整技术方案与招标要求是否一致。 */
+    @Bean
+    @Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)
+    public DashScopeChatModel qwen37PlusBidConsistencyModel() {
+        return DashScopeChatModel.builder()
+                .apiKey(AgentServiceConfig.dashScopeApiKey())
+                .modelName(QWEN37_PLUS_MODEL_NAME)
+                .baseUrl(AgentServiceConfig.dashScopeBaseUrl())
+                .endpointType(EndpointType.MULTIMODAL)
+                .httpTransport(newHttpTransport())
+                .stream(true)
+                .enableThinking(false)
+                .defaultOptions(GenerateOptions.builder()
+                        .maxTokens(8192)
+                        .temperature(0.1D)
+                        .executionConfig(longExecutionConfig())
+                        .build())
+                .build();
+    }
+
+    /** 读取招标文件并抽取技术方案编制所需的核心事实。 */
+    @Bean
+    @Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)
+    public DashScopeChatModel qwenDocTenderFactsModel() {
+        return DashScopeChatModel.builder()
+                .apiKey(AgentServiceConfig.dashScopeApiKey())
+                .modelName("qwen-doc-turbo")
+                .endpointType(EndpointType.TEXT)
+                .formatter(new QwenDocDashScopeChatFormatter())
+                .httpTransport(newHttpTransport())
+                .stream(true)
+                .defaultOptions(GenerateOptions.builder()
+                        .maxTokens(8192)
+                        .temperature(0.1D)
                         .executionConfig(longExecutionConfig())
                         .build())
                 .build();

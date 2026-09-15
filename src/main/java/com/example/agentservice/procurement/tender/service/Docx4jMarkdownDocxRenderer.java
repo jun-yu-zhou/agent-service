@@ -24,7 +24,15 @@ public class Docx4jMarkdownDocxRenderer {
     /** 在内存中生成 Word，供 HTTP 接口直接返回。 */
     public byte[] render(String markdown) throws IOException {
         try (ByteArrayOutputStream output = new ByteArrayOutputStream()) {
-            render(markdown, output);
+            render(markdown, output, false);
+            return output.toByteArray();
+        }
+    }
+
+    /** 投标文件专用：每一级标题都另起一页，招标文件版式不受影响。 */
+    public byte[] renderBid(String markdown) throws IOException {
+        try (ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+            render(markdown, output, true);
             return output.toByteArray();
         }
     }
@@ -39,23 +47,24 @@ public class Docx4jMarkdownDocxRenderer {
             Files.createDirectories(parent);
         }
         try (OutputStream stream = Files.newOutputStream(output)) {
-            render(markdown, stream);
+            render(markdown, stream, false);
         }
     }
 
-    private void render(String markdown, OutputStream output) throws IOException {
+    private void render(String markdown, OutputStream output, boolean bid) throws IOException {
         if (markdown == null || markdown.isBlank()) {
             throw new IllegalArgumentException("定稿 Markdown 不能为空");
         }
         try {
             WordprocessingMLPackage document = new MarkdownImporter(MARKDOWN_OPTIONS).createPackage(markdown);
-            DocxFormatter.of(document)
+            DocxFormatter formatter = DocxFormatter.of(document)
                     .a4()
                     .toc()
                     .pageNumber()
-                    .tableLayout()
-                    .majorChapterPageBreak()
-                    .apply();
+                    .tableLayout();
+            if (bid) formatter.autoTocHeading().allHeadingsPageBreak();
+            else formatter.majorChapterPageBreak();
+            formatter.apply();
             document.save(output);
         } catch (Exception exception) {
             throw new IOException("生成 Word 文件失败", exception);
