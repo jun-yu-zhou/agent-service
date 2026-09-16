@@ -20,10 +20,13 @@ public class TenderProjectDataService {
 
     private final TenderProjectMapper mapper;
     private final ObjectMapper objectMapper;
+    private final TenderScoreRuleNormalizer scoreRuleNormalizer;
 
-    public TenderProjectDataService(TenderProjectMapper mapper, ObjectMapper objectMapper) {
+    public TenderProjectDataService(TenderProjectMapper mapper, ObjectMapper objectMapper,
+            TenderScoreRuleNormalizer scoreRuleNormalizer) {
         this.mapper = mapper;
         this.objectMapper = objectMapper;
+        this.scoreRuleNormalizer = scoreRuleNormalizer;
     }
 
     public GenerationInput load(String projectId) {
@@ -48,7 +51,8 @@ public class TenderProjectDataService {
         data.set("projectBatches", tree(mapper.selectBatches(projectId)));
         data.set("items", tree(items(projectId)));
         data.set("qualifications", tree(mapper.selectQualifications(projectId)));
-        data.set("scoreRules", tree(mapper.selectScoreRules(projectId)));
+        data.set("scoreRules", objectMapper.valueToTree(scoreRuleNormalizer.normalize(
+                normalize(mapper.selectScoreRules(projectId)))));
         data.set("projectComments", tree(mapper.selectComments(projectId)));
         data.set("requirements", tree(mapper.selectRequirements(projectId)));
         data.set("requirementDetails", tree(mapper.selectRequirementDetails(projectId)));

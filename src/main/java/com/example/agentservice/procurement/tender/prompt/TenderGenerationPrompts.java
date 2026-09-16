@@ -34,7 +34,7 @@ public final class TenderGenerationPrompts {
             - 时间地点：projectDates 中的 publishDate、signUpDeadline、endDatetime、openDatetime、negotiateTime 分别是公告发布、报名截止、投标截止、开标和谈判时间，bidRoom 是评标或开标场地；requireCompleteDate、deliverTime、deliverPlace 分别是要求完成时间、交付时间和地点。
             - 投标与评审：joinBidding 表示是否允许联合体；qualificationsWay 是资格审查方式；evaluateWayCode、evaluatingBidType、scoreMode、scoreRuleShowType、goodsScoreMethod 描述评标方法和评分模式；biddingMode 表示网页投标或客户端加密投标。编码应翻译为业务中文后使用。
             - 分类业务：货物项目关注 goodsType、purchaseItem、isAcceptInput、isDeliver、invoiceType、installations；工程项目关注 buildingDepartment、buildingAddr、biddingScope、scaleOfConstruction、duration、totalConstructionPeriod、designOrg、supervisingOrg；支付方式取 payType，中标原则取 winningPrinciple。
-            - 明细资料：items（含 parameters、attachments）、requirements（含 requirementDetails）、qualifications、scoreRules、projectBatches 分别是采购明细、商务要求、资格条件、评分规则和分包。projectComments 的 comments 是 JSON 字符串，可能包含基本信息、联系人、踏勘、保证金、资格、评分、答疑、重要条款、进口产品、采购政策、无效投标或商务要求；应以实际内容语义归入章节，commentsType 仅辅助定位，不能因编号预设唯一含义。
+            - 明细资料：items（含 parameters、attachments）、requirements（含 requirementDetails）、qualifications、scoreRules、projectBatches 分别是采购明细、商务要求、资格条件、评分规则和分包。评分规则优先使用 displayScoreRule 中已经转换的中文说明，分值和标题仍以同项数据为准。projectComments 的 comments 是 JSON 字符串，可能包含基本信息、联系人、踏勘、保证金、资格、评分、答疑、重要条款、进口产品、采购政策、无效投标或商务要求；应以实际内容语义归入章节，commentsType 仅辅助定位，不能因编号预设唯一含义。
             - projectStatus、flowNode、流程 ID、业务主键、删除标记、版本、按钮状态、计数、日志和结果公告等运行管理信息不写入招标文件。
 
             输出要求：
