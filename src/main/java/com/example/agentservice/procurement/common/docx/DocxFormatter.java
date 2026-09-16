@@ -1,4 +1,4 @@
-package com.example.agentservice.procurement.tender.service;
+package com.example.agentservice.procurement.common.docx;
 
 import org.docx4j.TextUtils;
 import org.docx4j.TraversalUtil;
@@ -56,7 +56,7 @@ public final class DocxFormatter {
     private boolean pageNumber;
     private boolean tableLayout;
     private boolean majorChapterPageBreak;
-    private boolean allHeadingsPageBreak;
+    private boolean leafHeadingsPageBreak;
     private boolean autoTocHeading;
 
     private DocxFormatter(WordprocessingMLPackage document) {
@@ -98,9 +98,9 @@ public final class DocxFormatter {
         return this;
     }
 
-    /** 让每一级 Heading 标题从新页开始，供投标技术方案导出使用。 */
-    public DocxFormatter allHeadingsPageBreak() {
-        allHeadingsPageBreak = true;
+    /** 让没有下级 Heading 的末级章节从新页开始，供投标技术方案导出使用。 */
+    public DocxFormatter leafHeadingsPageBreak() {
+        leafHeadingsPageBreak = true;
         return this;
     }
 
@@ -122,7 +122,7 @@ public final class DocxFormatter {
         if (autoTocHeading) ensureTocHeading(content);
         int directoryIndex = directoryIndex(content);
         formatCover(content, directoryIndex);
-        if (allHeadingsPageBreak) breakAllHeadings(content);
+        if (leafHeadingsPageBreak) breakLeafHeadings(content);
         else if (majorChapterPageBreak) breakMajorChapters(content, directoryIndex + 1);
         if (toc) insertToc(content, directoryIndex);
         if (pageNumber) insertPageNumber(section);
@@ -193,12 +193,18 @@ public final class DocxFormatter {
         content.add(afterTitle, heading);
     }
 
-    /** 仅依据 Markdown 转换得到的 Heading 样式分页，不分析标题文字。 */
-    private void breakAllHeadings(List<Object> content) {
-        content.stream().map(org.docx4j.XmlUtils::unwrap)
+    /** 根据标题层级判断叶子章节：下一个标题更深时，当前标题是父章节。 */
+    private void breakLeafHeadings(List<Object> content) {
+        List<P> headings = content.stream().map(org.docx4j.XmlUtils::unwrap)
                 .filter(P.class::isInstance).map(P.class::cast)
                 .filter(paragraph -> headingLevel(paragraph) > 0)
-                .forEach(paragraph -> properties(paragraph).setPageBreakBefore(FACTORY.createBooleanDefaultTrue()));
+                .toList();
+        for (int index = 0; index < headings.size(); index++) {
+            int nextLevel = index + 1 < headings.size() ? headingLevel(headings.get(index + 1)) : 0;
+            if (nextLevel <= headingLevel(headings.get(index))) {
+                properties(headings.get(index)).setPageBreakBefore(FACTORY.createBooleanDefaultTrue());
+            }
+        }
     }
 
     /**

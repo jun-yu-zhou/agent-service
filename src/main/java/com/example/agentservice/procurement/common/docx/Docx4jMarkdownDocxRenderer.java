@@ -1,4 +1,4 @@
-package com.example.agentservice.procurement.tender.service;
+package com.example.agentservice.procurement.common.docx;
 
 import org.docx4j.markdown.MarkdownImporter;
 import org.docx4j.markdown.MarkdownImportOptions;
@@ -29,7 +29,7 @@ public class Docx4jMarkdownDocxRenderer {
         }
     }
 
-    /** 投标文件专用：每一级标题都另起一页，招标文件版式不受影响。 */
+    /** 投标文件专用：仅末级章节另起一页，招标文件版式不受影响。 */
     public byte[] renderBid(String markdown) throws IOException {
         try (ByteArrayOutputStream output = new ByteArrayOutputStream()) {
             render(markdown, output, true);
@@ -58,11 +58,11 @@ public class Docx4jMarkdownDocxRenderer {
         try {
             WordprocessingMLPackage document = new MarkdownImporter(MARKDOWN_OPTIONS).createPackage(markdown);
             DocxFormatter formatter = DocxFormatter.of(document)
-                    .a4()
-                    .toc()
-                    .pageNumber()
-                    .tableLayout();
-            if (bid) formatter.autoTocHeading().allHeadingsPageBreak();
+                    .a4() // a4 纸张
+                    .toc() // 目录
+                    .pageNumber() // 页码
+                    .tableLayout(); // 表格布局
+            if (bid) formatter.autoTocHeading().leafHeadingsPageBreak();
             else formatter.majorChapterPageBreak();
             formatter.apply();
             document.save(output);

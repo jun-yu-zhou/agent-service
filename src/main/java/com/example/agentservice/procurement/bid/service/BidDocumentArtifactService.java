@@ -1,7 +1,7 @@
 package com.example.agentservice.procurement.bid.service;
 
 import com.example.agentservice.procurement.bid.domain.BidDocumentStage;
-import com.example.agentservice.procurement.tender.service.Docx4jMarkdownDocxRenderer;
+import com.example.agentservice.procurement.common.docx.Docx4jMarkdownDocxRenderer;
 import java.io.IOException;
 import java.util.Optional;
 import org.springframework.stereotype.Service;

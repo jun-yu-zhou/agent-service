@@ -1,5 +1,6 @@
 package com.example.agentservice.procurement.tender.service;
 
+import com.example.agentservice.procurement.common.docx.Docx4jMarkdownDocxRenderer;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;

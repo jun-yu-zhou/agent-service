@@ -1,5 +1,6 @@
 package com.example.agentservice.procurement.tender.service;
 
+import com.example.agentservice.procurement.common.docx.Docx4jMarkdownDocxRenderer;
 import com.example.agentservice.procurement.tender.persistence.TenderDocumentEntity;
 import org.junit.jupiter.api.Test;
 

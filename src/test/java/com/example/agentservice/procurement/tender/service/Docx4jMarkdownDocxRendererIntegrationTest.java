@@ -1,5 +1,6 @@
 package com.example.agentservice.procurement.tender.service;
 
+import com.example.agentservice.procurement.common.docx.Docx4jMarkdownDocxRenderer;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;

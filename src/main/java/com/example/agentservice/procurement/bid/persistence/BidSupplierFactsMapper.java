@@ -10,10 +10,12 @@ import org.apache.ibatis.annotations.Select;
 @Mapper
 public interface BidSupplierFactsMapper {
 
+    /** 查询项目最近更新的批次及其状态，供后续响应资料定位。 */
     @Select("SELECT ZB_PROJECT_BATCH_ID AS batchId, BATCH_STATUS AS batchStatus FROM zb_project_batch "
             + "WHERE ZB_PROJECT_ID = #{projectId} ORDER BY LAST_UPDATE_TIME DESC LIMIT 1")
     Map<String, Object> latestBatch(@Param("projectId") String projectId);
 
+    /** 查询企业在指定项目批次的最新基础响应，包括报价、账户和人员信息。 */
     @Select("""
             SELECT COMPANY_NAME AS companyName, PROJECT_NAME AS projectName,
                    TOTAL_PRICE AS totalPrice, BANK_NAME AS bankName, BANK_ACCOUNT AS bankAccount,
@@ -30,6 +32,7 @@ public interface BidSupplierFactsMapper {
     Map<String, Object> baseResponse(@Param("projectId") String projectId,
             @Param("batchId") String batchId, @Param("companyId") String companyId);
 
+    /** 按展示顺序查询标的物报价、品牌型号及售后服务响应。 */
     @Select("""
             SELECT ITEM_ID AS itemId, ITEM_NAME AS itemName, SHOW_ORDER AS showOrder,
                    ORDER_NUM AS quantity, UNIT AS unit, BRAND AS brand, MODELS AS model,
@@ -46,6 +49,7 @@ public interface BidSupplierFactsMapper {
     List<Map<String, Object>> itemResponses(@Param("projectId") String projectId,
             @Param("batchId") String batchId, @Param("companyId") String companyId);
 
+    /** 查询各标的物的技术参数响应及偏离情况。 */
     @Select("""
             SELECT ITEM_ID AS itemId, SHOW_ORDER AS showOrder, ORDER_PARAM_CODE AS requirementCode,
                    ORDER_PARAM_CONTENT AS requirement, DEVIATION AS deviation,
@@ -58,6 +62,7 @@ public interface BidSupplierFactsMapper {
     List<Map<String, Object>> itemParameterResponses(@Param("projectId") String projectId,
             @Param("batchId") String batchId, @Param("companyId") String companyId);
 
+    /** 查询企业提交的项目评审项及商务说明响应。 */
     @Select("""
             SELECT COMMENTS_TYPE AS responseType, ZB_SCORE_RULE_ID AS scoreRuleId,
                    RESP_NAME AS responseName,
@@ -72,6 +77,7 @@ public interface BidSupplierFactsMapper {
     List<Map<String, Object>> commentResponses(@Param("projectId") String projectId,
             @Param("batchId") String batchId, @Param("companyId") String companyId);
 
+    /** 查询采购要求的逐项响应、偏离和对应证明材料名称。 */
     @Select("""
             SELECT REQUIREMENT_NAME AS requirementName, ORDER_PARAM_CONTENT AS requirement,
                    BID_PARAM_CONTENT AS response, DEVIATION AS deviation,
@@ -86,6 +92,7 @@ public interface BidSupplierFactsMapper {
     List<Map<String, Object>> requirementResponses(@Param("projectId") String projectId,
             @Param("batchId") String batchId, @Param("companyId") String companyId);
 
+    /** 查询企业在指定项目批次上传的附件名称和类型；不读取附件正文。 */
     @Select("""
             SELECT ATTACHMENT_NAME AS attachmentName, ATTACHMENT_TYPE AS attachmentType,
                    SHOW_ORDER AS showOrder

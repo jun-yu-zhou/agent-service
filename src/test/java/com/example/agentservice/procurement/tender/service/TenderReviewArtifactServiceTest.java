@@ -1,5 +1,6 @@
 package com.example.agentservice.procurement.tender.service;
 
+import com.example.agentservice.procurement.common.docx.Docx4jMarkdownDocxRenderer;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
