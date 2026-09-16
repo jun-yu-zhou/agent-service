@@ -28,7 +28,6 @@
     <div class="label">OSS 文件地址</div><textarea id="sourceUrl" placeholder="前端直传 OSS 后得到的访问地址"></textarea>
     <div class="label">招标项目 ID</div><input id="zbProjectId" placeholder="输入旧系统的 zbProjectId">
     <div class="label">投标企业 ID</div><input id="companyId" placeholder="输入旧系统的 companyId">
-    <div class="label">本地对照资料 JSON（仅未填 ID 时使用）</div><textarea id="supplierFacts">{}</textarea>
     <button class="primary wide" onclick="createTask()">创建生成任务</button>
     <div class="label">任务 ID</div><input id="taskId" placeholder="可粘贴已有任务 ID">
     <button class="wide" onclick="loadTask()">载入任务</button>
@@ -51,7 +50,7 @@ const editor=new Vditor('editor',{mode:'wysiwyg',lang:'zh_CN',height:650,cache:{
 function notify(text){$('toast').textContent=text;$('toast').classList.add('show');setTimeout(()=>$('toast').classList.remove('show'),2500)}
 async function api(url,options={}){const response=await fetch(url,{headers:{'Content-Type':'application/json'},...options});if(!response.ok){const text=await response.text();let msg=text;try{msg=JSON.parse(text).message||text}catch(e){}throw new Error(msg||`HTTP ${response.status}`)}return response.status===204?null:response.json()}
 function taskId(){return $('taskId').value.trim()}function setEnabled(id,on){$(id).disabled=!on}
-async function createTask(){try{const supplier=JSON.parse($('supplierFacts').value||'{}');const task=await api(base,{method:'POST',body:JSON.stringify({sourceFileName:$('fileName').value.trim(),sourceUrl:$('sourceUrl').value.trim(),zbProjectId:$('zbProjectId').value.trim()||null,companyId:$('companyId').value.trim()||null,supplierFacts:supplier})});$('taskId').value=task.taskId;applyTask(task);watch()}catch(e){notify('创建失败：'+e.message)}}
+async function createTask(){try{const task=await api(base,{method:'POST',body:JSON.stringify({sourceFileName:$('fileName').value.trim(),sourceUrl:$('sourceUrl').value.trim(),zbProjectId:$('zbProjectId').value.trim(),companyId:$('companyId').value.trim()})});$('taskId').value=task.taskId;applyTask(task);watch()}catch(e){notify('创建失败：'+e.message)}}
 async function loadTask(){if(!taskId())return notify('请填写任务 ID');try{applyTask(await api(base+'/'+taskId()));await loadStageContent()}catch(e){notify('载入失败：'+e.message)}}
 function watch(){clearInterval(timer);loadTask();timer=setInterval(loadTask,2500)}
 function applyTask(task){$('stage').textContent=task.stage;$('message').textContent=task.errorMessage||task.sourceFileName||'';const editing=task.stage==='WAITING_OUTLINE_CONFIRMATION'&&!task.outlineConfirmed;setEnabled('saveOutline',editing);setEnabled('confirmOutline',editing);setEnabled('addRoot',editing);setEnabled('saveDocument',task.stage==='COMPLETED');setEnabled('downloadDocument',task.stage==='COMPLETED');if(['WAITING_OUTLINE_CONFIRMATION','COMPLETED','FAILED'].includes(task.stage)){clearInterval(timer);timer=null}}

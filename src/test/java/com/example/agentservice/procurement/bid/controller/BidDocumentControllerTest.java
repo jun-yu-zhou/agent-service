@@ -11,7 +11,6 @@ import com.example.agentservice.procurement.bid.request.BidDocumentCreateRequest
 import com.example.agentservice.procurement.bid.service.BidDocumentTaskService;
 import com.example.agentservice.procurement.bid.service.BidDocumentArtifactService;
 import com.example.agentservice.procurement.bid.request.BidDocumentEditRequest;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Optional;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -26,7 +25,7 @@ class BidDocumentControllerTest {
     @Test
     void shouldReturnAcceptedTask() {
         BidDocumentCreateRequest request = new BidDocumentCreateRequest(
-                "招标文件.pdf", "https://example.com/file.pdf", new ObjectMapper().createObjectNode());
+                "招标文件.pdf", "https://example.com/file.pdf", "project-1", "company-1");
         when(taskService.create(request)).thenReturn(task("task-1"));
 
         var response = controller.create(request);

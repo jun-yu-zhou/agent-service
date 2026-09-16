@@ -62,13 +62,10 @@ public class BidDocumentTaskService {
         }
         validateFileName(request.sourceFileName());
         validateSourceUrl(request.sourceUrl());
-        boolean lookup = request.zbProjectId() != null || request.companyId() != null;
-        if (lookup && !supplierLookupEnabled) {
+        if (!supplierLookupEnabled) {
             throw new IllegalStateException("当前环境未启用投标企业资料查询");
         }
-        JsonNode supplierFacts = lookup
-                ? supplierFactsService.load(request.zbProjectId(), request.companyId())
-                : request.supplierFacts();
+        JsonNode supplierFacts = supplierFactsService.load(request.zbProjectId(), request.companyId());
         if (supplierFacts == null || !supplierFacts.isObject()) {
             throw new IllegalArgumentException("投标企业资料必须是 JSON 对象");
         }

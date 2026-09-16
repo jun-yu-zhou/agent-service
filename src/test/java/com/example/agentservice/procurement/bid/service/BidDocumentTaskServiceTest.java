@@ -38,6 +38,8 @@ class BidDocumentTaskServiceTest {
     void shouldCreateTaskFromOssUrl() throws Exception {
         BidDocumentEntity saved = new BidDocumentEntity();
         saved.setTaskId("task-1");
+        when(supplierFactsService.load("project-1", "company-1"))
+                .thenReturn(objectMapper.readTree("{\"companyName\":\"测试公司\"}"));
         when(store.create("招标文件.pdf", "https://bucket.oss-cn-beijing.aliyuncs.com/file.pdf",
                 "{\"companyName\":\"测试公司\"}"))
                 .thenReturn(saved);
@@ -45,7 +47,7 @@ class BidDocumentTaskServiceTest {
         BidDocumentEntity result = service.create(new BidDocumentCreateRequest(
                 "招标文件.pdf",
                 "https://bucket.oss-cn-beijing.aliyuncs.com/file.pdf",
-                objectMapper.readTree("{\"companyName\":\"测试公司\"}")));
+                "project-1", "company-1"));
 
         assertEquals("task-1", result.getTaskId());
         verify(store).create("招标文件.pdf", "https://bucket.oss-cn-beijing.aliyuncs.com/file.pdf",
@@ -56,7 +58,7 @@ class BidDocumentTaskServiceTest {
     @Test
     void shouldRejectUnsupportedFile() {
         BidDocumentCreateRequest request = new BidDocumentCreateRequest(
-                "招标文件.txt", "https://example.com/file.txt", objectMapper.createObjectNode());
+                "招标文件.txt", "https://example.com/file.txt", "project-1", "company-1");
 
         assertThrows(IllegalArgumentException.class, () -> service.create(request));
     }
@@ -72,7 +74,7 @@ class BidDocumentTaskServiceTest {
                 .thenReturn(saved);
 
         service.create(new BidDocumentCreateRequest("招标文件.pdf", "https://example.com/file.pdf",
-                objectMapper.createObjectNode(), "project-1", "company-1"));
+                "project-1", "company-1"));
 
         verify(supplierFactsService).load("project-1", "company-1");
         verify(store).create("招标文件.pdf", "https://example.com/file.pdf",
@@ -86,7 +88,7 @@ class BidDocumentTaskServiceTest {
                 supplierFactsService, false, objectMapper, executor);
         assertThrows(IllegalStateException.class, () -> disabled.create(
                 new BidDocumentCreateRequest("招标文件.pdf", "https://example.com/file.pdf",
-                        objectMapper.createObjectNode(), "project-1", "company-1")));
+                        "project-1", "company-1")));
     }
 
     @Test
@@ -96,6 +98,8 @@ class BidDocumentTaskServiceTest {
         document.setSourceFileName("招标文件.pdf");
         document.setSourceUrl("https://example.com/file.pdf");
         document.setSupplierFacts("{}");
+        when(supplierFactsService.load("project-1", "company-1"))
+                .thenReturn(objectMapper.createObjectNode());
         when(store.create("招标文件.pdf", "https://example.com/file.pdf", "{}"))
                 .thenReturn(document);
         TenderEssentialFacts facts = new TenderEssentialFacts(
@@ -110,7 +114,7 @@ class BidDocumentTaskServiceTest {
                 .thenReturn(outline);
 
         service.create(new BidDocumentCreateRequest(
-                "招标文件.pdf", "https://example.com/file.pdf", objectMapper.createObjectNode()));
+                "招标文件.pdf", "https://example.com/file.pdf", "project-1", "company-1"));
         ArgumentCaptor<Runnable> task = ArgumentCaptor.forClass(Runnable.class);
         verify(executor).execute(task.capture());
         task.getValue().run();
