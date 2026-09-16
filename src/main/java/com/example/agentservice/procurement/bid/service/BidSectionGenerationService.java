@@ -25,9 +25,13 @@ public class BidSectionGenerationService {
     }
 
     public String generate(
+            // 已确认的完整技术方案目录（含全部章节树）
             BidTechnicalOutline outline,
+            // 当前需要生成正文的末级章节
             BidTechnicalOutline.Section section,
+            // 招标文件核心要求（招标文件事实提炼结果）
             String tenderFacts,
+            // 投标企业资料（供应商事实提炼结果）
             String supplierFacts) {
         validateLeaf(section);
         long startNanos = System.nanoTime();

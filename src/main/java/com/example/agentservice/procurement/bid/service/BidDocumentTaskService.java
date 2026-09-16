@@ -60,6 +60,7 @@ public class BidDocumentTaskService {
         if (request == null) {
             throw new IllegalArgumentException("请求不能为空");
         }
+        // 校验
         validateFileName(request.sourceFileName());
         validateSourceUrl(request.sourceUrl());
         if (!supplierLookupEnabled) {

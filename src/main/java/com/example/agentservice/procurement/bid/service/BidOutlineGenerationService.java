@@ -21,6 +21,12 @@ public class BidOutlineGenerationService {
         this.modelConfig = modelConfig;
     }
 
+    /**
+     *
+     * @param tenderFacts 招标文件核心要求（招标文件事实提炼结果）
+     * @param supplierFacts 投标企业资料（供应商事实提炼结果）
+     * @return
+     */
     public BidTechnicalOutline generate(String tenderFacts, String supplierFacts) {
         long startNanos = System.nanoTime();
         ReActAgent agent = ReActAgent.builder()

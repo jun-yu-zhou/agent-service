@@ -21,6 +21,13 @@ public class BidConsistencyReviewService {
         this.modelConfig = modelConfig;
     }
 
+    /**
+     *
+     * @param tenderFacts 招标文件核心要求（招标文件事实提炼结果）
+     * @param supplierFacts 投标企业资料（供应商事实提炼结果）
+     * @param documentMarkdown 待检查的投标技术方案（Markdown 正文）
+     * @return
+     */
     public BidConsistencyReview review(
             String tenderFacts, String supplierFacts, String documentMarkdown) {
         long startNanos = System.nanoTime();

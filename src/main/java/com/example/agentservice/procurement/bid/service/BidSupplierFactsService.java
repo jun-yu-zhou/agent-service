@@ -22,6 +22,14 @@ public class BidSupplierFactsService {
         this.objectMapper = objectMapper;
     }
 
+    /**
+     * 加载指定投标企业在招标项目当前批次已提交的响应事实，聚合为一份 JSON 供技术方案生成与一致性检查使用。
+     * 项目批次不存在、已流标或终止、或该企业缺少基础响应资料时抛出异常。
+     *
+     * @param projectId 招标项目 ID
+     * @param companyId 投标企业 ID
+     * @return 含项目、企业与批次标识及基础响应、标的物及参数响应、商务响应、要求响应、附件清单的聚合事实 JSON
+     */
     public JsonNode load(String projectId, String companyId) {
         if (projectId == null || projectId.isBlank() || companyId == null || companyId.isBlank()) {
             throw new IllegalArgumentException("招标项目 ID 和投标企业 ID 不能为空");
