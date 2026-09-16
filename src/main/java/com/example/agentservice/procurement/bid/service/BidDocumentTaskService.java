@@ -124,10 +124,12 @@ public class BidDocumentTaskService {
     /** 返回已完成的正文和一致性检查结果。 */
     public Optional<Result> findResult(String taskId) {
         return store.findByTaskId(taskId).map(document -> {
-            if (!BidDocumentStage.COMPLETED.name().equals(document.getStage())) {
+            if (!BidDocumentStage.COMPLETED.name().equals(document.getStage())
+                    && !BidDocumentStage.WAITING_MANUAL_COMPLETION.name().equals(document.getStage())) {
                 throw new IllegalStateException("投标技术方案尚未生成完成");
             }
-            return new Result(document.getDocumentMarkdown(), readReview(document.getConsistencyReview()));
+            return new Result(document.getDocumentMarkdown(), document.getConsistencyReview() == null
+                    ? null : readReview(document.getConsistencyReview()));
         });
     }
 
@@ -140,10 +142,14 @@ public class BidDocumentTaskService {
         if (markdown == null || markdown.isBlank()) {
             throw new IllegalArgumentException("投标技术方案正文不能为空");
         }
-        if (!BidDocumentStage.COMPLETED.name().equals(document.get().getStage())) {
+        if (!BidDocumentStage.COMPLETED.name().equals(document.get().getStage())
+                && !BidDocumentStage.WAITING_MANUAL_COMPLETION.name().equals(document.get().getStage())) {
             throw new IllegalStateException("当前任务状态不允许保存人工修改");
         }
         String content = markdown.trim();
+        if (content.contains(BidContentGenerationService.MANUAL_PLACEHOLDER)) {
+            throw new IllegalArgumentException("请先填写所有人工章节，再提交一致性检查");
+        }
         if (!store.saveDocumentForReview(taskId, content)) {
             throw new IllegalStateException("文档状态已发生变化，请刷新后重试");
         }
@@ -237,6 +243,9 @@ public class BidDocumentTaskService {
                 throw new IllegalArgumentException("目录章节ID不能重复: " + section.id());
             }
             if (section.children() != null) {
+                if (!section.children().isEmpty() && section.contentMode() != null) {
+                    throw new IllegalArgumentException("父章节不能设置正文处理模式: " + section.id());
+                }
                 validateSections(section.children(), ids);
             }
         }
@@ -259,12 +268,14 @@ public class BidDocumentTaskService {
 
     private void generateContent(BidDocumentEntity document) {
         try {
+            BidTechnicalOutline outline = readOutline(document.getOutlineJson());
             String markdown = contentService.generate(
-                    readOutline(document.getOutlineJson()),
+                    outline,
                     document.getTenderFacts(),
                     document.getSupplierFacts());
-            store.completeContent(document.getTaskId(), markdown);
-            reviewContent(document, markdown);
+            boolean requiresManualCompletion = contentService.requiresManualCompletion(outline);
+            store.completeContent(document.getTaskId(), markdown, requiresManualCompletion);
+            if (!requiresManualCompletion) reviewContent(document, markdown);
         }
         catch (Exception exception) {
             store.fail(document.getTaskId(), exception.getMessage());

@@ -3,6 +3,7 @@ package com.example.agentservice.procurement.bid.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -109,7 +110,8 @@ class BidDocumentTaskServiceTest {
                 .thenReturn(facts);
         BidTechnicalOutline outline = new BidTechnicalOutline(
                 "家具采购技术方案", List.of(new BidTechnicalOutline.Section(
-                        "implementation", "实施方案", "说明实施安排", List.of("实施要求"), List.of())));
+                        "implementation", "实施方案", "说明实施安排", List.of("实施要求"),
+                        BidTechnicalOutline.ContentMode.AI, List.of())));
         when(outlineService.generate(objectMapper.valueToTree(facts).toString(), "{}"))
                 .thenReturn(outline);
 
@@ -141,8 +143,8 @@ class BidDocumentTaskServiceTest {
         BidDocumentEntity document = editableDocument();
         when(store.findByTaskId("task-1")).thenReturn(Optional.of(document));
         BidTechnicalOutline outline = new BidTechnicalOutline("技术方案", List.of(
-                new BidTechnicalOutline.Section("same", "实施方案", null, List.of(), List.of()),
-                new BidTechnicalOutline.Section("same", "售后方案", null, List.of(), List.of())));
+                new BidTechnicalOutline.Section("same", "实施方案", null, List.of(), null, List.of()),
+                new BidTechnicalOutline.Section("same", "售后方案", null, List.of(), null, List.of())));
 
         assertThrows(IllegalArgumentException.class, () -> service.saveOutline("task-1", outline));
     }
@@ -181,8 +183,45 @@ class BidDocumentTaskServiceTest {
         verify(executor).execute(task.capture());
         task.getValue().run();
 
-        verify(store).completeContent("task-1", "# 技术方案\n\n正文");
+        verify(store).completeContent("task-1", "# 技术方案\n\n正文", false);
         verify(store).completeReview("task-1", objectMapper.valueToTree(review).toString());
+    }
+
+    @Test
+    void shouldWaitForManualChapterBeforeReview() throws Exception {
+        BidDocumentEntity document = editableDocument();
+        BidTechnicalOutline outline = new BidTechnicalOutline("技术方案", List.of(
+                new BidTechnicalOutline.Section("manual", "签章材料", null, List.of(),
+                        BidTechnicalOutline.ContentMode.MANUAL, List.of())));
+        document.setOutlineJson(objectMapper.writeValueAsString(outline));
+        document.setTenderFacts("招标要求");
+        document.setSupplierFacts("企业资料");
+        when(store.findByTaskId("task-1")).thenReturn(Optional.of(document));
+        when(store.confirmOutline("task-1")).thenReturn(true);
+        when(contentService.generate(outline, "招标要求", "企业资料"))
+                .thenReturn("# 技术方案\n\n" + BidContentGenerationService.MANUAL_PLACEHOLDER);
+        when(contentService.requiresManualCompletion(outline)).thenReturn(true);
+
+        service.confirmOutline("task-1");
+        ArgumentCaptor<Runnable> task = ArgumentCaptor.forClass(Runnable.class);
+        verify(executor).execute(task.capture());
+        task.getValue().run();
+
+        verify(store).completeContent("task-1",
+                "# 技术方案\n\n" + BidContentGenerationService.MANUAL_PLACEHOLDER, true);
+        verify(reviewService, never()).review(
+                org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyString());
+    }
+
+    @Test
+    void shouldRejectUnfilledManualChapter() {
+        BidDocumentEntity document = new BidDocumentEntity();
+        document.setStage("WAITING_MANUAL_COMPLETION");
+        when(store.findByTaskId("task-1")).thenReturn(Optional.of(document));
+
+        assertThrows(IllegalArgumentException.class, () -> service.saveDocument(
+                "task-1", "# 技术方案\n\n" + BidContentGenerationService.MANUAL_PLACEHOLDER));
     }
 
     @Test
@@ -219,6 +258,7 @@ class BidDocumentTaskServiceTest {
 
     private BidTechnicalOutline outline() {
         return new BidTechnicalOutline("技术方案", List.of(new BidTechnicalOutline.Section(
-                "implementation", "实施方案", "说明实施安排", List.of("实施要求"), List.of())));
+                "implementation", "实施方案", "说明实施安排", List.of("实施要求"),
+                BidTechnicalOutline.ContentMode.AI, List.of())));
     }
 }

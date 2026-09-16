@@ -29,7 +29,7 @@ public final class BidDocumentPrompts {
 
                 目录应围绕技术评分标准、采购需求、实施交付、质量保障、验收、售后和风险控制展开，并结合企业已有能力组织章节。评分重点应落实到具体末级章节，避免空泛、重复和与本项目无关的内容。通常使用二至三级目录，章节数量和层级由项目复杂度决定。
 
-                每个章节设置稳定且唯一的id；writingFocus说明该章节正文应回答什么；requirementRefs填写其响应的评分项或招标要求名称。children为空的章节将直接生成正文。
+                每个章节设置稳定且唯一的id；writingFocus说明该章节正文应回答什么；requirementRefs填写其响应的评分项或招标要求名称。父章节的contentMode填null；children为空的末级章节必须设置contentMode：实施、技术、服务、质量、进度、售后等可撰写方案使用AI；签字盖章、承诺函、资质原件、固定表格以及必须由企业确认或提供材料的章节使用MANUAL。不得为了补齐目录而把人工材料标为AI。
 
                 只输出一个符合下列Schema的JSON对象，不输出解释或Markdown代码块：
 

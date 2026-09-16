@@ -14,6 +14,9 @@ public enum BidDocumentStage {
     /** 正在按照已确认目录生成各章节正文。 */
     CONTENT_GENERATING,
 
+    /** AI 章节已生成，等待用户补充人工章节。 */
+    WAITING_MANUAL_COMPLETION,
+
     /** 正在检查技术方案与招标要求的一致性。 */
     CONSISTENCY_REVIEWING,
 

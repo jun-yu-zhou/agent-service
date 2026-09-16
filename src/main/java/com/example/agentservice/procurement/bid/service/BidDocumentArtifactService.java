@@ -6,7 +6,7 @@ import java.io.IOException;
 import java.util.Optional;
 import org.springframework.stereotype.Service;
 
-/** 将已完成的投标技术方案直接生成为可下载的 Word 内容。 */
+/** 将已生成的投标技术方案直接生成为可下载的 Word 内容。 */
 @Service
 public class BidDocumentArtifactService {
 
@@ -23,8 +23,10 @@ public class BidDocumentArtifactService {
         if (document.isEmpty()) {
             return Optional.empty();
         }
-        if (!BidDocumentStage.COMPLETED.name().equals(document.get().getStage())) {
-            throw new IllegalStateException("投标技术方案尚未完成，暂不能导出 Word");
+        String stage = document.get().getStage();
+        if (!BidDocumentStage.COMPLETED.name().equals(stage)
+                && !BidDocumentStage.WAITING_MANUAL_COMPLETION.name().equals(stage)) {
+            throw new IllegalStateException("投标技术方案尚未生成，暂不能导出 Word");
         }
         return Optional.of(renderer.renderBid(document.get().getDocumentMarkdown()));
     }

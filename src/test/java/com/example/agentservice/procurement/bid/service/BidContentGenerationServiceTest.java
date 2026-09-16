@@ -19,7 +19,7 @@ class BidContentGenerationServiceTest {
         BidTechnicalOutline.Section schedule = leaf("schedule", "实施进度计划");
         BidTechnicalOutline.Section quality = leaf("quality", "质量保障措施");
         BidTechnicalOutline.Section implementation = new BidTechnicalOutline.Section(
-                "implementation", "项目实施方案", null, List.of(), List.of(schedule, quality));
+                "implementation", "项目实施方案", null, List.of(), null, List.of(schedule, quality));
         BidTechnicalOutline outline = new BidTechnicalOutline("家具采购技术方案", List.of(implementation));
         when(sectionService.generate(outline, schedule, "招标要求", "企业资料"))
                 .thenReturn("进度计划正文");
@@ -47,7 +47,25 @@ class BidContentGenerationServiceTest {
         verify(sectionService, never()).generate(outline, implementation, "招标要求", "企业资料");
     }
 
+    @Test
+    void shouldKeepManualLeafWithoutCallingModel() {
+        BidSectionGenerationService sectionService = mock(BidSectionGenerationService.class);
+        BidTechnicalOutline.Section manual = new BidTechnicalOutline.Section(
+                "authorization", "授权委托书", null, List.of(),
+                BidTechnicalOutline.ContentMode.MANUAL, List.of());
+        BidTechnicalOutline outline = new BidTechnicalOutline("投标文件", List.of(manual));
+        BidContentGenerationService service = new BidContentGenerationService(sectionService);
+
+        String markdown = service.generate(outline, "招标要求", "企业资料");
+
+        assertEquals("# 投标文件\n\n## 授权委托书\n\n" + BidContentGenerationService.MANUAL_PLACEHOLDER,
+                markdown);
+        org.junit.jupiter.api.Assertions.assertTrue(service.requiresManualCompletion(outline));
+        verify(sectionService, never()).generate(outline, manual, "招标要求", "企业资料");
+    }
+
     private BidTechnicalOutline.Section leaf(String id, String title) {
-        return new BidTechnicalOutline.Section(id, title, null, List.of(), List.of());
+        return new BidTechnicalOutline.Section(id, title, null, List.of(),
+                BidTechnicalOutline.ContentMode.AI, List.of());
     }
 }

@@ -8,6 +8,8 @@ import org.springframework.stereotype.Service;
 @Service
 public class BidContentGenerationService {
 
+    static final String MANUAL_PLACEHOLDER = "> 【人工填写】请补充本章节内容。";
+
     private final BidSectionGenerationService sectionService;
 
     public BidContentGenerationService(BidSectionGenerationService sectionService) {
@@ -35,14 +37,32 @@ public class BidContentGenerationService {
         for (BidTechnicalOutline.Section section : sections) {
             markdown.append("#".repeat(level)).append(' ').append(section.title()).append("\n\n");
             if (section.children() == null || section.children().isEmpty()) {
-                markdown.append(sectionService.generate(
-                                outline, section, tenderFacts, supplierFacts))
-                        .append("\n\n");
+                String content = section.effectiveContentMode() == BidTechnicalOutline.ContentMode.MANUAL
+                        ? MANUAL_PLACEHOLDER
+                        : sectionService.generate(outline, section, tenderFacts, supplierFacts);
+                markdown.append(content).append("\n\n");
             }
             else {
                 appendSections(markdown, outline, section.children(), level + 1,
                         tenderFacts, supplierFacts);
             }
         }
+    }
+
+    /** 判断目录中是否存在需要用户填写的末级章节。 */
+    public boolean requiresManualCompletion(BidTechnicalOutline outline) {
+        return containsManualSection(outline.sections());
+    }
+
+    private boolean containsManualSection(List<BidTechnicalOutline.Section> sections) {
+        for (BidTechnicalOutline.Section section : sections) {
+            if (section.children() == null || section.children().isEmpty()) {
+                if (section.effectiveContentMode() == BidTechnicalOutline.ContentMode.MANUAL) return true;
+            }
+            else if (containsManualSection(section.children())) {
+                return true;
+            }
+        }
+        return false;
     }
 }

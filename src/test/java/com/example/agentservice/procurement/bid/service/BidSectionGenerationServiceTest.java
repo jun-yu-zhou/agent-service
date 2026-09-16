@@ -18,7 +18,8 @@ class BidSectionGenerationServiceTest {
     @Test
     void shouldBuildFocusedSectionInput() {
         BidTechnicalOutline.Section section = new BidTechnicalOutline.Section(
-                "schedule", "实施进度计划", "说明里程碑", List.of("交付期限"), List.of());
+                "schedule", "实施进度计划", "说明里程碑", List.of("交付期限"),
+                BidTechnicalOutline.ContentMode.AI, List.of());
         BidTechnicalOutline outline = new BidTechnicalOutline("技术方案", List.of(section));
 
         String input = service.generationInput(outline, section,
@@ -34,12 +35,23 @@ class BidSectionGenerationServiceTest {
     @Test
     void shouldRejectNonLeafSection() {
         BidTechnicalOutline.Section child = new BidTechnicalOutline.Section(
-                "child", "子章节", null, List.of(), List.of());
+                "child", "子章节", null, List.of(), BidTechnicalOutline.ContentMode.AI, List.of());
         BidTechnicalOutline.Section parent = new BidTechnicalOutline.Section(
-                "parent", "父章节", null, List.of(), List.of(child));
+                "parent", "父章节", null, List.of(), null, List.of(child));
 
         assertThrows(IllegalArgumentException.class,
                 () -> service.generationInput(new BidTechnicalOutline("技术方案", List.of(parent)),
                         parent, "{}", "{}"));
+    }
+
+    @Test
+    void shouldRejectManualSection() {
+        BidTechnicalOutline.Section section = new BidTechnicalOutline.Section(
+                "authorization", "授权委托书", null, List.of(),
+                BidTechnicalOutline.ContentMode.MANUAL, List.of());
+
+        assertThrows(IllegalArgumentException.class,
+                () -> service.generationInput(new BidTechnicalOutline("技术方案", List.of(section)),
+                        section, "{}", "{}"));
     }
 }

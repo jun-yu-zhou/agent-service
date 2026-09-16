@@ -80,13 +80,14 @@ public class BidDocumentStore {
                 .set(BidDocumentEntity::getStage, BidDocumentStage.CONTENT_GENERATING.name())) == 1;
     }
 
-    /** 保存完整技术方案，交给一致性检查阶段。 */
-    public void completeContent(String taskId, String markdown) {
+    /** 保存技术方案；含人工章节时先等待用户补充，否则直接进入一致性检查。 */
+    public void completeContent(String taskId, String markdown, boolean requiresManualCompletion) {
         mapper.update(null, Wrappers.<BidDocumentEntity>lambdaUpdate()
                 .eq(BidDocumentEntity::getTaskId, taskId)
                 .set(BidDocumentEntity::getDocumentMarkdown, markdown)
-                .set(BidDocumentEntity::getStage,
-                        BidDocumentStage.CONSISTENCY_REVIEWING.name())
+                .set(BidDocumentEntity::getStage, requiresManualCompletion
+                        ? BidDocumentStage.WAITING_MANUAL_COMPLETION.name()
+                        : BidDocumentStage.CONSISTENCY_REVIEWING.name())
                 .set(BidDocumentEntity::getErrorMessage, null));
     }
 
@@ -103,7 +104,9 @@ public class BidDocumentStore {
     public boolean saveDocumentForReview(String taskId, String markdown) {
         return mapper.update(null, Wrappers.<BidDocumentEntity>lambdaUpdate()
                 .eq(BidDocumentEntity::getTaskId, taskId)
-                .eq(BidDocumentEntity::getStage, BidDocumentStage.COMPLETED.name())
+                .in(BidDocumentEntity::getStage,
+                        BidDocumentStage.WAITING_MANUAL_COMPLETION.name(),
+                        BidDocumentStage.COMPLETED.name())
                 .set(BidDocumentEntity::getDocumentMarkdown, markdown)
                 .set(BidDocumentEntity::getConsistencyReview, null)
                 .set(BidDocumentEntity::getStage,

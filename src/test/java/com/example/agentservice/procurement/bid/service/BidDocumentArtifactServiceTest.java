@@ -35,6 +35,18 @@ class BidDocumentArtifactServiceTest {
     }
 
     @Test
+    void exportsDocumentWaitingForManualCompletion() throws Exception {
+        BidDocumentEntity document = new BidDocumentEntity();
+        document.setStage("WAITING_MANUAL_COMPLETION");
+        document.setDocumentMarkdown("# 投标技术方案\n\n" + BidContentGenerationService.MANUAL_PLACEHOLDER);
+        when(store.findByTaskId("task-1")).thenReturn(Optional.of(document));
+        when(renderer.renderBid(document.getDocumentMarkdown())).thenReturn(new byte[] {1, 2});
+
+        assertArrayEquals(new byte[] {1, 2}, service.export("task-1").orElseThrow());
+        verify(renderer).renderBid(document.getDocumentMarkdown());
+    }
+
+    @Test
     void rejectsIncompleteDocument() {
         BidDocumentEntity document = new BidDocumentEntity();
         document.setStage("CONTENT_GENERATING");

@@ -45,7 +45,7 @@ class BidDocumentControllerTest {
     void shouldExposeOutlineForEditing() {
         BidTechnicalOutline outline = new BidTechnicalOutline(
                 "技术方案", List.of(new BidTechnicalOutline.Section(
-                        "one", "实施方案", null, List.of(), List.of())));
+                        "one", "实施方案", null, List.of(), null, List.of())));
         when(taskService.findOutline("task-1")).thenReturn(Optional.of(outline));
 
         var response = controller.findOutline("task-1");

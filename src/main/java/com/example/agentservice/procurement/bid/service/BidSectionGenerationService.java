@@ -87,6 +87,9 @@ public class BidSectionGenerationService {
         if (section.children() != null && !section.children().isEmpty()) {
             throw new IllegalArgumentException("仅末级章节可以直接生成正文");
         }
+        if (section.effectiveContentMode() != BidTechnicalOutline.ContentMode.AI) {
+            throw new IllegalArgumentException("仅AI生成章节可以调用正文模型");
+        }
     }
 
     private String json(Object value) {
