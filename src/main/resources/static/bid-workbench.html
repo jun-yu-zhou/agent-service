@@ -48,7 +48,7 @@
 const base='/api/procurement/bid-documents/tasks';const $=id=>document.getElementById(id);let outline=null,timer=null;
 const editor=new Vditor('editor',{mode:'wysiwyg',lang:'zh_CN',height:650,cache:{enable:false},toolbar:['headings','bold','italic','|','list','ordered-list','quote','table','|','undo','redo','fullscreen']});
 function notify(text){$('toast').textContent=text;$('toast').classList.add('show');setTimeout(()=>$('toast').classList.remove('show'),2500)}
-async function api(url,options={}){const response=await fetch(url,{headers:{'Content-Type':'application/json'},...options});if(!response.ok){const text=await response.text();let msg=text;try{msg=JSON.parse(text).message||text}catch(e){}throw new Error(msg||`HTTP ${response.status}`)}return response.status===204?null:response.json()}
+async function api(url,options={}){const response=await fetch(url,{headers:{'Content-Type':'application/json'},...options});const result=await response.json();if(!response.ok||result.code!==200)throw new Error(result.message||`HTTP ${response.status}`);return result.data}
 function taskId(){return $('taskId').value.trim()}function setEnabled(id,on){$(id).disabled=!on}
 async function createTask(){try{const task=await api(base,{method:'POST',body:JSON.stringify({sourceFileName:$('fileName').value.trim(),sourceUrl:$('sourceUrl').value.trim(),zbProjectId:$('zbProjectId').value.trim(),companyId:$('companyId').value.trim()})});$('taskId').value=task.taskId;applyTask(task);watch()}catch(e){notify('创建失败：'+e.message)}}
 async function loadTask(){if(!taskId())return notify('请填写任务 ID');try{applyTask(await api(base+'/'+taskId()));await loadStageContent()}catch(e){notify('载入失败：'+e.message)}}

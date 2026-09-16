@@ -1,6 +1,7 @@
 package com.example.agentservice.procurement.tender.controller;
 
 import com.example.agentservice.procurement.tender.domain.DocumentGenerationTask;
+import com.example.agentservice.pojo.base.response.R;
 import com.example.agentservice.procurement.tender.domain.GenerationTaskStatus;
 import com.example.agentservice.procurement.tender.domain.TenderReviewSnapshot;
 import com.example.agentservice.procurement.tender.domain.TenderReviewStatus;
@@ -36,11 +37,11 @@ class TenderDocumentControllerTest {
                 taskService, mock(TenderDocumentArtifactService.class), mock(TenderReviewTaskService.class),
                 mock(TenderReviewArtifactService.class));
 
-        ResponseEntity<DocumentGenerationTask> response =
+        R<DocumentGenerationTask> response =
                 controller.createTask(new TenderProjectTaskRequest("project-1"));
 
-        assertEquals(202, response.getStatusCode().value());
-        assertEquals(task, response.getBody());
+        assertEquals(200, response.getCode());
+        assertEquals(task, response.getData());
     }
 
     @Test
@@ -79,10 +80,10 @@ class TenderDocumentControllerTest {
                 mock(TenderDocumentTaskService.class), mock(TenderDocumentArtifactService.class), reviewService,
                 mock(TenderReviewArtifactService.class));
 
-        ResponseEntity<TenderReviewSnapshot> response = controller.getReview("task-1", "version-1");
+        R<TenderReviewSnapshot> response = controller.getReview("task-1", "version-1");
 
-        assertEquals(200, response.getStatusCode().value());
-        assertEquals(review, response.getBody());
+        assertEquals(200, response.getCode());
+        assertEquals(review, response.getData());
     }
 
     @Test

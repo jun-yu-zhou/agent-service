@@ -30,15 +30,15 @@ class BidDocumentControllerTest {
 
         var response = controller.create(request);
 
-        assertEquals(HttpStatus.ACCEPTED, response.getStatusCode());
-        assertEquals("task-1", response.getBody().taskId());
+        assertEquals(200, response.getCode());
+        assertEquals("task-1", response.getData().taskId());
     }
 
     @Test
     void shouldReturnNotFoundForUnknownTask() {
         when(taskService.find("missing")).thenReturn(Optional.empty());
 
-        assertEquals(HttpStatus.NOT_FOUND, controller.find("missing").getStatusCode());
+        assertEquals(404, controller.find("missing").getCode());
     }
 
     @Test
@@ -50,8 +50,8 @@ class BidDocumentControllerTest {
 
         var response = controller.findOutline("task-1");
 
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals("技术方案", response.getBody().title());
+        assertEquals(200, response.getCode());
+        assertEquals("技术方案", response.getData().title());
     }
 
     @Test
@@ -63,8 +63,8 @@ class BidDocumentControllerTest {
 
         var response = controller.confirmOutline("task-1");
 
-        assertEquals(HttpStatus.ACCEPTED, response.getStatusCode());
-        assertEquals("CONTENT_GENERATING", response.getBody().stage());
+        assertEquals(200, response.getCode());
+        assertEquals("CONTENT_GENERATING", response.getData().stage());
     }
 
     @Test
@@ -76,9 +76,9 @@ class BidDocumentControllerTest {
 
         var response = controller.findResult("task-1");
 
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals("# 技术方案\n\n正文", response.getBody().documentMarkdown());
-        assertEquals("PASS", response.getBody().consistencyReview().conclusion());
+        assertEquals(200, response.getCode());
+        assertEquals("# 技术方案\n\n正文", response.getData().documentMarkdown());
+        assertEquals("PASS", response.getData().consistencyReview().conclusion());
     }
 
     @Test
@@ -111,8 +111,8 @@ class BidDocumentControllerTest {
         var response = controller.saveDocument(
                 "task-1", new BidDocumentEditRequest("# 修改后的方案"));
 
-        assertEquals(HttpStatus.ACCEPTED, response.getStatusCode());
-        assertEquals("CONSISTENCY_REVIEWING", response.getBody().stage());
+        assertEquals(200, response.getCode());
+        assertEquals("CONSISTENCY_REVIEWING", response.getData().stage());
     }
 
     private BidDocumentEntity task(String taskId) {

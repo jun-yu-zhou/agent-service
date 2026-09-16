@@ -1,5 +1,6 @@
 package com.example.agentservice.procurement.bid.controller;
 
+import com.example.agentservice.pojo.base.response.R;
 import com.example.agentservice.procurement.bid.persistence.BidDocumentEntity;
 import com.example.agentservice.procurement.bid.domain.BidTechnicalOutline;
 import com.example.agentservice.procurement.bid.request.BidDocumentCreateRequest;
@@ -35,46 +36,46 @@ public class BidDocumentController {
     }
 
     @PostMapping("/tasks")
-    public ResponseEntity<TaskResponse> create(@RequestBody BidDocumentCreateRequest request) {
-        return ResponseEntity.accepted().body(TaskResponse.from(taskService.create(request)));
+    public R<TaskResponse> create(@RequestBody BidDocumentCreateRequest request) {
+        return R.success(TaskResponse.from(taskService.create(request)));
     }
 
     @GetMapping("/tasks/{taskId}")
-    public ResponseEntity<TaskResponse> find(@PathVariable String taskId) {
+    public R<TaskResponse> find(@PathVariable String taskId) {
         return taskService.find(taskId)
                 .map(TaskResponse::from)
-                .map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.notFound().build());
+                .map(R::success)
+                .orElseGet(() -> R.error(404, "投标任务不存在"));
     }
 
     @GetMapping("/tasks/{taskId}/outline")
-    public ResponseEntity<BidTechnicalOutline> findOutline(@PathVariable String taskId) {
+    public R<BidTechnicalOutline> findOutline(@PathVariable String taskId) {
         return taskService.findOutline(taskId)
-                .map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.notFound().build());
+                .map(R::success)
+                .orElseGet(() -> R.error(404, "投标任务目录不存在"));
     }
 
     @PutMapping("/tasks/{taskId}/outline")
-    public ResponseEntity<BidTechnicalOutline> saveOutline(
+    public R<BidTechnicalOutline> saveOutline(
             @PathVariable String taskId, @RequestBody BidTechnicalOutline outline) {
         return taskService.saveOutline(taskId, outline)
-                .map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.notFound().build());
+                .map(R::success)
+                .orElseGet(() -> R.error(404, "投标任务目录不存在"));
     }
 
     @PostMapping("/tasks/{taskId}/outline/confirm")
-    public ResponseEntity<TaskResponse> confirmOutline(@PathVariable String taskId) {
+    public R<TaskResponse> confirmOutline(@PathVariable String taskId) {
         return taskService.confirmOutline(taskId)
                 .map(TaskResponse::from)
-                .map(response -> ResponseEntity.accepted().body(response))
-                .orElseGet(() -> ResponseEntity.notFound().build());
+                .map(R::success)
+                .orElseGet(() -> R.error(404, "投标任务不存在"));
     }
 
     @GetMapping("/tasks/{taskId}/result")
-    public ResponseEntity<BidDocumentTaskService.Result> findResult(@PathVariable String taskId) {
+    public R<BidDocumentTaskService.Result> findResult(@PathVariable String taskId) {
         return taskService.findResult(taskId)
-                .map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.notFound().build());
+                .map(R::success)
+                .orElseGet(() -> R.error(404, "投标任务结果不存在"));
     }
 
     @GetMapping("/tasks/{taskId}/document/download")
@@ -93,12 +94,12 @@ public class BidDocumentController {
     }
 
     @PutMapping("/tasks/{taskId}/document")
-    public ResponseEntity<TaskResponse> saveDocument(
+    public R<TaskResponse> saveDocument(
             @PathVariable String taskId, @RequestBody BidDocumentEditRequest request) {
         return taskService.saveDocument(taskId, request.documentMarkdown())
                 .map(TaskResponse::from)
-                .map(response -> ResponseEntity.accepted().body(response))
-                .orElseGet(() -> ResponseEntity.notFound().build());
+                .map(R::success)
+                .orElseGet(() -> R.error(404, "投标任务不存在"));
     }
 
     /** 前端轮询所需的精简任务快照。 */

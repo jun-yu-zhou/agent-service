@@ -79,7 +79,7 @@ const editorValue=()=>editor?editor.getValue():'';
 const editorHeight=()=>Math.max(520,window.innerHeight-188);
 editor=new Vditor('editor',{mode:'wysiwyg',lang:'zh_CN',height:editorHeight(),cache:{enable:false},toolbar:['headings','bold','italic','strike','|','list','ordered-list','check','outdent','indent','|','quote','line','table','link','|','undo','redo','fullscreen'],input:render});
 window.addEventListener('resize',()=>{$('editor').style.height=editorHeight()+'px';const vd=$('editor').querySelector('.vditor');if(vd)vd.style.height=editorHeight()+'px'});
-async function api(url,options={}){const headers=options.body instanceof FormData?{}:{'Content-Type':'application/json'};const r=await fetch(url,{headers,...options});if(!r.ok){const text=await r.text();let message=text;try{message=JSON.parse(text).message||text}catch(e){}throw new Error(message||('HTTP '+r.status))}return r.status===204?null:r.json()}
+async function api(url,options={}){const headers=options.body instanceof FormData?{}:{'Content-Type':'application/json'};const r=await fetch(url,{headers,...options});const result=await r.json();if(!r.ok||result.code!==200)throw new Error(result.message||('HTTP '+r.status));return result.data}
 function notify(text){$('toast').textContent=text;$('toast').classList.add('show');setTimeout(()=>$('toast').classList.remove('show'),2400)}
 function setActions(on){[...document.querySelectorAll('button')].forEach(b=>b.disabled=!on);$('projectId').disabled=!on;if(on)syncReviewActions()}
 function syncReviewActions(){$('exportReviewBtn').disabled=reviewStatus!=='COMPLETED';$('retryReviewBtn').style.display=reviewStatus==='FAILED'?'inline-block':'none';$('retryReviewBtn').disabled=reviewStatus!=='FAILED'}
@@ -139,9 +139,11 @@ async function finalizeCurrent(){
 }
 async function fetchReview(){
   const response=await fetch(base+'/tasks/'+task()+'/versions/'+currentVersionId+'/review');
-  if(response.status===404)return null;
-  if(!response.ok)throw new Error((await response.text())||('HTTP '+response.status));
-  return response.json()
+  const result=await response.json();
+  if(response.status===404||result.code===404)return null;
+  if(!response.ok)throw new Error(result.message||('HTTP '+response.status));
+  if(result.code!==200)throw new Error(result.message||'查询审核状态失败');
+  return result.data
 }
 async function refreshReview(showBusy){
   const review=await fetchReview();
