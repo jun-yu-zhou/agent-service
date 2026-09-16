@@ -18,7 +18,9 @@ import static org.mockito.Mockito.when;
 class TenderProjectDataServiceTest {
 
     private final TenderProjectMapper mapper = mock(TenderProjectMapper.class);
-    private final TenderProjectDataService service = new TenderProjectDataService(mapper, new ObjectMapper());
+    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final TenderProjectDataService service = new TenderProjectDataService(
+            mapper, objectMapper, new TenderScoreRuleNormalizer(objectMapper));
 
     @Test
     void loadsTemplateAndNestedProjectData() {
@@ -38,6 +40,9 @@ class TenderProjectDataServiceTest {
                 .thenReturn(List.of(Map.of("ITEM_ID", "item-1", "PARAM_NAME", "尺寸")));
         when(mapper.selectAttachments("project-1"))
                 .thenReturn(List.of(Map.of("ITEM_ID", "item-1", "FILE_NAME", "图纸.pdf")));
+        when(mapper.selectScoreRules("project-1")).thenReturn(List.of(Map.of(
+                "COMPONENT_TYPE", "multiAccordRule",
+                "SCORE_RULE", "{\"child\":[{\"label\":\"完全满足\",\"value\":\"5\"}]}")));
 
         TenderProjectDataService.GenerationInput input = service.load("project-1");
 
@@ -48,6 +53,8 @@ class TenderProjectDataServiceTest {
                 .path("parameters").get(0).path("paramName").asText());
         assertEquals("图纸.pdf", input.projectData().path("items").get(0)
                 .path("attachments").get(0).path("fileName").asText());
+        assertEquals("完全满足得5分", input.projectData().path("scoreRules").get(0)
+                .path("displayScoreRule").asText());
         verify(mapper).selectTemplate("college-1", "30");
     }
 
