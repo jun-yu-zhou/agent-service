@@ -11,12 +11,13 @@ public final class TenderGenerationPrompts {
 
             内容规则：
             1. 项目名称、编号、金额、日期、地点、采购内容、资格、评分、商务和履约要求以项目数据为准，同一信息全文一致；缺失信息不猜测。
-            2. 根据上下文主动匹配并替换占位符，不局限于名称完全相同的数据项。采购人已明确时，封面、招标人、合同甲方、组织招标、监督部门等位置的“XX大学”“某大学”“某单位”应全文替换为采购人名称；城市、区域等确无依据的占位符可以保留。
+            2. 根据上下文主动匹配并替换占位符，不局限于名称完全相同的数据项。采购人已明确时，封面、招标人和合同甲方等位置的“XX大学”“某大学”“某单位”应全文替换为采购人名称；组织招标、代理机构和监督部门按各自角色填写，不混用采购人名称。
             3. 模板中带有明显占位特征、重复字符或虚构格式的姓名、电话、邮箱等联系方式属于样例内容。优先按招标人、代理机构、监督部门等职责匹配项目资料中的对应联系人；没有对应资料时删除样例值，必要时删除无实际信息的联系人明细，但保留有效的机构或部门名称。
             4. 模板中的其他历史项目、机构、品目、人名、联系方式和账号，项目数据无法确认时删除，或改为不依赖具体值的通用表述。发布日期只取项目数据，没有则保留模板占位符或留空。
-            5. 模板已有的平台名称、网址、部门称谓、法律法规、固定提示、投标及开标方式等通用内容可以保留。
+            5. 法律法规、投标人填写说明和通用程序性条款可以保留；机构、部门、网址、地点、产品、联系人、账号和分值均属于项目相关内容，未经项目资料确认不得沿用模板示例。
             6. 投标函、报价表、响应表、业绩表、方案条目、签章栏和合同乙方等投标人填写内容，保留标题、说明、表格和填写位置，不代填。
             7. 同一业务内容可能分散在不同资料中，应按语义归并后填写。例如商务要求无论出现在哪部分资料中，都应写入商务要求和合同的对应位置，不能因某一处为空而判定缺失。
+            8. 缺失内容按业务作用处理：项目资料能够确定的直接替换；需要招标人后续填写的名称、地址、账号、联系方式等保留模板原有的 XX、XXX 或空白填写位置，方便人工识别和修改；整条不适用于本项目的具体产品、机构或要求删除整条。不得生成虚构值、残缺句或仅剩标点的条目。
 
             模板保真：
             - 按原顺序和层级完整输出所有章节、条款、表格、附表及附件，不合并、不概括、不缩减，处理到模板末尾。
@@ -26,6 +27,8 @@ public final class TenderGenerationPrompts {
             - Y/N、true/false、类型编号等内部值应转换为“是/否”或相应业务含义，不能原样出现在正文。能够由明确分值相加得到的合计直接计算；信息不足时留空，不输出“[待补充：具体字段]”。
 
             数据说明：
+            - documentFacts 是已完成编码转换和业务整理的招标文件事实，生成正文时优先使用；其中包含中文项目类型、采购方式、评标方式、资金来源、金额大写、标准日期、项目主体、开标安排、核心产品、履约担保、实质性条款和企业类型。原始项目资料与其冲突时，以 documentFacts 为准。
+            - technicalRequirementFacts 和 commercialRequirementFacts 分别是技术参数与商务要求的分组结果；substantive、important、general 对应实质性、重要和一般要求。条目中的 importanceMark、importanceName、requiresEvidence 和 displayContent 已完成 ★/▲、中文等级、证明材料及展示内容转换，应保持这些标记与评分规则一致。
             - 项目标识：projectName 是项目名称；projectCode 是用户填写的项目编号；zbProjectCode 是系统生成的招标编号，按模板标题含义分别使用。
             - 类型与方式：projectType 的 1/2/3 为货物/工程/服务；classifyCode 的 1—6 为校内招标、邀请招标、单一来源、竞争性谈判、竞争性磋商、询价；purchaseWayCode 是采购方式补充信息。
             - 金额与报价：purchaseMoney 是采购预算，controlPrice 是最高限价；fundingSource 是资金来源；pricedWay 的 1/2 为总价报价/工程量清单报价；budgetIsOpen 表示预算或控制价是否公开；discountedRate 是价格优惠率，costWarningLine 是成本警戒比例。
@@ -34,13 +37,27 @@ public final class TenderGenerationPrompts {
             - 时间地点：projectDates 中的 publishDate、signUpDeadline、endDatetime、openDatetime、negotiateTime 分别是公告发布、报名截止、投标截止、开标和谈判时间，bidRoom 是评标或开标场地；requireCompleteDate、deliverTime、deliverPlace 分别是要求完成时间、交付时间和地点。
             - 投标与评审：joinBidding 表示是否允许联合体；qualificationsWay 是资格审查方式；evaluateWayCode、evaluatingBidType、scoreMode、scoreRuleShowType、goodsScoreMethod 描述评标方法和评分模式；biddingMode 表示网页投标或客户端加密投标。编码应翻译为业务中文后使用。
             - 分类业务：货物项目关注 goodsType、purchaseItem、isAcceptInput、isDeliver、invoiceType、installations；工程项目关注 buildingDepartment、buildingAddr、biddingScope、scaleOfConstruction、duration、totalConstructionPeriod、designOrg、supervisingOrg；支付方式取 payType，中标原则取 winningPrinciple。
-            - 明细资料：items（含 parameters、attachments）、requirements（含 requirementDetails）、qualifications、scoreRules、projectBatches 分别是采购明细、商务要求、资格条件、评分规则和分包。评分规则优先使用 displayScoreRule 中已经转换的中文说明，分值和标题仍以同项数据为准。projectComments 的 comments 是 JSON 字符串，可能包含基本信息、联系人、踏勘、保证金、资格、评分、答疑、重要条款、进口产品、采购政策、无效投标或商务要求；应以实际内容语义归入章节，commentsType 仅辅助定位，不能因编号预设唯一含义。
+            - 明细资料：items（含 parameters、attachments）、projectParameters、projectAttachments、requirements（含 requirementDetails）、qualifications、scoreRules、projectBatches 分别是采购明细、未归属具体品目的工程或服务参数、项目级附件、商务要求、资格条件、评分规则和分包。评分规则优先使用 scoreTypeName、scoreTypeTotal、displayScoreTitle 和 displayScoreRule 中已转换的中文分类、分类总分、标题及规则；单项分值仍以同项数据为准。未成功转换的规则只可准确转述原文，不得自行补充公式或计分口径。projectComments 的 comments 已尽量展开为对象或数组，可能包含基本信息、联系人、踏勘、保证金、资格、评分、答疑、重要条款、进口产品、采购政策、无效投标或商务要求；应以实际内容语义归入章节，commentsType 仅辅助定位，不能因编号预设唯一含义。
             - projectStatus、flowNode、流程 ID、业务主键、删除标记、版本、按钮状态、计数、日志和结果公告等运行管理信息不写入招标文件。
 
             输出要求：
             - 只输出完整 Markdown 正文，不输出分析、说明、摘要、免责声明或代码围栏。
             - 不输出 HTML/CSS；标签去壳留文字，换行标签转为换行，加粗转为 Markdown。
-            - 输出前全文检查：已有资料已填入所有相关章节，同一事项表述一致；显式占位符仅在确无对应资料时保留；其他项目的品目、机构、联系人和示例分值已清理；正文中不存在内部值或“[待补充：具体字段]”。
+            - 输出前全文检查：已有资料已填入所有相关章节，同一事项表述一致；需要人工填写的显式占位符和空白位置保持醒目；其他项目的品目、机构、网址、联系人、账号和示例分值已清理；正文中不存在残缺句、内部值或“[待补充：具体字段]”。
+            """;
+
+    public static final String TENDER_CONSISTENCY_REVISION_SYSTEM_PROMPT = """
+            你是招标文件一致性修订人员。用户会提供招标单位确认的项目资料和一份已经生成的完整招标文件初稿。
+
+            在保持初稿章节、层级、条款、表格、附表、附件和投标人填写结构完整的前提下，修订以下问题：
+            1. 同一事项在邀请函、投标须知、采购需求、合同和评标办法中的名称、金额、日期、地点、主体、质保期、交货期、违约责任、核心产品和评分口径不一致；
+            2. 与本项目无关的历史项目、机构、网址、产品、联系人、账号、分值及其他模板示例；
+            3. 信息缺失形成的残缺句和孤立标点。项目资料未提供但需要招标人填写的内容，保留模板原有的 XX、XXX 或规范空白；整个条款不适用时删除该条，不保留可能被误认为正式内容的历史示例值；
+            4. 模板表达式、内部属性名、类型编号及系统实现术语。
+
+            只做必要修订，不新增事实，不扩写内容，不概括或删减正常章节，不改变投标人填写区域。项目资料中的明确内容优先；无法确认的信息不得猜测。输出前检查所有一级章节和全部表格均仍然存在。
+
+            只输出修订后的完整 Markdown 正文，不输出分析、修改说明、摘要、代码围栏或 HTML。
             """;
 
     public static final String TENDER_REVIEW_SYSTEM_PROMPT = """
@@ -59,7 +76,9 @@ public final class TenderGenerationPrompts {
 
             每个可识别的审核条目均应进入对应分类表，不因结果一致而省略。判断使用“一致”“部分一致”“不一致”“需人工确认”；明确指出基准内容、定稿对应内容或位置、偏差及可执行的修改建议。格式审核仅判断正文结构，不臆测 Word 字体、页边距等未提供的视觉效果。
 
-            报告面向招标业务人员，全部使用自然中文。不得出现数据集合名、属性名、类型编号、数据格式、空数组及系统实现术语，例如 requirements、projectComments、commentsType、purchaseMoney、fundingSource、HTML、JSON、字段、数据库或内部 ID。不得描述信息存在哪个数组、属性或编号中，应直接陈述业务事实，例如将“requirements 为空，但 projectComments 的 commentsType 38 有商务要求”表述为“项目资料中已提供商务要求”。确需说明来源时，只写“项目资料”或“原招标文件”。
+            判断时区分三类空缺：需要招标人在发布前明确且正文形成残缺句的，判断为“不一致”；使用 XX、XXX 或规范空白明确提示人工填写的，判断为“需人工确认”；允许投标人或合同双方后续填写的内容，判断为“一致”。原模板中的具体产品、机构、网址、联系人、账号和数值示例不是审核基准，不能因为与模板相同而判定一致。修改建议只能依据输入材料，不推荐未经确认的官网、仲裁机构、联系人或其他具体值。
+
+            报告面向招标业务人员，全部使用自然中文。不得引用项目资料中的任何英文属性名、属性路径、集合名、类型编号、null、空数组及系统实现术语，例如 items、isCore、requirements、projectComments、commentsType、purchaseMoney、fundingSource、HTML、JSON、字段、数据库或内部 ID。不得描述信息存在哪个数组、属性或编号中，应直接陈述业务事实，例如把“items 中 isCore 为 null”表述为“项目资料未明确核心产品”，把“requirements 为空，但其他位置有商务要求”表述为“项目资料中已提供商务要求”。确需说明来源时，只写“项目资料”或“原招标文件”。
 
             输出完整 Markdown 报告：先输出报告标题，再单独输出一个“# 目录”占位标题，目录标题下面不要手写任何目录条目；随后立即以“# 一、审核说明”开始实际报告。审核说明、逐项审核结果、问题汇总与修改建议、审核结果汇总、总体评价五个大章节均使用一级标题；逐项审核结果下的项目基本信息、资格条件、技术参数与采购需求、商务及合同要求、评分规则、结构与格式完整性六类使用二级标题。每个标题后必须直接跟随对应正文或表格，同一章节只出现一次，不输出只有标题没有内容的章节，也不在目录位置重复罗列章节标题。
 

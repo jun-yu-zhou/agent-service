@@ -278,6 +278,26 @@ public class ModelConfig {
                 .build();
     }
 
+    /** 对招标文件初稿执行全文一致性修订，使用 Flash 降低第二次长文本调用成本。 */
+    @Bean
+    @Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)
+    public DashScopeChatModel qwen37FlashTenderRevisionModel() {
+        return DashScopeChatModel.builder()
+                .apiKey(AgentServiceConfig.dashScopeApiKey())
+                .modelName(QWEN37_FLASH_MODEL_NAME)
+                .baseUrl(AgentServiceConfig.dashScopeBaseUrl())
+                .endpointType(EndpointType.MULTIMODAL)
+                .httpTransport(newHttpTransport())
+                .stream(true)
+                .enableThinking(false)
+                .defaultOptions(GenerateOptions.builder()
+                        .maxTokens(32768)
+                        .temperature(0.1D)
+                        .executionConfig(longExecutionConfig())
+                        .build())
+                .build();
+    }
+
     /** 根据招标要求和企业资料生成可编辑的投标技术方案目录。 */
     @Bean
     @Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)

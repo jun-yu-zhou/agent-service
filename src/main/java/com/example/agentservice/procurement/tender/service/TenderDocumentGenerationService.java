@@ -37,7 +37,33 @@ public class TenderDocumentGenerationService {
             throw new IllegalStateException("招标文件生成模型未返回有效内容");
         }
         printModelMetrics("招标初稿生成", response, startNanos);
-        return sanitizeHtmlTags(response.getTextContent().trim());
+        String draft = sanitizeHtmlTags(response.getTextContent().trim());
+        return reviseConsistency(draft, projectData);
+    }
+
+    /** 再次通读完整初稿，统一跨章节事实并清理残留的模板示例。 */
+    private String reviseConsistency(String draft, JsonNode projectData) {
+        long startNanos = System.nanoTime();
+        ReActAgent agent = ReActAgent.builder()
+                .name("tender-document-consistency-reviser")
+                .sysPrompt(TenderGenerationPrompts.TENDER_CONSISTENCY_REVISION_SYSTEM_PROMPT)
+                .model(modelConfig.qwen37FlashTenderRevisionModel())
+                .build();
+        Msg response = agent.call(Msg.builder()
+                .role(MsgRole.USER)
+                .textContent(revisionInput(draft, projectData))
+                .build()).block();
+        if (response == null || response.getTextContent() == null || response.getTextContent().isBlank()) {
+            log.warn("招标初稿一致性修订未返回有效内容，保留原初稿");
+            return draft;
+        }
+        printModelMetrics("招标初稿一致性修订", response, startNanos);
+        String revised = sanitizeHtmlTags(response.getTextContent().trim());
+        if (!isSubstantiallyComplete(draft, revised)) {
+            log.warn("招标初稿一致性修订结果明显短于原文，保留原初稿：原文字符数={}，修订字符数={}", draft.length(), revised.length());
+            return draft;
+        }
+        return revised;
     }
 
     /**
@@ -60,6 +86,16 @@ public class TenderDocumentGenerationService {
                     .append(projectData);
         }
         return input.toString();
+    }
+
+    private String revisionInput(String draft, JsonNode projectData) {
+        String projectFacts = projectData == null || projectData.isNull() ? "未提供项目资料" : projectData.toString();
+        return "【项目资料开始】\n" + projectFacts + "\n【项目资料结束】\n\n"
+                + "【完整初稿开始】\n" + draft + "\n【完整初稿结束】";
+    }
+
+    static boolean isSubstantiallyComplete(String draft, String revised) {
+        return revised != null && revised.length() >= draft.length() * 0.8D;
     }
 
     private void printModelMetrics(String stage, Msg response, long startNanos) {
