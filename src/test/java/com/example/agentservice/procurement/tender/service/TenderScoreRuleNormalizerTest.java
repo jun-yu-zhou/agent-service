@@ -3,6 +3,7 @@ package com.example.agentservice.procurement.tender.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -66,6 +67,22 @@ class TenderScoreRuleNormalizerTest {
                 result.get(0).get("displayScoreRule"));
         assertEquals("让利幅度", result.get(1).get("displayScoreTitle"));
         assertEquals("按项目约定公式计算", result.get(1).get("displayScoreRule"));
+    }
+
+    @Test
+    void summarizesScoreGroupsAndConvertsTechnicalParameterRule() {
+        List<Map<String, Object>> normalized = normalizer.normalize(List.of(
+                rule("customRule", "{\"important\":\"Z\",\"child\":[{\"mode\":\"0\",\"value\":\"2\"}]}",
+                        "6", "重要参数", 10),
+                rule("textRule", "服务方案完整", "3", "服务方案", 20)));
+
+        ObjectNode facts = normalizer.summarize(normalized);
+
+        assertEquals("带▲的重要参数每负偏离一项扣2分，扣完为止",
+                normalized.get(0).get("displayScoreRule"));
+        assertEquals(30, facts.path("totalScore").decimalValue().intValue());
+        assertEquals("技术参数", facts.path("groups").get(0).path("name").asText());
+        assertEquals(1, facts.path("groups").get(0).path("itemCount").asInt());
     }
 
     private Map<String, Object> rule(String componentType, String scoreRule) {

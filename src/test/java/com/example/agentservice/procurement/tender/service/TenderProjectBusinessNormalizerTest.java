@@ -29,12 +29,15 @@ class TenderProjectBusinessNormalizerTest {
                 Map.entry("evaluateWayCode", "1"), Map.entry("evaluatingBidType", "1"),
                 Map.entry("isAcceptInput", "0"), Map.entry("fundingSource", "a,b"),
                 Map.entry("purchaseMoney", "550000.00"),
+                Map.entry("discountedRate", "0.2"),
                 Map.entry("openDatetime", LocalDateTime.of(2026, 9, 17, 9, 30)),
                 Map.entry("collegeName", "采购单位"), Map.entry("tendereeAgent", "代理机构"),
-                Map.entry("isAgent", "1")), comments,
+                Map.entry("isAgent", "1"), Map.entry("executorName", "张三"),
+                Map.entry("executorPhone", "13800000000")), comments,
                 List.of(Map.of("csId", "a", "csName", "财政资金"),
                         Map.of("csId", "b", "csName", "自筹资金")),
-                List.of(Map.of("bidRoom", "第一开标室")),
+                List.of(Map.of("bidRoom", "第一开标室",
+                        "publishDate", LocalDateTime.of(2026, 9, 1, 8, 0))),
                 List.of(Map.of("itemName", "学生公寓家具", "isCore", "1")));
 
         assertEquals("竞争性磋商", facts.path("procurementMethodName").asText());
@@ -48,6 +51,13 @@ class TenderProjectBusinessNormalizerTest {
         assertEquals("代理机构", facts.path("projectParties").path("tenderAgent").asText());
         assertEquals("第一开标室", facts.path("openingArrangement").path("openingPlace").asText());
         assertEquals("学生公寓家具", facts.path("coreProduct").path("productNames").get(0).asText());
+        assertEquals("20%", facts.path("discountedRatePercent").asText());
+        assertEquals("张老师", facts.path("projectContacts").get(0).path("name").asText());
+        assertEquals("履约担保", facts.path("supplementaryMaterials").get(0).path("category").asText());
+        assertEquals("2026年09月01日",
+                facts.path("formattedDates").path("publishDate").path("dateOnly").asText());
+        assertEquals("2023年09月",
+                facts.path("formattedDates").path("threeYearsBeforePublish").asText());
     }
 
     private Map<String, Object> comment(String type, String json) throws Exception {

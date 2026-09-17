@@ -31,6 +31,14 @@ class TenderProjectMapperTest {
         assertTrue(sql.contains("TRIM(COMMENTS) <> ''"));
     }
 
+    @Test
+    void businessDetailsUseConfiguredDisplayOrder() throws Exception {
+        for (String method : new String[] { "selectQualifications", "selectScoreRules",
+                "selectComments", "selectRequirements", "selectRequirementDetails" }) {
+            assertTrue(sql(method, String.class).contains("ORDER BY SHOW_ORDER"));
+        }
+    }
+
     /** 读取 Mapper 注解中的 SQL，并折叠空白，避免测试受文本块排版影响。 */
     private String sql(String methodName, Class<?>... parameterTypes) throws Exception {
         Method method = TenderProjectMapper.class.getMethod(methodName, parameterTypes);
