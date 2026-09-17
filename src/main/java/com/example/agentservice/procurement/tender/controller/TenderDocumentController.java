@@ -46,7 +46,7 @@ public class TenderDocumentController {
     }
 
     @PostMapping("/tasks")
-    @Operation(summary = "根据项目创建招标初稿任务", description = "按旧业务项目 ID 读取项目资料和 HTML 模板，异步生成初稿。")
+    @Operation(summary = "根据项目创建招标初稿任务", description = "按业务项目 ID 读取项目资料和 HTML 模板，异步生成初稿。")
     public R<DocumentGenerationTask> createTask(@RequestBody TenderProjectTaskRequest request) {
         return R.success(taskService.submitProject(request.id()));
     }
@@ -68,7 +68,7 @@ public class TenderDocumentController {
     }
 
     @PostMapping("/tasks/{taskId}/versions")
-    @Operation(summary = "保存人工编辑内容", description = "用完整 Markdown 覆盖当前正文；不会自动调用模型。")
+    @Operation(summary = "保存人工编辑内容", description = "用完整 Markdown 覆盖当前正文。")
     public R<DocumentVersion> saveManualVersion(
             @PathVariable String taskId, @RequestBody TenderManualVersionRequest request) {
         return taskService.saveManualVersion(taskId, request.markdown())

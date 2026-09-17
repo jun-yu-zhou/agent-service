@@ -11,8 +11,12 @@ import org.apache.ibatis.annotations.Select;
 public interface BidSupplierFactsMapper {
 
     /** 查询项目最近更新的批次及其状态，供后续响应资料定位。 */
-    @Select("SELECT ZB_PROJECT_BATCH_ID AS batchId, BATCH_STATUS AS batchStatus FROM zb_project_batch "
-            + "WHERE ZB_PROJECT_ID = #{projectId} ORDER BY LAST_UPDATE_TIME DESC LIMIT 1")
+    @Select("""
+            SELECT ZB_PROJECT_BATCH_ID AS batchId, BATCH_STATUS AS batchStatus
+            FROM zb_project_batch
+            WHERE ZB_PROJECT_ID = #{projectId}
+            ORDER BY LAST_UPDATE_TIME DESC LIMIT 1
+            """)
     Map<String, Object> latestBatch(@Param("projectId") String projectId);
 
     /** 查询企业在指定项目批次的最新基础响应，包括报价、账户和人员信息。 */
