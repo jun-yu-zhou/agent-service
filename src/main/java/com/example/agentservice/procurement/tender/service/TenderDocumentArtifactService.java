@@ -23,14 +23,15 @@ public class TenderDocumentArtifactService {
     }
 
     public Optional<ExportedDocument> export(String taskId, String versionId) throws IOException {
-        var optional = documentStore.findByTaskId(taskId);
+        var optional = documentStore.findDocumentContent(taskId);
         if (optional.isEmpty()) return Optional.empty();
         var document = optional.get();
         if (!versionId.equals(document.getId())) return Optional.empty();
         if (!Boolean.TRUE.equals(document.getFinalized())) throw new IllegalStateException("仅已确认定稿版本可导出产物");
         byte[] content = docxRenderer.render(document.getDocumentMarkdown());
         return Optional.of(new ExportedDocument(
-                "招标文件_V" + document.getContentRevision() + ".docx",
+                // 导出文件名
+                "招标文件.docx",
                 DOCX_CONTENT_TYPE, content));
     }
 

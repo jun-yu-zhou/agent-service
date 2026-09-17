@@ -23,7 +23,7 @@ public class TenderReviewArtifactService {
     }
 
     public Optional<ExportedReview> export(String taskId, String versionId) throws IOException {
-        var optional = documentStore.findByTaskId(taskId);
+        var optional = documentStore.findReview(taskId);
         if (optional.isEmpty() || !versionId.equals(optional.get().getId())) return Optional.empty();
         var document = optional.get();
         if (!TenderReviewStatus.COMPLETED.name().equals(document.getReviewStatus())

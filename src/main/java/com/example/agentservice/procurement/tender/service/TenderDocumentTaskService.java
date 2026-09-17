@@ -39,11 +39,13 @@ public class TenderDocumentTaskService {
 
     /** 根据旧业务项目 ID 自动读取模板和项目资料后创建生成任务。 */
     public DocumentGenerationTask submitProject(String projectId) {
+        // 从数据库读取项目资料和模板 ID
         TenderProjectDataService.GenerationInput input = projectDataService.load(projectId);
         String taskId = UUID.randomUUID().toString();
         Instant now = Instant.now();
         DocumentGenerationTask task = snapshot(
                 taskId, GenerationTaskStatus.PENDING, "等待生成", null, now, now);
+        // 创建数据库记录
         documentStore.create(taskId, projectId, input.templateId(), input.projectData());
         executor.execute(() -> generateDatabase(taskId, input.templateHtml(), input.projectData()));
         return task;
@@ -51,18 +53,18 @@ public class TenderDocumentTaskService {
 
     /** 从数据库查询任务状态，供前端轮询生成进度。 */
     public Optional<DocumentGenerationTask> findTask(String taskId) {
-        return documentStore.findByTaskId(taskId).map(this::taskSnapshot);
+        return documentStore.findTaskState(taskId).map(this::taskSnapshot);
     }
 
     /** 从数据库的同一条记录读取任务状态和当前最新正文。 */
     public Optional<TaskSnapshot> findSnapshot(String taskId) {
-        return documentStore.findByTaskId(taskId)
+        return documentStore.findDocumentContent(taskId)
                 .map(document -> new TaskSnapshot(taskSnapshot(document), document.getDocumentMarkdown()));
     }
 
     /** 返回数据库中的当前正文，保持前端原有版本列表响应结构。 */
     public Optional<List<DocumentVersionSnapshot>> findVersions(String taskId) {
-        return documentStore.findByTaskId(taskId).map(document -> List.of(new DocumentVersionSnapshot(
+        return documentStore.findDocumentContent(taskId).map(document -> List.of(new DocumentVersionSnapshot(
                 currentVersion(document), document.getDocumentMarkdown())));
     }
 
@@ -72,7 +74,7 @@ public class TenderDocumentTaskService {
             throw new IllegalArgumentException("人工编辑后的招标文件不能为空");
         }
         synchronized (lock(taskId)) {
-            Optional<TenderDocumentEntity> optional = documentStore.findByTaskId(taskId);
+            Optional<TenderDocumentEntity> optional = documentStore.findDocumentContent(taskId);
             if (optional.isEmpty()) return Optional.empty();
             TenderDocumentEntity document = optional.get();
             if (document.getDocumentMarkdown() == null || document.getDocumentMarkdown().isBlank()) {
@@ -89,7 +91,7 @@ public class TenderDocumentTaskService {
     /** 将指定的已保存版本确认为当前任务的定稿版本。 */
     public Optional<DocumentVersion> finalizeVersion(String taskId, String versionId) {
         synchronized (lock(taskId)) {
-            Optional<TenderDocumentEntity> optional = documentStore.findByTaskId(taskId);
+            Optional<TenderDocumentEntity> optional = documentStore.findDocumentContent(taskId);
             if (optional.isEmpty() || !versionId.equals(optional.get().getId())) return Optional.empty();
             TenderDocumentEntity document = optional.get();
             if (document.getDocumentMarkdown() == null || document.getDocumentMarkdown().isBlank()) {
