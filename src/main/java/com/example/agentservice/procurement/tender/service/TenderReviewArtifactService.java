@@ -33,7 +33,7 @@ public class TenderReviewArtifactService {
 
         byte[] content = docxRenderer.render(document.getReviewReport());
         return Optional.of(new ExportedReview(
-                "招标文件审核报告_V" + document.getContentRevision() + ".docx",
+                "招标文件审核报告.docx",
                 DOCX_CONTENT_TYPE, content));
     }
 
