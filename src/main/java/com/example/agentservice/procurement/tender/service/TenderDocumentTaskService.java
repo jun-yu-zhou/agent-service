@@ -73,35 +73,35 @@ public class TenderDocumentTaskService {
         if (markdown == null || markdown.isBlank()) {
             throw new IllegalArgumentException("人工编辑后的招标文件不能为空");
         }
-        synchronized (lock(taskId)) {
-            Optional<TenderDocumentEntity> optional = documentStore.findByTaskId(taskId);
-            if (optional.isEmpty()) return Optional.empty();
-            TenderDocumentEntity document = optional.get();
-            if (document.getDocumentMarkdown() == null || document.getDocumentMarkdown().isBlank()) {
-                throw new IllegalStateException("初稿尚未生成完成，不能保存人工版本");
-            }
-            if (!GenerationTaskStatus.COMPLETED.name().equals(document.getGenerationStatus())) {
-                throw new IllegalStateException("当前任务状态不能保存人工版本: " + document.getGenerationStatus());
-            }
-            return documentStore.saveMarkdown(taskId, markdown.trim()).map(saved -> new DocumentVersion(
-                    saved.getId(), saved.getTaskId(), saved.getContentRevision(), "MANUAL_EDIT", false));
+        Optional<TenderDocumentEntity> optional = documentStore.findByTaskId(taskId);
+        if (optional.isEmpty()) return Optional.empty();
+        TenderDocumentEntity document = optional.get();
+        if (document.getDocumentMarkdown() == null || document.getDocumentMarkdown().isBlank()) {
+            throw new IllegalStateException("初稿尚未生成完成，不能保存人工版本");
         }
+        if (!GenerationTaskStatus.COMPLETED.name().equals(document.getGenerationStatus())) {
+            throw new IllegalStateException("当前任务状态不能保存人工版本: " + document.getGenerationStatus());
+        }
+        int revision = currentRevision(document);
+        TenderDocumentEntity saved = documentStore.saveMarkdown(taskId, revision,
+                        Boolean.TRUE.equals(document.getFinalized()), markdown.trim())
+                .orElseThrow(TenderDocumentTaskService::concurrentModification);
+        return Optional.of(new DocumentVersion(
+                saved.getId(), saved.getTaskId(), saved.getContentRevision(), "MANUAL_EDIT", false));
     }
 
     /** 将指定的已保存版本确认为当前任务的定稿版本。 */
     public Optional<DocumentVersion> finalizeVersion(String taskId, String versionId) {
-        synchronized (lock(taskId)) {
-            Optional<TenderDocumentEntity> optional = documentStore.findByTaskId(taskId);
-            if (optional.isEmpty() || !versionId.equals(optional.get().getId())) return Optional.empty();
-            TenderDocumentEntity document = optional.get();
-            if (document.getDocumentMarkdown() == null || document.getDocumentMarkdown().isBlank()) {
-                throw new IllegalStateException("招标文件正文为空，不能确认定稿");
-            }
-            return documentStore.finalizeDocument(taskId).map(saved -> {
-                reviewTaskService.start(taskId, versionId);
-                return currentVersion(saved);
-            });
+        Optional<TenderDocumentEntity> optional = documentStore.findByTaskId(taskId);
+        if (optional.isEmpty() || !versionId.equals(optional.get().getId())) return Optional.empty();
+        TenderDocumentEntity document = optional.get();
+        if (document.getDocumentMarkdown() == null || document.getDocumentMarkdown().isBlank()) {
+            throw new IllegalStateException("招标文件正文为空，不能确认定稿");
         }
+        TenderDocumentEntity saved = documentStore.finalizeDocument(taskId, currentRevision(document))
+                .orElseThrow(TenderDocumentTaskService::concurrentModification);
+        reviewTaskService.start(taskId, versionId);
+        return Optional.of(currentVersion(saved));
     }
 
     /** 旧项目入口生成的正文和状态直接写入数据库。 */
@@ -135,7 +135,7 @@ public class TenderDocumentTaskService {
     }
 
     private DocumentVersion currentVersion(TenderDocumentEntity document) {
-        int revision = document.getContentRevision() == null ? 0 : document.getContentRevision();
+        int revision = currentRevision(document);
         return new DocumentVersion(
                 document.getId(),
                 document.getTaskId(),
@@ -148,13 +148,12 @@ public class TenderDocumentTaskService {
         return value == null ? null : value.atZone(ZoneId.systemDefault()).toInstant();
     }
 
-    /**
-     * 同一任务的状态读写串行化。
-     *
-     * <p>字符串驻留让相同 taskId 取得同一个锁对象；这是进程内互斥，多实例部署时需要换成分布式锁。</p>
-     */
-    private Object lock(String taskId) {
-        return ("procurement:tender:" + taskId).intern();
+    private int currentRevision(TenderDocumentEntity document) {
+        return document.getContentRevision() == null ? 0 : document.getContentRevision();
+    }
+
+    private static IllegalStateException concurrentModification() {
+        return new IllegalStateException("招标文件已被其他操作修改，请刷新后重试");
     }
 
     /** 任务状态与初稿正文的组合视图，供接口一次返回。 */

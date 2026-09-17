@@ -37,21 +37,21 @@ public class TenderReviewTaskService {
 
     /** 定稿后异步启动审核；正在审核或已经完成时不重复提交。 */
     public Optional<TenderReviewSnapshot> start(String taskId, String versionId) {
-        synchronized (lock(taskId, versionId)) {
-            var optional = current(taskId, versionId);
-            if (optional.isEmpty()) return Optional.empty();
-            TenderDocumentEntity document = optional.get();
-            if (!Boolean.TRUE.equals(document.getFinalized())) {
-                throw new IllegalStateException("仅已确认定稿版本可以生成审核报告");
-            }
-            if (TenderReviewStatus.REVIEWING.name().equals(document.getReviewStatus())
-                    || TenderReviewStatus.COMPLETED.name().equals(document.getReviewStatus())) {
-                return Optional.of(snapshot(document));
-            }
-            documentStore.updateReview(taskId, TenderReviewStatus.PENDING.name(), "等待审核", null, null);
-            executor.execute(() -> review(taskId));
-            return documentStore.findByTaskId(taskId).map(this::snapshot);
+        var optional = current(taskId, versionId);
+        if (optional.isEmpty()) return Optional.empty();
+        TenderDocumentEntity document = optional.get();
+        if (!Boolean.TRUE.equals(document.getFinalized())) {
+            throw new IllegalStateException("仅已确认定稿版本可以生成审核报告");
         }
+        if (TenderReviewStatus.REVIEWING.name().equals(document.getReviewStatus())
+                || TenderReviewStatus.COMPLETED.name().equals(document.getReviewStatus())) {
+            return Optional.of(snapshot(document));
+        }
+        int revision = currentRevision(document);
+        if (documentStore.beginReview(taskId, revision, TenderReviewStatus.PENDING.name())) {
+            executor.execute(() -> review(taskId, revision));
+        }
+        return documentStore.findByTaskId(taskId).map(this::snapshot);
     }
 
     public Optional<TenderReviewSnapshot> find(String taskId, String versionId) {
@@ -65,21 +65,30 @@ public class TenderReviewTaskService {
         if (!TenderReviewStatus.FAILED.name().equals(optional.get().getReviewStatus())) {
             throw new IllegalStateException("仅审核失败的报告可以重试");
         }
-        documentStore.updateReview(taskId, TenderReviewStatus.PENDING.name(), "等待重新审核", null, null);
-        executor.execute(() -> review(taskId));
+        TenderDocumentEntity document = optional.get();
+        int revision = currentRevision(document);
+        if (documentStore.beginReview(taskId, revision, TenderReviewStatus.FAILED.name())) {
+            executor.execute(() -> review(taskId, revision));
+        }
         return documentStore.findByTaskId(taskId).map(this::snapshot);
     }
 
-    private void review(String taskId) {
+    private void review(String taskId, int revision) {
         try {
-            documentStore.updateReview(taskId, TenderReviewStatus.REVIEWING.name(), "正在生成审核报告", null, null);
             TenderDocumentEntity document = documentStore.findByTaskId(taskId).orElseThrow();
+            if (!Boolean.TRUE.equals(document.getFinalized())
+                    || document.getContentRevision() == null
+                    || document.getContentRevision() != revision
+                    || document.getReviewRevision() == null
+                    || document.getReviewRevision() != revision) {
+                return;
+            }
             String templateHtml = projectMapper.selectTemplateHtml(document.getTemplateId());
             String report = reviewService.review(
                     templateHtml, objectMapper.readTree(document.getProjectData()), document.getDocumentMarkdown());
-            documentStore.updateReview(taskId, TenderReviewStatus.COMPLETED.name(), "审核报告已生成", report, null);
+            documentStore.completeReview(taskId, revision, report);
         } catch (Exception exception) {
-            documentStore.updateReview(taskId, TenderReviewStatus.FAILED.name(), "审核失败", null, exception.getMessage());
+            documentStore.failReview(taskId, revision, exception.getMessage());
         }
     }
 
@@ -100,7 +109,8 @@ public class TenderReviewTaskService {
         return value == null ? Instant.now() : value.atZone(ZoneId.systemDefault()).toInstant();
     }
 
-    private Object lock(String taskId, String versionId) {
-        return ("procurement:tender-review:" + taskId + ":" + versionId).intern();
+    private int currentRevision(TenderDocumentEntity document) {
+        return document.getContentRevision() == null ? 0 : document.getContentRevision();
     }
+
 }
