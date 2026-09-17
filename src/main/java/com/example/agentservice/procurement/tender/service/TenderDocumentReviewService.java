@@ -7,29 +7,12 @@ import io.agentscope.core.ReActAgent;
 import io.agentscope.core.message.Msg;
 import io.agentscope.core.message.MsgRole;
 import lombok.extern.slf4j.Slf4j;
-import java.util.Map;
 import org.springframework.stereotype.Service;
 
 /** 对照原始模板和项目数据生成招标文件定稿审核报告。 */
 @Service
 @Slf4j
 public class TenderDocumentReviewService {
-
-    /** 模型偶尔会照抄输入属性名，返回前统一转换成业务人员可读的中文。 */
-    private static final Map<String, String> BUSINESS_TERMS = Map.ofEntries(
-            Map.entry("technicalRequirementFacts", "技术要求"),
-            Map.entry("commercialRequirementFacts", "商务要求"),
-            Map.entry("projectComments", "项目补充资料"),
-            Map.entry("commentsType", "资料类别"),
-            Map.entry("purchaseMoney", "采购预算"),
-            Map.entry("fundingSource", "资金来源"),
-            Map.entry("documentFacts", "项目事实"),
-            Map.entry("requirements", "商务要求"),
-            Map.entry("isCore", "核心产品标识"),
-            Map.entry("items", "采购清单"),
-            Map.entry("null", "未明确"),
-            Map.entry("HTML模板", "原招标文件"),
-            Map.entry("JSON数据", "项目资料"));
 
     private final ModelConfig modelConfig;
 
@@ -66,15 +49,7 @@ public class TenderDocumentReviewService {
             throw new IllegalStateException("招标文件审核模型未返回有效报告");
         }
         printModelMetrics(response, startNanos);
-        return sanitizeBusinessTerms(response.getTextContent().trim());
-    }
-
-    static String sanitizeBusinessTerms(String report) {
-        String result = report;
-        for (Map.Entry<String, String> term : BUSINESS_TERMS.entrySet()) {
-            result = result.replace(term.getKey(), term.getValue());
-        }
-        return result;
+        return response.getTextContent().trim();
     }
 
     private void printModelMetrics(Msg response, long startNanos) {

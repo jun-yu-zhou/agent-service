@@ -3,6 +3,8 @@ package com.example.agentservice.procurement.tender.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -47,6 +49,25 @@ public class TenderScoreRuleNormalizer {
         return scoreRules.stream().map(rule -> normalize(rule, totals)).toList();
     }
 
+    /** 按评分分类生成汇总视图，供模型直接编制完整的评标办法。 */
+    public ObjectNode summarize(List<Map<String, Object>> scoreRules) {
+        ObjectNode facts = objectMapper.createObjectNode();
+        ArrayNode groups = facts.putArray("groups");
+        scoreRules.stream().collect(Collectors.groupingBy(
+                rule -> text(rule.get("scoreType")), LinkedHashMap::new, Collectors.toList()))
+                .forEach((type, rules) -> {
+                    ObjectNode group = groups.addObject();
+                    group.put("name", SCORE_TYPES.getOrDefault(type, "其他评分"));
+                    group.put("totalScore", rules.stream().map(rule -> decimal(rule.get("totalScore")))
+                            .reduce(BigDecimal.ZERO, BigDecimal::add));
+                    group.put("itemCount", rules.size());
+                    group.set("rules", objectMapper.valueToTree(rules));
+                });
+        facts.put("totalScore", scoreRules.stream().map(rule -> decimal(rule.get("totalScore")))
+                .reduce(BigDecimal.ZERO, BigDecimal::add));
+        return facts;
+    }
+
     private Map<String, Object> normalize(
             Map<String, Object> scoreRule, Map<String, BigDecimal> totals) {
         Map<String, Object> result = new LinkedHashMap<>(scoreRule);
@@ -72,6 +93,10 @@ public class TenderScoreRuleNormalizer {
         String componentType = text(scoreRule.get("componentType"));
         String rawRule = text(scoreRule.get("scoreRule"));
         try {
+            if ("6".equals(text(scoreRule.get("scoreType")))
+                    && !List.of("Y", "Z", "N").contains(componentType)) {
+                return technicalParameterRule(rawRule);
+            }
             return switch (componentType) {
                 case "deviationRule" -> deviationRule(rawRule);
                 case "multiAccordRule" -> multiAccordRule(rawRule);
@@ -89,6 +114,24 @@ public class TenderScoreRuleNormalizer {
         catch (Exception exception) {
             return rawRule;
         }
+    }
+
+    private String technicalParameterRule(String rawRule) throws JsonProcessingException {
+        if (rawRule.isBlank()) {
+            return "";
+        }
+        JsonNode root = objectMapper.readTree(rawRule);
+        String importance = root.path("important").asText();
+        if ("Y".equals(importance)) {
+            return "带★的参数不允许负偏离，负偏离时按无效响应处理";
+        }
+        String level = "Z".equals(importance) ? "带▲的重要参数" : "一般参数";
+        for (JsonNode child : root.path("child")) {
+            if ("0".equals(child.path("mode").asText()) && !child.path("value").asText().isBlank()) {
+                return level + "每负偏离一项扣" + child.path("value").asText() + "分，扣完为止";
+            }
+        }
+        return parameterRule("Z".equals(importance) ? "重要参数" : "一般参数", rawRule);
     }
 
     private String priceRule(String priceType, String rawRule) {

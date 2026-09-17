@@ -36,23 +36,23 @@ public interface TenderProjectMapper extends BaseMapper<TenderProjectEntity> {
     List<Map<String, Object>> selectAttachments(@Param("id") String projectId);
 
     /** 查询投标人的资格条件。 */
-    @Select("SELECT * FROM zb_qualification WHERE ZB_PROJECT_ID = #{id} AND DEL_FLAG = '1'")
+    @Select("SELECT * FROM zb_qualification WHERE ZB_PROJECT_ID = #{id} AND DEL_FLAG = '1' ORDER BY SHOW_ORDER")
     List<Map<String, Object>> selectQualifications(@Param("id") String projectId);
 
     /** 查询评标方法下配置的评分项、分值和评分规则。 */
-    @Select("SELECT * FROM zb_score_rule WHERE ZB_PROJECT_ID = #{id} AND DEL_FLAG = '1'")
+    @Select("SELECT * FROM zb_score_rule WHERE ZB_PROJECT_ID = #{id} AND DEL_FLAG = '1' ORDER BY SHOW_ORDER")
     List<Map<String, Object>> selectScoreRules(@Param("id") String projectId);
 
     /** 查询项目各业务页签保存的补充内容。 */
-    @Select("SELECT * FROM zb_project_comments WHERE ZB_PROJECT_ID = #{id} AND DEL_FLAG = '1'")
+    @Select("SELECT * FROM zb_project_comments WHERE ZB_PROJECT_ID = #{id} AND DEL_FLAG = '1' ORDER BY SHOW_ORDER")
     List<Map<String, Object>> selectComments(@Param("id") String projectId);
 
     /** 查询项目商务和履约要求。 */
-    @Select("SELECT * FROM zb_requirement WHERE ZB_PROJECT_ID = #{id} AND DEL_FLAG = '1'")
+    @Select("SELECT * FROM zb_requirement WHERE ZB_PROJECT_ID = #{id} AND DEL_FLAG = '1' ORDER BY SHOW_ORDER")
     List<Map<String, Object>> selectRequirements(@Param("id") String projectId);
 
     /** 查询商务和履约要求包含的明细条目。 */
-    @Select("SELECT * FROM zb_requirement_detail WHERE ZB_PROJECT_ID = #{id} AND DEL_FLAG = '1'")
+    @Select("SELECT * FROM zb_requirement_detail WHERE ZB_PROJECT_ID = #{id} AND DEL_FLAG = '1' ORDER BY SHOW_ORDER")
     List<Map<String, Object>> selectRequirementDetails(@Param("id") String projectId);
 
     /** 查询采购单位配置的有效资金来源，用于把项目中的资金来源 ID 转成中文名称。 */

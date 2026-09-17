@@ -83,8 +83,10 @@ public class TenderProjectDataService {
         // 投标人资格条件
         data.set("qualifications", tree(mapper.selectQualifications(projectId)));
         // 评分项、分值与评分规则（补充可读的规则说明）
-        data.set("scoreRules", objectMapper.valueToTree(scoreRuleNormalizer.normalize(
-                normalize(mapper.selectScoreRules(projectId)))));
+        List<Map<String, Object>> scoreRules = scoreRuleNormalizer.normalize(
+                normalize(mapper.selectScoreRules(projectId)));
+        data.set("scoreRules", objectMapper.valueToTree(scoreRules));
+        data.set("scoreRuleFacts", scoreRuleNormalizer.summarize(scoreRules));
         // 各业务页签保存的补充内容
         List<Map<String, Object>> comments = projectComments(projectId);
         data.set("projectComments", objectMapper.valueToTree(comments));

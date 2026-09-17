@@ -24,6 +24,7 @@ public class TenderProjectBusinessNormalizer {
     /** 招标文件中统一使用的日期格式。 */
     private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("yyyy年MM月dd日");
     private static final DateTimeFormatter DATE_TIME = DateTimeFormatter.ofPattern("yyyy年MM月dd日 HH:mm:ss");
+    private static final DateTimeFormatter YEAR_MONTH = DateTimeFormatter.ofPattern("yyyy年MM月");
 
     /** 业务库的项目类型、采购方式编码。 */
     private static final Map<String, String> PROJECT_TYPES =
@@ -31,6 +32,18 @@ public class TenderProjectBusinessNormalizer {
     private static final Map<String, String> PROCUREMENT_METHODS = Map.of(
             "1", "校内招标", "2", "邀请招标", "3", "单一来源",
             "4", "竞争性谈判", "5", "竞争性磋商", "6", "询价");
+    private static final Map<String, String> COMMENT_TYPES = Map.ofEntries(
+            Map.entry("0", "基本信息"), Map.entry("1", "采购清单"),
+            Map.entry("2", "现场踏勘"), Map.entry("3", "投标担保"),
+            Map.entry("4", "履约担保"), Map.entry("5", "资格要求"),
+            Map.entry("6", "评标方法"), Map.entry("7", "招标答疑"),
+            Map.entry("8", "招标文件"), Map.entry("9", "开标安排"),
+            Map.entry("10", "公告要求"), Map.entry("11", "招标代理"),
+            Map.entry("12", "企业资质"), Map.entry("13", "人员资质"),
+            Map.entry("14", "最高限价"), Map.entry("15", "工程量清单"),
+            Map.entry("17", "成本警戒线"), Map.entry("18", "施工图纸"),
+            Map.entry("19", "主要材料品牌"), Map.entry("20", "投标承诺"),
+            Map.entry("38", "实质性响应条款"), Map.entry("47", "中小企业政策"));
 
     private final ObjectMapper objectMapper;
 
@@ -44,6 +57,8 @@ public class TenderProjectBusinessNormalizer {
      * @param project 已转换为 camelCase 的项目主表数据
      * @param comments 已将 JSON 正文展开的项目补充资料
      * @param capitalSources 采购单位配置的资金来源
+     * @param projectDates 公告、报名、投标、开标等项目时间
+     * @param items 采购品目及其核心产品标记
      * @return 中文化、格式化后的业务事实
      */
     public ObjectNode normalize(Map<String, Object> project, List<Map<String, Object>> comments,
@@ -58,8 +73,10 @@ public class TenderProjectBusinessNormalizer {
         put(facts, "acceptImportedProducts", accepted(project.get("isAcceptInput")));
         put(facts, "fundingSourceName", fundingSource(project.get("fundingSource"), capitalSources));
         put(facts, "purchaseMoneyUppercase", uppercaseMoney(project.get("purchaseMoney")));
-        facts.set("formattedDates", formattedDates(project));
+        put(facts, "discountedRatePercent", percentage(project.get("discountedRate")));
+        facts.set("formattedDates", formattedDates(project, projectDates));
         facts.set("projectParties", projectParties(project));
+        facts.set("projectContacts", projectContacts(project));
         facts.set("openingArrangement", openingArrangement(project, projectDates));
         facts.set("coreProduct", coreProduct(items));
         facts.set("performanceGuarantee", performance(comment(comments, "4")));
@@ -68,6 +85,7 @@ public class TenderProjectBusinessNormalizer {
         if (company != null) {
             put(facts, "companyType", company.path("companyType").asText());
         }
+        facts.set("supplementaryMaterials", supplementaryMaterials(comments));
         return facts;
     }
 
@@ -126,19 +144,71 @@ public class TenderProjectBusinessNormalizer {
                 .findFirst().orElse(null);
     }
 
-    private ObjectNode formattedDates(Map<String, Object> project) {
+    private ObjectNode formattedDates(Map<String, Object> project,
+            List<Map<String, Object>> projectDates) {
         ObjectNode dates = objectMapper.createObjectNode();
+        LocalDateTime now = LocalDateTime.now();
+        dates.put("currentDateTime", DATE_TIME.format(now));
+        dates.put("currentDate", DATE.format(now));
+        dates.put("currentYearMonth", YEAR_MONTH.format(now));
         Map.of("publishDate", "公告发布时间", "signUpDeadline", "报名截止时间",
                 "endDatetime", "投标截止时间", "openDatetime", "开标时间")
                 .forEach((field, label) -> {
-                    String value = formatDate(project.get(field));
+                    Object raw = first(project, projectDates, field);
+                    String value = formatDate(raw);
                     if (!value.isBlank()) {
                         ObjectNode date = dates.putObject(field);
                         date.put("label", label);
                         date.put("value", value);
+                        put(date, "dateOnly", formatDateOnly(raw));
                     }
                 });
+        Object publishDate = first(project, projectDates, "publishDate");
+        if (publishDate instanceof LocalDateTime value) {
+            dates.put("threeYearsBeforePublish", YEAR_MONTH.format(value.minusYears(3)));
+        }
+        else if (publishDate instanceof LocalDate value) {
+            dates.put("threeYearsBeforePublish", YEAR_MONTH.format(value.minusYears(3)));
+        }
         return dates;
+    }
+
+    /** 将项目主体中的联系人按职责整理，避免模型混用不同角色。 */
+    private ArrayNode projectContacts(Map<String, Object> project) {
+        ArrayNode contacts = objectMapper.createArrayNode();
+        addContact(contacts, project, "招标联系人", "tendereeLinkman", "tendereePhone", "tendereeMail");
+        addContact(contacts, project, "项目经办人", "executorName", "executorPhone", "executorEmail");
+        addContact(contacts, project, "项目负责人", "projectLeaderName", "projectLeaderPhone", "projectLeaderMail");
+        addContact(contacts, project, "项目审核人", "purchaseApproverName", "purchaseApproverPhone", "purchaseApproverMail");
+        addContact(contacts, project, "资格审核人", "qualificationPersonName", "", "");
+        return contacts;
+    }
+
+    private void addContact(ArrayNode contacts, Map<String, Object> project, String role,
+            String nameField, String phoneField, String emailField) {
+        String name = text(project.get(nameField));
+        String phone = phoneField.isBlank() ? "" : text(project.get(phoneField));
+        String email = emailField.isBlank() ? "" : text(project.get(emailField));
+        if (name.isBlank() && phone.isBlank() && email.isBlank()) {
+            return;
+        }
+        ObjectNode contact = contacts.addObject();
+        contact.put("role", role);
+        put(contact, "name", "项目经办人".equals(role) ? teacherName(name) : name);
+        put(contact, "phone", phone);
+        put(contact, "email", email);
+    }
+
+    /** 为已解析的补充资料补充中文业务分类，未知类型仍保留原始内容。 */
+    private ArrayNode supplementaryMaterials(List<Map<String, Object>> comments) {
+        ArrayNode result = objectMapper.createArrayNode();
+        comments.forEach(comment -> {
+            ObjectNode material = result.addObject();
+            String type = text(comment.get("commentsType"));
+            material.put("category", COMMENT_TYPES.getOrDefault(type, "其他补充资料"));
+            material.set("content", objectMapper.valueToTree(comment.get("comments")));
+        });
+        return result;
     }
 
     /** commentsType=4：提取履约担保是否启用、比例、要求和退还说明。 */
@@ -202,6 +272,16 @@ public class TenderProjectBusinessNormalizer {
         }
     }
 
+    private String percentage(Object value) {
+        try {
+            return new BigDecimal(text(value)).multiply(BigDecimal.valueOf(100))
+                    .stripTrailingZeros().toPlainString() + "%";
+        }
+        catch (NumberFormatException ignored) {
+            return "";
+        }
+    }
+
     /** 兼容 MyBatis 常见的日期返回类型；历史文本日期保持原值。 */
     private String formatDate(Object value) {
         if (value instanceof LocalDateTime dateTime) {
@@ -214,6 +294,23 @@ public class TenderProjectBusinessNormalizer {
             return DATE_TIME.format(timestamp.toLocalDateTime());
         }
         return value == null ? "" : text(value);
+    }
+
+    private String formatDateOnly(Object value) {
+        if (value instanceof LocalDateTime dateTime) {
+            return DATE.format(dateTime);
+        }
+        if (value instanceof LocalDate date) {
+            return DATE.format(date);
+        }
+        if (value instanceof Timestamp timestamp) {
+            return DATE.format(timestamp.toLocalDateTime());
+        }
+        return "";
+    }
+
+    private String teacherName(String name) {
+        return name.isBlank() ? "" : name.substring(0, 1) + "老师";
     }
 
     /** 评标方法编码：1 为综合评分法，2 为最低评标价法。 */

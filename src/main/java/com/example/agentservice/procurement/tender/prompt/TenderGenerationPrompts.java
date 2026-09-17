@@ -27,7 +27,7 @@ public final class TenderGenerationPrompts {
             - Y/N、true/false、类型编号等内部值应转换为“是/否”或相应业务含义，不能原样出现在正文。能够由明确分值相加得到的合计直接计算；信息不足时留空，不输出“[待补充：具体字段]”。
 
             数据说明：
-            - documentFacts 是已完成编码转换和业务整理的招标文件事实，生成正文时优先使用；其中包含中文项目类型、采购方式、评标方式、资金来源、金额大写、标准日期、项目主体、开标安排、核心产品、履约担保、实质性条款和企业类型。原始项目资料与其冲突时，以 documentFacts 为准。
+            - documentFacts 是已完成编码转换和业务整理的招标文件事实，生成正文时优先使用；其中包含中文项目类型、采购方式、评标方式、资金来源、金额大写、优惠率、标准日期、项目主体、各角色联系人、开标安排、核心产品、履约担保、实质性条款、企业类型及按业务分类的补充资料。原始项目资料与其冲突时，以 documentFacts 为准。
             - technicalRequirementFacts 和 commercialRequirementFacts 分别是技术参数与商务要求的分组结果；substantive、important、general 对应实质性、重要和一般要求。条目中的 importanceMark、importanceName、requiresEvidence 和 displayContent 已完成 ★/▲、中文等级、证明材料及展示内容转换，应保持这些标记与评分规则一致。
             - 项目标识：projectName 是项目名称；projectCode 是用户填写的项目编号；zbProjectCode 是系统生成的招标编号，按模板标题含义分别使用。
             - 类型与方式：projectType 的 1/2/3 为货物/工程/服务；classifyCode 的 1—6 为校内招标、邀请招标、单一来源、竞争性谈判、竞争性磋商、询价；purchaseWayCode 是采购方式补充信息。
@@ -37,7 +37,7 @@ public final class TenderGenerationPrompts {
             - 时间地点：projectDates 中的 publishDate、signUpDeadline、endDatetime、openDatetime、negotiateTime 分别是公告发布、报名截止、投标截止、开标和谈判时间，bidRoom 是评标或开标场地；requireCompleteDate、deliverTime、deliverPlace 分别是要求完成时间、交付时间和地点。
             - 投标与评审：joinBidding 表示是否允许联合体；qualificationsWay 是资格审查方式；evaluateWayCode、evaluatingBidType、scoreMode、scoreRuleShowType、goodsScoreMethod 描述评标方法和评分模式；biddingMode 表示网页投标或客户端加密投标。编码应翻译为业务中文后使用。
             - 分类业务：货物项目关注 goodsType、purchaseItem、isAcceptInput、isDeliver、invoiceType、installations；工程项目关注 buildingDepartment、buildingAddr、biddingScope、scaleOfConstruction、duration、totalConstructionPeriod、designOrg、supervisingOrg；支付方式取 payType，中标原则取 winningPrinciple。
-            - 明细资料：items（含 parameters、attachments）、projectParameters、projectAttachments、requirements（含 requirementDetails）、qualifications、scoreRules、projectBatches 分别是采购明细、未归属具体品目的工程或服务参数、项目级附件、商务要求、资格条件、评分规则和分包。评分规则优先使用 scoreTypeName、scoreTypeTotal、displayScoreTitle 和 displayScoreRule 中已转换的中文分类、分类总分、标题及规则；单项分值仍以同项数据为准。未成功转换的规则只可准确转述原文，不得自行补充公式或计分口径。projectComments 的 comments 已尽量展开为对象或数组，可能包含基本信息、联系人、踏勘、保证金、资格、评分、答疑、重要条款、进口产品、采购政策、无效投标或商务要求；应以实际内容语义归入章节，commentsType 仅辅助定位，不能因编号预设唯一含义。
+            - 明细资料：items（含 parameters、attachments）、projectParameters、projectAttachments、requirements（含 requirementDetails）、qualifications、scoreRules、scoreRuleFacts、projectBatches 分别是采购明细、未归属具体品目的工程或服务参数、项目级附件、商务要求、资格条件、评分规则、评分分类汇总和分包。评标办法优先按 scoreRuleFacts 的分类、分类合计及规则组织，再使用 scoreRules 补充单项内容；未成功转换的规则只可准确转述原文，不得自行补充公式或计分口径。projectComments 的 comments 已尽量展开为对象或数组；优先使用 documentFacts.supplementaryMaterials 中的中文业务分类，原始类型编号仅辅助核对，不能写入正文。
             - projectStatus、flowNode、流程 ID、业务主键、删除标记、版本、按钮状态、计数、日志和结果公告等运行管理信息不写入招标文件。
 
             输出要求：
@@ -78,7 +78,7 @@ public final class TenderGenerationPrompts {
 
             判断时区分三类空缺：需要招标人在发布前明确且正文形成残缺句的，判断为“不一致”；使用 XX、XXX 或规范空白明确提示人工填写的，判断为“需人工确认”；允许投标人或合同双方后续填写的内容，判断为“一致”。原模板中的具体产品、机构、网址、联系人、账号和数值示例不是审核基准，不能因为与模板相同而判定一致。修改建议只能依据输入材料，不推荐未经确认的官网、仲裁机构、联系人或其他具体值。
 
-            报告面向招标业务人员，全部使用自然中文。不得引用项目资料中的任何英文属性名、属性路径、集合名、类型编号、null、空数组及系统实现术语，例如 items、isCore、requirements、projectComments、commentsType、purchaseMoney、fundingSource、HTML、JSON、字段、数据库或内部 ID。不得描述信息存在哪个数组、属性或编号中，应直接陈述业务事实，例如把“items 中 isCore 为 null”表述为“项目资料未明确核心产品”，把“requirements 为空，但其他位置有商务要求”表述为“项目资料中已提供商务要求”。确需说明来源时，只写“项目资料”或“原招标文件”。
+            报告面向招标业务人员，全部使用自然中文。输入材料中的英文键名、驼峰或下划线标识、对象和数组路径、类型编码、空值标记、内部编号及数据存储形式只用于理解，不属于审核报告内容。写入报告前，先将资料数据中的字段名翻译成通俗易理解的业内术语；不得直接引用或在括号中附带原始标识，也不得用“某字段、数组或对象为空”描述问题。无法确认其业务含义时，仅说明项目资料未明确相关事项。确需说明来源时，只写“项目资料”或“原招标文件”，不提系统、接口、数据库、模板格式或数据结构。
 
             输出完整 Markdown 报告：先输出报告标题，再单独输出一个“# 目录”占位标题，目录标题下面不要手写任何目录条目；随后立即以“# 一、审核说明”开始实际报告。审核说明、逐项审核结果、问题汇总与修改建议、审核结果汇总、总体评价五个大章节均使用一级标题；逐项审核结果下的项目基本信息、资格条件、技术参数与采购需求、商务及合同要求、评分规则、结构与格式完整性六类使用二级标题。每个标题后必须直接跟随对应正文或表格，同一章节只出现一次，不输出只有标题没有内容的章节，也不在目录位置重复罗列章节标题。
 
