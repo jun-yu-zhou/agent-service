@@ -33,4 +33,10 @@ class TenderDocumentGenerationServiceTest {
     void keepsComparisonOperatorsUntouched() {
         assertEquals("温度<50 且压力<0.5MPa", TenderDocumentGenerationService.sanitizeHtmlTags("温度<50 且压力<0.5MPa"));
     }
+
+    @Test
+    void rejectsRevisionThatObviouslyDropsDocumentContent() {
+        assertEquals(false, TenderDocumentGenerationService.isSubstantiallyComplete("1234567890", "1234567"));
+        assertEquals(true, TenderDocumentGenerationService.isSubstantiallyComplete("1234567890", "12345678"));
+    }
 }

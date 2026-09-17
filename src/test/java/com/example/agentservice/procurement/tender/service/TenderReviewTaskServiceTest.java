@@ -25,7 +25,8 @@ class TenderReviewTaskServiceTest {
         ExecutorService executor = mock(ExecutorService.class);
         ObjectMapper objectMapper = new ObjectMapper();
         TenderDocumentEntity document = document();
-        when(store.findByTaskId("task-1")).thenReturn(Optional.of(document));
+        when(store.findReview("task-1")).thenReturn(Optional.of(document));
+        when(store.findReviewInput("task-1")).thenReturn(Optional.of(document));
         when(projectMapper.selectTemplateHtml("template-1")).thenReturn("<h1>招标文件</h1>");
         when(reviewer.review(
                 org.mockito.ArgumentMatchers.eq("<h1>招标文件</h1>"),

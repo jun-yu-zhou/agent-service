@@ -40,7 +40,41 @@ class TenderScoreRuleNormalizerTest {
         assertEquals("不是JSON", result.get(1).get("scoreRule"));
     }
 
+    @Test
+    void addsPriceFormulaChineseCategoryAndCategoryTotal() {
+        List<Map<String, Object>> result = normalizer.normalize(List.of(
+                rule("priceRule", "", "1", "2", 30),
+                rule("multiAccordRule", "{\"child\":[{\"label\":\"业绩\",\"value\":\"10\"}]}",
+                        "3", "业绩", 10),
+                rule("textRule", "服务方案", "3", "方案", 20)));
+
+        assertEquals("价格评分", result.get(0).get("scoreTypeName"));
+        assertEquals("最低价", result.get(0).get("displayScoreTitle"));
+        assertEquals("价格分=最低投标价/投标报价×价格分权重",
+                result.get(0).get("displayScoreRule"));
+        assertEquals(new java.math.BigDecimal("30"), result.get(0).get("scoreTypeTotal"));
+        assertEquals(new java.math.BigDecimal("30"), result.get(1).get("scoreTypeTotal"));
+    }
+
+    @Test
+    void convertsParameterLevelsAndKeepsUnknownPriceFormula() {
+        List<Map<String, Object>> result = normalizer.normalize(List.of(
+                rule("Y", "", "6", "关键参数", 5),
+                rule("priceRule", "按项目约定公式计算", "1", "10", 20)));
+
+        assertEquals("实质性参数不允许负偏离，负偏离时按无效响应处理",
+                result.get(0).get("displayScoreRule"));
+        assertEquals("让利幅度", result.get(1).get("displayScoreTitle"));
+        assertEquals("按项目约定公式计算", result.get(1).get("displayScoreRule"));
+    }
+
     private Map<String, Object> rule(String componentType, String scoreRule) {
         return Map.of("componentType", componentType, "scoreRule", scoreRule);
+    }
+
+    private Map<String, Object> rule(String componentType, String scoreRule,
+            String scoreType, String scoreTitle, Number totalScore) {
+        return Map.of("componentType", componentType, "scoreRule", scoreRule,
+                "scoreType", scoreType, "scoreTitle", scoreTitle, "totalScore", totalScore);
     }
 }

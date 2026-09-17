@@ -25,14 +25,14 @@ class TenderDocumentArtifactServiceTest {
         byte[] expected = "docx-content".getBytes();
         TenderDocumentStore store = mock(TenderDocumentStore.class);
         Docx4jMarkdownDocxRenderer renderer = mock(Docx4jMarkdownDocxRenderer.class);
-        when(store.findByTaskId(TASK_ID)).thenReturn(Optional.of(document(true)));
+        when(store.findDocumentContent(TASK_ID)).thenReturn(Optional.of(document(true)));
         when(renderer.render("# 招标文件")).thenReturn(expected);
 
         TenderDocumentArtifactService.ExportedDocument document =
                 new TenderDocumentArtifactService(store, renderer)
                         .export(TASK_ID, VERSION_ID).orElseThrow();
 
-        assertEquals("招标文件_V2.docx", document.filename());
+        assertEquals("招标文件.docx", document.filename());
         assertArrayEquals(expected, document.content());
         verify(renderer).render("# 招标文件");
     }
@@ -40,7 +40,7 @@ class TenderDocumentArtifactServiceTest {
     @Test
     void shouldRejectUnfinalizedVersion() {
         TenderDocumentStore store = mock(TenderDocumentStore.class);
-        when(store.findByTaskId(TASK_ID)).thenReturn(Optional.of(document(false)));
+        when(store.findDocumentContent(TASK_ID)).thenReturn(Optional.of(document(false)));
 
         assertThrows(IllegalStateException.class,
                 () -> new TenderDocumentArtifactService(store, mock(Docx4jMarkdownDocxRenderer.class))

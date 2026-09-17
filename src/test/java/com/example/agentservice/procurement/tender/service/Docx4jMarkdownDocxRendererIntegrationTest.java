@@ -28,7 +28,7 @@ class Docx4jMarkdownDocxRendererIntegrationTest {
 
     @Test
     void rendersDraftFromDatabase() throws Exception {
-        String draft = documentStore.findByTaskId(TASK_ID)
+        String draft = documentStore.findDocumentContent(TASK_ID)
                 .map(document -> document.getDocumentMarkdown())
                 .filter(value -> !value.isBlank())
                 .orElseThrow(() -> new IllegalStateException("数据库中未找到测试初稿：" + TASK_ID));

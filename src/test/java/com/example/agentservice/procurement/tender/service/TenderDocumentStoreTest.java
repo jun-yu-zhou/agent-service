@@ -12,6 +12,7 @@ import com.example.agentservice.procurement.tender.persistence.TenderDocumentEnt
 import com.example.agentservice.procurement.tender.persistence.TenderDocumentMapper;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.baomidou.mybatisplus.core.MybatisConfiguration;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import org.apache.ibatis.builder.MapperBuilderAssistant;
 import org.junit.jupiter.api.BeforeAll;
@@ -69,5 +70,20 @@ class TenderDocumentStoreTest {
         assertEquals("PENDING", document.getGenerationStatus());
         assertEquals("NOT_STARTED", document.getReviewStatus());
         assertFalse(document.getFinalized());
+    }
+
+    @Test
+    void shouldNotReadLargeTextColumnsWhenPollingTaskState() {
+        TenderDocumentMapper mapper = mock(TenderDocumentMapper.class);
+        when(mapper.selectOne(any())).thenReturn(new TenderDocumentEntity());
+
+        new TenderDocumentStore(mapper).findTaskState("task-1");
+
+        ArgumentCaptor<LambdaQueryWrapper<TenderDocumentEntity>> captor = ArgumentCaptor.forClass(LambdaQueryWrapper.class);
+        verify(mapper).selectOne(captor.capture());
+        String columns = captor.getValue().getSqlSelect();
+        assertFalse(columns.contains("project_data"));
+        assertFalse(columns.contains("document_markdown"));
+        assertFalse(columns.contains("review_report"));
     }
 }

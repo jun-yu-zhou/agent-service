@@ -33,7 +33,7 @@ class TenderDocumentTaskServiceTest {
         document.setContentRevision(2);
         document.setFinalized(true);
         document.setCreatedAt(LocalDateTime.now());
-        when(documentStore.findByTaskId("task-1")).thenReturn(Optional.of(document));
+        when(documentStore.findDocumentContent("task-1")).thenReturn(Optional.of(document));
         when(documentStore.finalizeDocument("task-1")).thenReturn(Optional.of(document));
         TenderDocumentTaskService service = new TenderDocumentTaskService(
                 mock(TenderDocumentGenerationService.class), mock(TenderProjectDataService.class), documentStore,
@@ -57,7 +57,7 @@ class TenderDocumentTaskServiceTest {
         document.setDocumentMarkdown("# 招标文件");
         document.setCreatedAt(LocalDateTime.now());
         document.setUpdatedAt(LocalDateTime.now());
-        when(documentStore.findByTaskId("task-1")).thenReturn(Optional.of(document));
+        when(documentStore.findDocumentContent("task-1")).thenReturn(Optional.of(document));
         TenderDocumentTaskService service = new TenderDocumentTaskService(
                 mock(TenderDocumentGenerationService.class), mock(TenderProjectDataService.class), documentStore,
                 mock(TenderReviewTaskService.class),
@@ -110,7 +110,7 @@ class TenderDocumentTaskServiceTest {
         document.setContentRevision(1);
         document.setFinalized(true);
         document.setCreatedAt(LocalDateTime.now());
-        when(documentStore.findByTaskId("task-1")).thenReturn(Optional.of(document));
+        when(documentStore.findDocumentContent("task-1")).thenReturn(Optional.of(document));
         when(documentStore.finalizeDocument("task-1")).thenReturn(Optional.of(document));
 
         DocumentVersion finalized = service.finalizeVersion("task-1", "version-1").orElseThrow();
