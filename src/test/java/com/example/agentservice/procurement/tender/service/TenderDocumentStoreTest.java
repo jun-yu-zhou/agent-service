@@ -29,17 +29,17 @@ class TenderDocumentStoreTest {
     @Test
     void shouldOverwriteMarkdownAndInvalidateReview() {
         TenderDocumentMapper mapper = mock(TenderDocumentMapper.class);
-        TenderDocumentEntity document = new TenderDocumentEntity();
-        document.setTaskId("task-1");
-        document.setContentRevision(2);
-        document.setFinalized(true);
-        document.setReviewRevision(2);
-        document.setReviewStatus("COMPLETED");
-        document.setReviewReport("旧审核报告");
-        when(mapper.selectOne(any())).thenReturn(document);
+        TenderDocumentEntity savedDocument = new TenderDocumentEntity();
+        savedDocument.setTaskId("task-1");
+        savedDocument.setDocumentMarkdown("# 修改后的招标文件");
+        savedDocument.setContentRevision(3);
+        savedDocument.setFinalized(false);
+        savedDocument.setReviewStatus("NOT_STARTED");
+        when(mapper.update(any(), any())).thenReturn(1);
+        when(mapper.selectOne(any())).thenReturn(savedDocument);
 
         TenderDocumentEntity saved = new TenderDocumentStore(mapper)
-                .saveMarkdown("task-1", "# 修改后的招标文件").orElseThrow();
+                .saveMarkdown("task-1", 2, true, "# 修改后的招标文件").orElseThrow();
 
         assertEquals("# 修改后的招标文件", saved.getDocumentMarkdown());
         assertEquals(3, saved.getContentRevision());

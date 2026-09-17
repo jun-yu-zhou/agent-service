@@ -26,6 +26,7 @@ class TenderReviewTaskServiceTest {
         ObjectMapper objectMapper = new ObjectMapper();
         TenderDocumentEntity document = document();
         when(store.findByTaskId("task-1")).thenReturn(Optional.of(document));
+        when(store.beginReview("task-1", 1, "PENDING")).thenReturn(true);
         when(projectMapper.selectTemplateHtml("template-1")).thenReturn("<h1>招标文件</h1>");
         when(reviewer.review(
                 org.mockito.ArgumentMatchers.eq("<h1>招标文件</h1>"),
@@ -41,7 +42,7 @@ class TenderReviewTaskServiceTest {
         verify(executor).execute(task.capture());
         task.getValue().run();
 
-        verify(store).updateReview("task-1", "COMPLETED", "审核报告已生成", "# 审核报告", null);
+        verify(store).completeReview("task-1", 1, "# 审核报告");
     }
 
     private TenderDocumentEntity document() {
@@ -51,7 +52,9 @@ class TenderReviewTaskServiceTest {
         document.setTemplateId("template-1");
         document.setProjectData("{\"projectName\":\"测试项目\"}");
         document.setDocumentMarkdown("# 招标文件");
+        document.setContentRevision(1);
         document.setFinalized(true);
+        document.setReviewRevision(1);
         document.setReviewStatus("PENDING");
         document.setReviewStage("等待审核");
         document.setFinalizedAt(LocalDateTime.now());
