@@ -7,12 +7,6 @@ logging:
     io.agentscope: INFO
     org.docx4j: ERROR
     org.apache.fop: ERROR
-    com.example.agentservice.procurement.tender.persistence: DEBUG
-
-mybatis-plus:
-  configuration:
-    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
-
 spring:
   config:
     import: optional:classpath:application-local.yml

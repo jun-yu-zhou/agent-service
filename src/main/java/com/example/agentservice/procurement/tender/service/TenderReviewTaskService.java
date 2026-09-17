@@ -50,7 +50,7 @@ public class TenderReviewTaskService {
             }
             documentStore.updateReview(taskId, TenderReviewStatus.PENDING.name(), "等待审核", null, null);
             executor.execute(() -> review(taskId));
-            return documentStore.findReview(taskId).map(this::snapshot);
+            return documentStore.findByTaskId(taskId).map(this::snapshot);
         }
     }
 
@@ -67,13 +67,13 @@ public class TenderReviewTaskService {
         }
         documentStore.updateReview(taskId, TenderReviewStatus.PENDING.name(), "等待重新审核", null, null);
         executor.execute(() -> review(taskId));
-        return documentStore.findReview(taskId).map(this::snapshot);
+        return documentStore.findByTaskId(taskId).map(this::snapshot);
     }
 
     private void review(String taskId) {
         try {
             documentStore.updateReview(taskId, TenderReviewStatus.REVIEWING.name(), "正在生成审核报告", null, null);
-            TenderDocumentEntity document = documentStore.findReviewInput(taskId).orElseThrow();
+            TenderDocumentEntity document = documentStore.findByTaskId(taskId).orElseThrow();
             String templateHtml = projectMapper.selectTemplateHtml(document.getTemplateId());
             String report = reviewService.review(
                     templateHtml, objectMapper.readTree(document.getProjectData()), document.getDocumentMarkdown());
@@ -84,7 +84,7 @@ public class TenderReviewTaskService {
     }
 
     private Optional<TenderDocumentEntity> current(String taskId, String versionId) {
-        return documentStore.findReview(taskId).filter(document -> versionId.equals(document.getId()));
+        return documentStore.findByTaskId(taskId).filter(document -> versionId.equals(document.getId()));
     }
 
     private TenderReviewSnapshot snapshot(TenderDocumentEntity document) {

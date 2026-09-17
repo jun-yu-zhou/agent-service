@@ -21,7 +21,7 @@ class TenderReviewArtifactServiceTest {
     void shouldRenderCompletedReview() throws Exception {
         TenderDocumentStore store = mock(TenderDocumentStore.class);
         Docx4jMarkdownDocxRenderer renderer = mock(Docx4jMarkdownDocxRenderer.class);
-        when(store.findReview("task-1")).thenReturn(Optional.of(document(TenderReviewStatus.COMPLETED)));
+        when(store.findByTaskId("task-1")).thenReturn(Optional.of(document(TenderReviewStatus.COMPLETED)));
         when(renderer.render("# 审核报告")).thenReturn(new byte[] {1, 2, 3});
 
         var document = new TenderReviewArtifactService(store, renderer)
@@ -35,7 +35,7 @@ class TenderReviewArtifactServiceTest {
     @Test
     void shouldRejectUnfinishedReview() {
         TenderDocumentStore store = mock(TenderDocumentStore.class);
-        when(store.findReview("task-1")).thenReturn(Optional.of(document(TenderReviewStatus.REVIEWING)));
+        when(store.findByTaskId("task-1")).thenReturn(Optional.of(document(TenderReviewStatus.REVIEWING)));
 
         assertThrows(IllegalStateException.class,
                 () -> new TenderReviewArtifactService(store, mock(Docx4jMarkdownDocxRenderer.class))

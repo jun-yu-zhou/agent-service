@@ -23,7 +23,7 @@ public class TenderDocumentArtifactService {
     }
 
     public Optional<ExportedDocument> export(String taskId, String versionId) throws IOException {
-        var optional = documentStore.findDocumentContent(taskId);
+        var optional = documentStore.findByTaskId(taskId);
         if (optional.isEmpty()) return Optional.empty();
         var document = optional.get();
         if (!versionId.equals(document.getId())) return Optional.empty();

@@ -2,14 +2,11 @@ package com.example.agentservice.procurement.tender.service;
 
 import com.baomidou.dynamic.datasource.annotation.DS;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
-import com.baomidou.mybatisplus.core.toolkit.support.SFunction;
 import com.example.agentservice.procurement.tender.domain.GenerationTaskStatus;
 import com.example.agentservice.procurement.tender.persistence.TenderDocumentEntity;
 import com.example.agentservice.procurement.tender.persistence.TenderDocumentMapper;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.stereotype.Repository;
@@ -27,51 +24,9 @@ public class TenderDocumentStore {
         this.mapper = mapper;
     }
 
-    /** 状态轮询只读取轻量字段，避免反复传输项目资料、正文和审核报告。 */
-    public Optional<TenderDocumentEntity> findTaskState(String taskId) {
-        return select(taskId, false, false, false);
-    }
-
-    /** 编辑、定稿和招标文件导出时读取正文及其版本状态。 */
-    public Optional<TenderDocumentEntity> findDocumentContent(String taskId) {
-        return select(taskId, true, false, false);
-    }
-
-    /** 审核状态接口和审核报告导出只读取审核相关字段。 */
-    public Optional<TenderDocumentEntity> findReview(String taskId) {
-        return select(taskId, false, true, false);
-    }
-
-    /** 真正开始审核时才读取模型所需的项目资料和招标文件正文。 */
-    public Optional<TenderDocumentEntity> findReviewInput(String taskId) {
-        return select(taskId, true, false, true);
-    }
-
-    private Optional<TenderDocumentEntity> select(
-            String taskId, boolean documentContent, boolean reviewReport, boolean projectData) {
-        List<SFunction<TenderDocumentEntity, ?>> columns = new ArrayList<>(List.of(
-                TenderDocumentEntity::getId, TenderDocumentEntity::getTaskId,
-                TenderDocumentEntity::getTemplateId,
-                TenderDocumentEntity::getGenerationStatus,
-                TenderDocumentEntity::getGenerationStage,
-                TenderDocumentEntity::getGenerationError,
-                TenderDocumentEntity::getFinalized,
-                TenderDocumentEntity::getFinalizedAt,
-                TenderDocumentEntity::getContentRevision,
-                TenderDocumentEntity::getReviewRevision,
-                TenderDocumentEntity::getReviewStatus,
-                TenderDocumentEntity::getReviewStage,
-                TenderDocumentEntity::getReviewError,
-                TenderDocumentEntity::getReviewedAt,
-                TenderDocumentEntity::getCreatedAt,
-                TenderDocumentEntity::getUpdatedAt));
-        if (documentContent) columns.add(TenderDocumentEntity::getDocumentMarkdown);
-        if (reviewReport) columns.add(TenderDocumentEntity::getReviewReport);
-        if (projectData) columns.add(TenderDocumentEntity::getProjectData);
-        var query = Wrappers.<TenderDocumentEntity>lambdaQuery()
-                .select(columns)
-                .eq(TenderDocumentEntity::getTaskId, taskId);
-        return Optional.ofNullable(mapper.selectOne(query));
+    public Optional<TenderDocumentEntity> findByTaskId(String taskId) {
+        return Optional.ofNullable(mapper.selectOne(Wrappers.<TenderDocumentEntity>lambdaQuery()
+                .eq(TenderDocumentEntity::getTaskId, taskId)));
     }
 
     /** 创建任务主记录，正文由后台生成完成后写入。 */
@@ -106,7 +61,7 @@ public class TenderDocumentStore {
 
     /** 覆盖当前正文，并使旧定稿和旧审核报告立即失效。 */
     public Optional<TenderDocumentEntity> saveMarkdown(String taskId, String markdown) {
-        Optional<TenderDocumentEntity> optional = findDocumentContent(taskId);
+        Optional<TenderDocumentEntity> optional = findByTaskId(taskId);
         if (optional.isEmpty()) return Optional.empty();
 
         TenderDocumentEntity document = optional.get();
@@ -141,7 +96,7 @@ public class TenderDocumentStore {
 
     /** 将当前正文确认为定稿，并为同一正文版本初始化审核状态。 */
     public Optional<TenderDocumentEntity> finalizeDocument(String taskId) {
-        Optional<TenderDocumentEntity> optional = findDocumentContent(taskId);
+        Optional<TenderDocumentEntity> optional = findByTaskId(taskId);
         if (optional.isEmpty()) return Optional.empty();
 
         TenderDocumentEntity document = optional.get();
