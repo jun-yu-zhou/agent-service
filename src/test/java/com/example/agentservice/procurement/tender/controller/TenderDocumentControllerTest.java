@@ -8,7 +8,6 @@ import com.example.agentservice.procurement.tender.domain.TenderReviewStatus;
 import com.example.agentservice.procurement.tender.request.TenderProjectTaskRequest;
 import com.example.agentservice.procurement.tender.service.TenderDocumentArtifactService;
 import com.example.agentservice.procurement.tender.service.TenderDocumentTaskService;
-import com.example.agentservice.procurement.tender.service.TenderReviewArtifactService;
 import com.example.agentservice.procurement.tender.service.TenderReviewTaskService;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
@@ -34,8 +33,7 @@ class TenderDocumentControllerTest {
                 "等待生成", null, null, Instant.now(), Instant.now());
         when(taskService.submitProject("project-1")).thenReturn(task);
         TenderDocumentController controller = new TenderDocumentController(
-                taskService, mock(TenderDocumentArtifactService.class), mock(TenderReviewTaskService.class),
-                mock(TenderReviewArtifactService.class));
+                taskService, mock(TenderDocumentArtifactService.class), mock(TenderReviewTaskService.class));
 
         R<DocumentGenerationTask> response =
                 controller.createTask(new TenderProjectTaskRequest("project-1"));
@@ -48,14 +46,13 @@ class TenderDocumentControllerTest {
     void shouldReturnDocxAsSafeAttachment() throws Exception {
         byte[] content = "docx-content".getBytes();
         TenderDocumentArtifactService artifactService = mock(TenderDocumentArtifactService.class);
-        when(artifactService.export("task-1", "version-1"))
+        when(artifactService.exportDocument("task-1", "version-1"))
                 .thenReturn(Optional.of(new TenderDocumentArtifactService.ExportedDocument(
                         "招标文件_V2.docx",
                         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                         content)));
         TenderDocumentController controller = new TenderDocumentController(
-                mock(TenderDocumentTaskService.class), artifactService, mock(TenderReviewTaskService.class),
-                mock(TenderReviewArtifactService.class));
+                mock(TenderDocumentTaskService.class), artifactService, mock(TenderReviewTaskService.class));
 
         ResponseEntity<byte[]> response = controller.exportArtifacts("task-1", "version-1");
 
@@ -77,8 +74,7 @@ class TenderDocumentControllerTest {
                 "正在生成审核报告", null, null, Instant.now(), Instant.now());
         when(reviewService.find("task-1", "version-1")).thenReturn(Optional.of(review));
         TenderDocumentController controller = new TenderDocumentController(
-                mock(TenderDocumentTaskService.class), mock(TenderDocumentArtifactService.class), reviewService,
-                mock(TenderReviewArtifactService.class));
+                mock(TenderDocumentTaskService.class), mock(TenderDocumentArtifactService.class), reviewService);
 
         R<TenderReviewSnapshot> response = controller.getReview("task-1", "version-1");
 
@@ -89,15 +85,15 @@ class TenderDocumentControllerTest {
     @Test
     void shouldReturnReviewDocxAsSafeAttachment() throws Exception {
         byte[] content = "review-docx".getBytes();
-        TenderReviewArtifactService artifactService = mock(TenderReviewArtifactService.class);
-        when(artifactService.export("task-1", "version-1"))
-                .thenReturn(Optional.of(new TenderReviewArtifactService.ExportedReview(
+        TenderDocumentArtifactService artifactService = mock(TenderDocumentArtifactService.class);
+        when(artifactService.exportReview("task-1", "version-1"))
+                .thenReturn(Optional.of(new TenderDocumentArtifactService.ExportedDocument(
                         "招标文件审核报告_V1.docx",
                         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                         content)));
         TenderDocumentController controller = new TenderDocumentController(
-                mock(TenderDocumentTaskService.class), mock(TenderDocumentArtifactService.class),
-                mock(TenderReviewTaskService.class), artifactService);
+                mock(TenderDocumentTaskService.class), artifactService,
+                mock(TenderReviewTaskService.class));
 
         ResponseEntity<byte[]> response = controller.exportReview("task-1", "version-1");
 

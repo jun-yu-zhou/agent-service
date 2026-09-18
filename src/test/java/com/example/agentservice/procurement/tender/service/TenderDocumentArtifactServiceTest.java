@@ -1,11 +1,10 @@
 package com.example.agentservice.procurement.tender.service;
 
 import com.example.agentservice.procurement.common.docx.Docx4jMarkdownDocxRenderer;
+import com.example.agentservice.procurement.tender.domain.TenderReviewStatus;
 import com.example.agentservice.procurement.tender.persistence.TenderDocumentEntity;
 import org.junit.jupiter.api.Test;
 
-import java.time.Instant;
-import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
@@ -30,7 +29,7 @@ class TenderDocumentArtifactServiceTest {
 
         TenderDocumentArtifactService.ExportedDocument document =
                 new TenderDocumentArtifactService(store, renderer)
-                        .export(TASK_ID, VERSION_ID).orElseThrow();
+                        .exportDocument(TASK_ID, VERSION_ID).orElseThrow();
 
         assertEquals("招标文件.docx", document.filename());
         assertArrayEquals(expected, document.content());
@@ -44,7 +43,38 @@ class TenderDocumentArtifactServiceTest {
 
         assertThrows(IllegalStateException.class,
                 () -> new TenderDocumentArtifactService(store, mock(Docx4jMarkdownDocxRenderer.class))
-                        .export(TASK_ID, VERSION_ID));
+                        .exportDocument(TASK_ID, VERSION_ID));
+    }
+
+    @Test
+    void shouldRenderCompletedReview() throws Exception {
+        byte[] expected = "review-content".getBytes();
+        TenderDocumentStore store = mock(TenderDocumentStore.class);
+        Docx4jMarkdownDocxRenderer renderer = mock(Docx4jMarkdownDocxRenderer.class);
+        TenderDocumentEntity document = document(true);
+        document.setReviewStatus(TenderReviewStatus.COMPLETED.name());
+        document.setReviewReport("# 审核报告");
+        when(store.findByTaskId(TASK_ID)).thenReturn(Optional.of(document));
+        when(renderer.render("# 审核报告")).thenReturn(expected);
+
+        var exported = new TenderDocumentArtifactService(store, renderer)
+                .exportReview(TASK_ID, VERSION_ID).orElseThrow();
+
+        assertEquals("招标文件审核报告.docx", exported.filename());
+        assertArrayEquals(expected, exported.content());
+        verify(renderer).render("# 审核报告");
+    }
+
+    @Test
+    void shouldRejectUnfinishedReview() {
+        TenderDocumentStore store = mock(TenderDocumentStore.class);
+        TenderDocumentEntity document = document(true);
+        document.setReviewStatus(TenderReviewStatus.REVIEWING.name());
+        when(store.findByTaskId(TASK_ID)).thenReturn(Optional.of(document));
+
+        assertThrows(IllegalStateException.class,
+                () -> new TenderDocumentArtifactService(store, mock(Docx4jMarkdownDocxRenderer.class))
+                        .exportReview(TASK_ID, VERSION_ID));
     }
 
     private TenderDocumentEntity document(boolean finalized) {

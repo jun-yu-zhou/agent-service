@@ -36,7 +36,7 @@ class TenderDocumentTaskServiceTest {
         when(documentStore.findByTaskId("task-1")).thenReturn(Optional.of(document));
         when(documentStore.finalizeDocument("task-1", 2)).thenReturn(Optional.of(document));
         TenderDocumentTaskService service = new TenderDocumentTaskService(
-                mock(TenderDocumentGenerationService.class), mock(TenderProjectDataService.class), documentStore,
+                mock(TenderDocumentAiService.class), mock(TenderProjectDataService.class), documentStore,
                 mock(TenderReviewTaskService.class),
                 mock(ExecutorService.class));
 
@@ -59,7 +59,7 @@ class TenderDocumentTaskServiceTest {
         document.setUpdatedAt(LocalDateTime.now());
         when(documentStore.findByTaskId("task-1")).thenReturn(Optional.of(document));
         TenderDocumentTaskService service = new TenderDocumentTaskService(
-                mock(TenderDocumentGenerationService.class), mock(TenderProjectDataService.class), documentStore,
+                mock(TenderDocumentAiService.class), mock(TenderProjectDataService.class), documentStore,
                 mock(TenderReviewTaskService.class),
                 mock(ExecutorService.class));
 
@@ -85,7 +85,7 @@ class TenderDocumentTaskServiceTest {
         when(projectService.load("project-1")).thenReturn(new TenderProjectDataService.GenerationInput(
                 "template-1", "<h1>招标文件</h1>", projectData));
         TenderDocumentTaskService service = new TenderDocumentTaskService(
-                mock(TenderDocumentGenerationService.class), projectService, documentStore,
+                mock(TenderDocumentAiService.class), projectService, documentStore,
                 mock(TenderReviewTaskService.class), executor);
 
         DocumentGenerationTask task = service.submitProject("project-1");
@@ -100,7 +100,7 @@ class TenderDocumentTaskServiceTest {
         TenderDocumentStore documentStore = mock(TenderDocumentStore.class);
         TenderReviewTaskService reviewTaskService = mock(TenderReviewTaskService.class);
         TenderDocumentTaskService service = new TenderDocumentTaskService(
-                mock(TenderDocumentGenerationService.class), mock(TenderProjectDataService.class),
+                mock(TenderDocumentAiService.class), mock(TenderProjectDataService.class),
                 documentStore,
                 reviewTaskService, mock(ExecutorService.class));
         TenderDocumentEntity document = new TenderDocumentEntity();

@@ -18,19 +18,19 @@ public class TenderReviewTaskService {
 
     private final TenderDocumentStore documentStore;
     private final TenderProjectMapper projectMapper;
-    private final TenderDocumentReviewService reviewService;
+    private final TenderDocumentAiService aiService;
     private final ObjectMapper objectMapper;
     private final ExecutorService executor;
 
     public TenderReviewTaskService(
             TenderDocumentStore documentStore,
             TenderProjectMapper projectMapper,
-            TenderDocumentReviewService reviewService,
+            TenderDocumentAiService aiService,
             ObjectMapper objectMapper,
             @Qualifier("procurementDocumentExecutor") ExecutorService executor) {
         this.documentStore = documentStore;
         this.projectMapper = projectMapper;
-        this.reviewService = reviewService;
+        this.aiService = aiService;
         this.objectMapper = objectMapper;
         this.executor = executor;
     }
@@ -84,7 +84,7 @@ public class TenderReviewTaskService {
                 return;
             }
             String templateHtml = projectMapper.selectTemplateHtml(document.getTemplateId());
-            String report = reviewService.review(
+            String report = aiService.review(
                     templateHtml, objectMapper.readTree(document.getProjectData()), document.getDocumentMarkdown());
             documentStore.completeReview(taskId, revision, report);
         } catch (Exception exception) {

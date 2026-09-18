@@ -18,19 +18,19 @@ import org.springframework.stereotype.Service;
 @Service
 public class TenderDocumentTaskService {
 
-    private final TenderDocumentGenerationService generationService;
+    private final TenderDocumentAiService aiService;
     private final TenderProjectDataService projectDataService;
     private final TenderDocumentStore documentStore;
     private final TenderReviewTaskService reviewTaskService;
     private final ExecutorService executor;
 
     public TenderDocumentTaskService(
-            TenderDocumentGenerationService generationService,
+            TenderDocumentAiService aiService,
             TenderProjectDataService projectDataService,
             TenderDocumentStore documentStore,
             TenderReviewTaskService reviewTaskService,
             @Qualifier("procurementDocumentExecutor") ExecutorService executor) {
-        this.generationService = generationService;
+        this.aiService = aiService;
         this.projectDataService = projectDataService;
         this.documentStore = documentStore;
         this.reviewTaskService = reviewTaskService;
@@ -108,7 +108,7 @@ public class TenderDocumentTaskService {
     private void generateDatabase(String taskId, String templateHtml, JsonNode projectData) {
         try {
             documentStore.markGenerating(taskId);
-            documentStore.completeGeneration(taskId, generationService.generateDraft(templateHtml, projectData));
+            documentStore.completeGeneration(taskId, aiService.generateDraft(templateHtml, projectData));
         } catch (Exception exception) {
             documentStore.failGeneration(taskId, exception.getMessage());
         }

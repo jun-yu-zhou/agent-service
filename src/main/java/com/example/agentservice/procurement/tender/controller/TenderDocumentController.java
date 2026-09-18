@@ -8,7 +8,6 @@ import com.example.agentservice.procurement.tender.request.TenderManualVersionRe
 import com.example.agentservice.procurement.tender.request.TenderProjectTaskRequest;
 import com.example.agentservice.procurement.tender.service.TenderDocumentArtifactService;
 import com.example.agentservice.procurement.tender.service.TenderDocumentTaskService;
-import com.example.agentservice.procurement.tender.service.TenderReviewArtifactService;
 import com.example.agentservice.procurement.tender.service.TenderReviewTaskService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -34,15 +33,13 @@ public class TenderDocumentController {
     private final TenderDocumentTaskService taskService;
     private final TenderDocumentArtifactService artifactService;
     private final TenderReviewTaskService reviewTaskService;
-    private final TenderReviewArtifactService reviewArtifactService;
 
     public TenderDocumentController(
             TenderDocumentTaskService taskService, TenderDocumentArtifactService artifactService,
-            TenderReviewTaskService reviewTaskService, TenderReviewArtifactService reviewArtifactService) {
+            TenderReviewTaskService reviewTaskService) {
         this.taskService = taskService;
         this.artifactService = artifactService;
         this.reviewTaskService = reviewTaskService;
-        this.reviewArtifactService = reviewArtifactService;
     }
 
     /** 根据业务项目创建异步招标文件生成任务。 */
@@ -115,7 +112,7 @@ public class TenderDocumentController {
     @Operation(summary = "导出定稿审核报告", description = "将审核完成的报告作为 Word 附件直接返回。")
     public ResponseEntity<byte[]> exportReview(
             @PathVariable String taskId, @PathVariable String versionId) throws Exception {
-        return reviewArtifactService.export(taskId, versionId)
+        return artifactService.exportReview(taskId, versionId)
                 .map(document -> ResponseEntity.ok()
                         .contentType(MediaType.parseMediaType(document.contentType()))
                         .contentLength(document.content().length)
@@ -132,7 +129,7 @@ public class TenderDocumentController {
     @Operation(summary = "导出定稿 DOCX", description = "在内存中生成已确认定稿版本，并直接作为附件返回。")
     public ResponseEntity<byte[]> exportArtifacts(
             @PathVariable String taskId, @PathVariable String versionId) throws Exception {
-        return artifactService.export(taskId, versionId)
+        return artifactService.exportDocument(taskId, versionId)
                 .map(document -> ResponseEntity.ok()
                         .contentType(MediaType.parseMediaType(document.contentType()))
                         .contentLength(document.content().length)

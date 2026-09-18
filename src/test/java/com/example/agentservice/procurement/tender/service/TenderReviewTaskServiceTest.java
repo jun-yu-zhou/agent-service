@@ -21,7 +21,7 @@ class TenderReviewTaskServiceTest {
     void shouldCompleteQueuedReview() throws Exception {
         TenderDocumentStore store = mock(TenderDocumentStore.class);
         TenderProjectMapper projectMapper = mock(TenderProjectMapper.class);
-        TenderDocumentReviewService reviewer = mock(TenderDocumentReviewService.class);
+        TenderDocumentAiService reviewer = mock(TenderDocumentAiService.class);
         ExecutorService executor = mock(ExecutorService.class);
         ObjectMapper objectMapper = new ObjectMapper();
         TenderDocumentEntity document = document();
