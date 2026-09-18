@@ -45,12 +45,14 @@ public class TenderDocumentController {
         this.reviewArtifactService = reviewArtifactService;
     }
 
+    /** 根据业务项目创建异步招标文件生成任务。 */
     @PostMapping("/tasks")
     @Operation(summary = "根据项目创建招标初稿任务", description = "按业务项目 ID 读取项目资料和 HTML 模板，异步生成初稿。")
     public R<DocumentGenerationTask> createTask(@RequestBody TenderProjectTaskRequest request) {
         return R.success(taskService.submitProject(request.id()));
     }
 
+    /** 查询招标文件生成任务的当前状态。 */
     @GetMapping("/tasks/{taskId}")
     @Operation(summary = "查询招标生成任务状态", description = "查询当前招标文件初稿的生成状态。")
     public R<DocumentGenerationTask> getTask(@PathVariable String taskId) {
@@ -59,6 +61,7 @@ public class TenderDocumentController {
                 .orElseGet(() -> R.error(404, "招标任务不存在"));
     }
 
+    /** 查询当前招标文件正文及其修订信息。 */
     @GetMapping("/tasks/{taskId}/versions")
     @Operation(summary = "查询当前招标文件", description = "返回当前正文的修订信息及 Markdown 内容。")
     public R<?> getVersions(@PathVariable String taskId) {
@@ -67,6 +70,7 @@ public class TenderDocumentController {
                 .orElseGet(() -> R.error(404, "招标任务不存在"));
     }
 
+    /** 保存用户人工编辑后的完整招标文件正文。 */
     @PostMapping("/tasks/{taskId}/versions")
     @Operation(summary = "保存人工编辑内容", description = "用完整 Markdown 覆盖当前正文。")
     public R<DocumentVersion> saveManualVersion(
@@ -76,6 +80,7 @@ public class TenderDocumentController {
                 .orElseGet(() -> R.error(404, "招标任务不存在"));
     }
 
+    /** 确认指定正文版本为招标文件定稿并启动审核。 */
     @PostMapping("/tasks/{taskId}/versions/{versionId}/finalize")
     @Operation(summary = "确认招标文件定稿", description = "将指定版本标记为唯一已定稿版本，并切换任务当前版本。")
     public R<DocumentVersion> finalizeVersion(
@@ -85,6 +90,7 @@ public class TenderDocumentController {
                 .orElseGet(() -> R.error(404, "招标任务版本不存在"));
     }
 
+    /** 查询指定定稿版本的审核进度与审核结果。 */
     @GetMapping("/tasks/{taskId}/versions/{versionId}/review")
     @Operation(summary = "查询定稿审核状态", description = "返回指定定稿版本的审核进度、报告或失败原因。")
     public R<TenderReviewSnapshot> getReview(
@@ -94,6 +100,7 @@ public class TenderDocumentController {
                 .orElseGet(() -> R.error(404, "审核记录不存在"));
     }
 
+    /** 重新执行指定定稿版本的失败审核任务。 */
     @PostMapping("/tasks/{taskId}/versions/{versionId}/review/retry")
     @Operation(summary = "重试定稿审核", description = "重新执行审核失败的定稿版本。")
     public R<TenderReviewSnapshot> retryReview(
@@ -103,6 +110,7 @@ public class TenderDocumentController {
                 .orElseGet(() -> R.error(404, "审核记录不存在"));
     }
 
+    /** 将审核报告转换为 Word 文件并作为附件下载。 */
     @GetMapping("/tasks/{taskId}/versions/{versionId}/review/export")
     @Operation(summary = "导出定稿审核报告", description = "将审核完成的报告作为 Word 附件直接返回。")
     public ResponseEntity<byte[]> exportReview(
@@ -119,6 +127,7 @@ public class TenderDocumentController {
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
+    /** 将指定定稿版本转换为 Word 招标文件并作为附件下载。 */
     @PostMapping("/tasks/{taskId}/versions/{versionId}/artifacts/export")
     @Operation(summary = "导出定稿 DOCX", description = "在内存中生成已确认定稿版本，并直接作为附件返回。")
     public ResponseEntity<byte[]> exportArtifacts(
@@ -135,6 +144,7 @@ public class TenderDocumentController {
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
+    /** 查询任务快照以及生成完成后的招标文件初稿。 */
     @GetMapping("/tasks/{taskId}/result")
     @Operation(summary = "获取招标生成任务结果", description = "任务完成后返回初稿；尚未完成时返回当前任务快照。")
     public R<TenderTaskResultResponse> getTaskResult(@PathVariable String taskId) {
