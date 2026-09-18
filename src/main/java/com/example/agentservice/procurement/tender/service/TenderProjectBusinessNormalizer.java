@@ -26,12 +26,14 @@ public class TenderProjectBusinessNormalizer {
     private static final DateTimeFormatter DATE_TIME = DateTimeFormatter.ofPattern("yyyy年MM月dd日 HH:mm:ss");
     private static final DateTimeFormatter YEAR_MONTH = DateTimeFormatter.ofPattern("yyyy年MM月");
 
-    /** 业务库的项目类型、采购方式编码。 */
+    // 业务库的项目类型、采购方式编码。
     private static final Map<String, String> PROJECT_TYPES =
             Map.of("1", "货物", "2", "工程", "3", "服务");
+    // 采购方式编码到中文名称的映射。
     private static final Map<String, String> PROCUREMENT_METHODS = Map.of(
             "1", "校内招标", "2", "邀请招标", "3", "单一来源",
             "4", "竞争性谈判", "5", "竞争性磋商", "6", "询价");
+    // 补充资料类型编码到中文名称的映射。
     private static final Map<String, String> COMMENT_TYPES = Map.ofEntries(
             Map.entry("0", "基本信息"), Map.entry("1", "采购清单"),
             Map.entry("2", "现场踏勘"), Map.entry("3", "投标担保"),
@@ -65,26 +67,43 @@ public class TenderProjectBusinessNormalizer {
             List<Map<String, Object>> capitalSources, List<Map<String, Object>> projectDates,
             List<Map<String, Object>> items) {
         ObjectNode facts = objectMapper.createObjectNode();
+        // 项目类型名称
         put(facts, "projectTypeName", PROJECT_TYPES.get(text(project.get("projectType"))));
+        // 采购方式名称
         put(facts, "procurementMethodName",
                 PROCUREMENT_METHODS.get(text(project.get("classifyCode"))));
+        // 评标方法名称
         put(facts, "evaluationMethodName", evaluationMethod(project.get("evaluateWayCode")));
+        // 评标方式名称
         put(facts, "evaluationModeName", evaluationMode(project.get("evaluatingBidType")));
+        // 是否接受进口产品
         put(facts, "acceptImportedProducts", accepted(project.get("isAcceptInput")));
+        // 资金来源名称
         put(facts, "fundingSourceName", fundingSource(project.get("fundingSource"), capitalSources));
+        // 采购金额大写
         put(facts, "purchaseMoneyUppercase", uppercaseMoney(project.get("purchaseMoney")));
+        // 折扣率百分比
         put(facts, "discountedRatePercent", percentage(project.get("discountedRate")));
+        // 格式化后的关键日期
         facts.set("formattedDates", formattedDates(project, projectDates));
+        // 采购人、招标人和代理机构角色
         facts.set("projectParties", projectParties(project));
+        // 按职责整理的项目联系人
         facts.set("projectContacts", projectContacts(project));
+        // 开标时间、场地和投标方式
         facts.set("openingArrangement", openingArrangement(project, projectDates));
+        // 核心产品结论
         facts.set("coreProduct", coreProduct(items));
+        // 履约担保信息
         facts.set("performanceGuarantee", performance(comment(comments, "4")));
+        // 实质性响应条款
         facts.set("substantiveRequirements", substantiveRequirements(comment(comments, "38")));
         JsonNode company = comment(comments, "47");
         if (company != null) {
+            // 企业类型（来自中小企业政策）
             put(facts, "companyType", company.path("companyType").asText());
         }
+        // 补充资料列表（附中文分类）
         facts.set("supplementaryMaterials", supplementaryMaterials(comments));
         return facts;
     }
