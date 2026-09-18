@@ -9,10 +9,10 @@ public record BidTechnicalOutline(
 
     /** 末级章节正文的处理方式。 */
     public enum ContentMode {
-        /** 由模型生成章节正文。 */
+        // 由模型生成章节正文。
         AI,
 
-        /** 保留章节位置，由用户补充正文。 */
+        // 保留章节位置，由用户补充正文。
         MANUAL
     }
 
