@@ -2,9 +2,10 @@ package com.example.agentservice.procurement.tender.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -29,25 +30,33 @@ class TenderDocumentStoreTest {
     @Test
     void shouldOverwriteMarkdownAndInvalidateReview() {
         TenderDocumentMapper mapper = mock(TenderDocumentMapper.class);
-        TenderDocumentEntity savedDocument = new TenderDocumentEntity();
-        savedDocument.setTaskId("task-1");
-        savedDocument.setDocumentMarkdown("# 修改后的招标文件");
-        savedDocument.setContentRevision(3);
-        savedDocument.setFinalized(false);
-        savedDocument.setReviewStatus("NOT_STARTED");
         when(mapper.update(any(), any())).thenReturn(1);
-        when(mapper.selectOne(any())).thenReturn(savedDocument);
 
-        TenderDocumentEntity saved = new TenderDocumentStore(mapper)
-                .saveMarkdown("task-1", 2, true, "# 修改后的招标文件").orElseThrow();
+        boolean saved = new TenderDocumentStore(mapper)
+                .saveMarkdown("task-1", 2, true, "# 修改后的招标文件");
 
-        assertEquals("# 修改后的招标文件", saved.getDocumentMarkdown());
-        assertEquals(3, saved.getContentRevision());
-        assertFalse(saved.getFinalized());
-        assertEquals("NOT_STARTED", saved.getReviewStatus());
-        assertNull(saved.getReviewRevision());
-        assertNull(saved.getReviewReport());
+        assertTrue(saved);
         verify(mapper).update(any(), any());
+        // 条件更新成功后不再查询，避免读到随后并发请求写入的其他版本。
+        verify(mapper, never()).selectOne(any());
+    }
+
+    @Test
+    void shouldGuardGenerationCompletionWithInitialState() {
+        TenderDocumentMapper mapper = mock(TenderDocumentMapper.class);
+        when(mapper.update(any(), any())).thenReturn(1);
+        ArgumentCaptor<com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<TenderDocumentEntity>>
+                update = ArgumentCaptor.forClass(com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper.class);
+
+        assertTrue(new TenderDocumentStore(mapper)
+                .completeGeneration("task-1", "# 招标文件"));
+
+        verify(mapper).update(any(), update.capture());
+        String conditions = update.getValue().getSqlSegment().toLowerCase();
+        assertTrue(conditions.contains("task_id"));
+        assertTrue(conditions.contains("generation_status"));
+        assertTrue(conditions.contains("content_revision"));
+        assertTrue(conditions.contains("finalized"));
     }
 
     @Test

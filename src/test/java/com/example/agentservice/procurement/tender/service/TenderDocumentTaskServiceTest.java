@@ -15,7 +15,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import org.junit.jupiter.api.Test;
@@ -34,7 +33,7 @@ class TenderDocumentTaskServiceTest {
         document.setFinalized(true);
         document.setCreatedAt(LocalDateTime.now());
         when(documentStore.findByTaskId("task-1")).thenReturn(Optional.of(document));
-        when(documentStore.finalizeDocument("task-1", 2)).thenReturn(Optional.of(document));
+        when(documentStore.finalizeDocument("task-1", 2)).thenReturn(true);
         TenderDocumentTaskService service = new TenderDocumentTaskService(
                 mock(TenderDocumentAiService.class), mock(TenderProjectDataService.class), documentStore,
                 mock(TenderReviewTaskService.class),
@@ -84,14 +83,21 @@ class TenderDocumentTaskServiceTest {
         JsonNode projectData = new ObjectMapper().readTree("{\"projectName\":\"测试项目\"}");
         when(projectService.load("project-1")).thenReturn(new TenderProjectDataService.GenerationInput(
                 "template-1", "<h1>招标文件</h1>", projectData));
+        TenderDocumentAiService aiService = mock(TenderDocumentAiService.class);
+        when(documentStore.markGenerating(any())).thenReturn(true);
+        when(aiService.generateDraft("<h1>招标文件</h1>", projectData)).thenReturn("# 招标文件");
         TenderDocumentTaskService service = new TenderDocumentTaskService(
-                mock(TenderDocumentAiService.class), projectService, documentStore,
+                aiService, projectService, documentStore,
                 mock(TenderReviewTaskService.class), executor);
 
         DocumentGenerationTask task = service.submitProject("project-1");
 
         verify(documentStore).create(task.taskId(), "project-1", "template-1", projectData);
-        verify(executor).execute(any(Runnable.class));
+        ArgumentCaptor<Runnable> runnable = ArgumentCaptor.forClass(Runnable.class);
+        verify(executor).execute(runnable.capture());
+        runnable.getValue().run();
+        verify(documentStore).markGenerating(task.taskId());
+        verify(documentStore).completeGeneration(task.taskId(), "# 招标文件");
         assertEquals(GenerationTaskStatus.PENDING, task.status());
     }
 
@@ -111,7 +117,7 @@ class TenderDocumentTaskServiceTest {
         document.setFinalized(true);
         document.setCreatedAt(LocalDateTime.now());
         when(documentStore.findByTaskId("task-1")).thenReturn(Optional.of(document));
-        when(documentStore.finalizeDocument("task-1", 1)).thenReturn(Optional.of(document));
+        when(documentStore.finalizeDocument("task-1", 1)).thenReturn(true);
 
         DocumentVersion finalized = service.finalizeVersion("task-1", "version-1").orElseThrow();
 
