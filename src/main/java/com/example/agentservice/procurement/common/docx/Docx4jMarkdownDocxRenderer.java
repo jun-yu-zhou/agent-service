@@ -62,8 +62,10 @@ public class Docx4jMarkdownDocxRenderer {
                     .toc() // 目录
                     .pageNumber() // 页码
                     .tableLayout(); // 表格布局
+            // 目录由导出阶段统一插入，模型正文无需保留空的“目录”章节。
+            formatter.autoTocHeading();
             // 投标文件专用：末级章节另起一页
-            if (bid) formatter.autoTocHeading().leafHeadingsPageBreak();
+            if (bid) formatter.leafHeadingsPageBreak();
             // 招标文件：大章另起一页
             else formatter.majorChapterPageBreak();
             formatter.apply();

@@ -3,6 +3,8 @@ package com.example.agentservice.procurement.tender.service;
 import com.example.agentservice.config.ModelConfig;
 import com.example.agentservice.procurement.tender.prompt.TenderGenerationPrompts;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.agentscope.core.ReActAgent;
 import io.agentscope.core.message.Msg;
 import io.agentscope.core.message.MsgRole;
@@ -16,9 +18,11 @@ import org.springframework.stereotype.Service;
 public class TenderDocumentAiService {
 
     private final ModelConfig modelConfig;
+    private final ObjectMapper objectMapper;
 
-    public TenderDocumentAiService(ModelConfig modelConfig) {
+    public TenderDocumentAiService(ModelConfig modelConfig, ObjectMapper objectMapper) {
         this.modelConfig = modelConfig;
+        this.objectMapper = objectMapper;
     }
 
     /** 根据 HTML 模板和项目资料生成招标文件初稿。 */
@@ -87,27 +91,40 @@ public class TenderDocumentAiService {
         return response;
     }
 
-    private String generationInput(String templateHtml, JsonNode projectData) {
-        StringBuilder input = new StringBuilder("招标文件 HTML 模板：\n\n").append(templateHtml);
-        if (hasData(projectData)) {
-            input.append("\n\n招标单位确认的完整结构化项目数据（同一字段冲突时以此处为准）：\n\n")
-                    .append(projectData);
-        }
+    String generationInput(String templateHtml, JsonNode projectData) {
+        ObjectNode input = request("生成招标文件初稿");
+        input.put("templateHtml", templateHtml);
+        putProjectData(input, projectData);
         return input.toString();
     }
 
-    private String revisionInput(String draft, JsonNode projectData) {
-        String projectJson = hasData(projectData) ? projectData.toString() : "未提供项目资料";
-        return "【项目资料开始】\n" + projectJson + "\n【项目资料结束】\n\n"
-                + "【完整初稿开始】\n" + draft + "\n【完整初稿结束】";
+    String revisionInput(String draft, JsonNode projectData) {
+        ObjectNode input = request("修订招标文件初稿");
+        input.put("draftMarkdown", draft);
+        putProjectData(input, projectData);
+        return input.toString();
     }
 
-    private String reviewInput(String templateHtml, JsonNode projectData, String finalizedMarkdown) {
-        String projectJson = hasData(projectData) ? projectData.toString() : "未提供项目资料";
-        return "【原招标文件要求开始】\n" + templateHtml
-                + "\n【原招标文件要求结束】\n\n【项目资料开始】\n" + projectJson
-                + "\n【项目资料结束】\n\n【招标文件定稿开始】\n" + finalizedMarkdown
-                + "\n【招标文件定稿结束】";
+    String reviewInput(String templateHtml, JsonNode projectData, String finalizedMarkdown) {
+        ObjectNode input = request("审核招标文件定稿");
+        input.put("templateHtml", templateHtml);
+        input.put("finalizedMarkdown", finalizedMarkdown);
+        putProjectData(input, projectData);
+        return input.toString();
+    }
+
+    /**
+     * 所有外部内容都作为 JSON 字段值传入，避免模板或正文伪造文本边界并越界改写任务。
+     */
+    private ObjectNode request(String task) {
+        ObjectNode input = objectMapper.createObjectNode();
+        input.put("task", task);
+        return input;
+    }
+
+    private void putProjectData(ObjectNode input, JsonNode projectData) {
+        if (hasData(projectData)) input.set("projectData", projectData);
+        else input.putNull("projectData");
     }
 
     private boolean hasData(JsonNode projectData) {
