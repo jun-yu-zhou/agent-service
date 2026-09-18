@@ -48,7 +48,7 @@ public class TenderReviewTaskService {
             return Optional.of(snapshot(document));
         }
         int revision = currentRevision(document);
-        if (documentStore.beginReview(taskId, revision, TenderReviewStatus.PENDING.name())) {
+        if (documentStore.beginReview(taskId, revision, TenderReviewStatus.PENDING)) {
             executor.execute(() -> review(taskId, revision));
         }
         return documentStore.findByTaskId(taskId).map(this::snapshot);
@@ -67,7 +67,7 @@ public class TenderReviewTaskService {
         }
         TenderDocumentEntity document = optional.get();
         int revision = currentRevision(document);
-        if (documentStore.beginReview(taskId, revision, TenderReviewStatus.FAILED.name())) {
+        if (documentStore.beginReview(taskId, revision, TenderReviewStatus.FAILED)) {
             executor.execute(() -> review(taskId, revision));
         }
         return documentStore.findByTaskId(taskId).map(this::snapshot);
@@ -81,6 +81,8 @@ public class TenderReviewTaskService {
                     || document.getContentRevision() != revision
                     || document.getReviewRevision() == null
                     || document.getReviewRevision() != revision) {
+                // 只收口仍属于本线程审核版本的声明；人工编辑已清空审核版本时不会被旧线程覆盖。
+                documentStore.invalidateReview(taskId, revision, "审核对应的正文版本已经失效");
                 return;
             }
             String templateHtml = projectMapper.selectTemplateHtml(document.getTemplateId());

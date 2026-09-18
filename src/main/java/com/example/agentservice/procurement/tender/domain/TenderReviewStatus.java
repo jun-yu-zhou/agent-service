@@ -2,6 +2,9 @@ package com.example.agentservice.procurement.tender.domain;
 
 /** 定稿版本审核报告的异步处理状态。 */
 public enum TenderReviewStatus {
+    // 正文尚未定稿，因此还没有创建审核任务。
+    NOT_STARTED,
+
     // 已创建审核任务，等待执行。
     PENDING,
 

@@ -4,6 +4,7 @@ import com.baomidou.dynamic.datasource.annotation.DS;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.example.agentservice.procurement.tender.domain.GenerationTaskStatus;
+import com.example.agentservice.procurement.tender.domain.TenderReviewStatus;
 import com.example.agentservice.procurement.tender.persistence.TenderDocumentEntity;
 import com.example.agentservice.procurement.tender.persistence.TenderDocumentMapper;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -16,8 +17,6 @@ import org.springframework.stereotype.Repository;
 @DS("master")
 @Repository
 public class TenderDocumentStore {
-
-    private static final String REVIEW_NOT_STARTED = "NOT_STARTED";
 
     private final TenderDocumentMapper mapper;
 
@@ -43,27 +42,53 @@ public class TenderDocumentStore {
         document.setGenerationStage("等待生成");
         document.setFinalized(false);
         document.setContentRevision(0);
-        document.setReviewStatus(REVIEW_NOT_STARTED);
+        document.setReviewStatus(TenderReviewStatus.NOT_STARTED.name());
         mapper.insert(document);
         return document;
     }
 
-    public void markGenerating(String taskId) {
-        updateGeneration(taskId, GenerationTaskStatus.GENERATING, "正在生成初稿", null, null);
+    /**
+     * 原子抢占一个待生成任务。
+     *
+     * <p>正文版本和定稿状态共同作为乐观锁，避免迟到或重复执行的后台线程重新生成已经被人工处理的文件。</p>
+     */
+    public boolean markGenerating(String taskId) {
+        return mapper.update(null, initialGenerationUpdate(taskId)
+                .eq(TenderDocumentEntity::getGenerationStatus, GenerationTaskStatus.PENDING.name())
+                .set(TenderDocumentEntity::getGenerationStatus, GenerationTaskStatus.GENERATING.name())
+                .set(TenderDocumentEntity::getGenerationStage, "正在生成初稿")
+                .set(TenderDocumentEntity::getGenerationError, null)) == 1;
     }
 
-    public void completeGeneration(String taskId, String markdown) {
-        updateGeneration(taskId, GenerationTaskStatus.COMPLETED, "初稿生成完成", null, markdown);
+    /** 仅允许仍在生成的初始版本写入正文，旧线程不能覆盖人工编辑或定稿内容。 */
+    public boolean completeGeneration(String taskId, String markdown) {
+        return mapper.update(null, initialGenerationUpdate(taskId)
+                .eq(TenderDocumentEntity::getGenerationStatus, GenerationTaskStatus.GENERATING.name())
+                .set(TenderDocumentEntity::getGenerationStatus, GenerationTaskStatus.COMPLETED.name())
+                .set(TenderDocumentEntity::getGenerationStage, "初稿生成完成")
+                .set(TenderDocumentEntity::getGenerationError, null)
+                .set(TenderDocumentEntity::getDocumentMarkdown, markdown)
+                .set(TenderDocumentEntity::getContentRevision, 1)) == 1;
     }
 
-    public void failGeneration(String taskId, String errorMessage) {
-        updateGeneration(taskId, GenerationTaskStatus.FAILED, "生成失败", errorMessage, null);
+    /** 生成失败只能结束预期的生成状态，不能把已完成任务回退为失败。 */
+    public boolean failGeneration(
+            String taskId, GenerationTaskStatus expectedStatus, String errorMessage) {
+        return mapper.update(null, initialGenerationUpdate(taskId)
+                .eq(TenderDocumentEntity::getGenerationStatus, expectedStatus.name())
+                .set(TenderDocumentEntity::getGenerationStatus, GenerationTaskStatus.FAILED.name())
+                .set(TenderDocumentEntity::getGenerationStage, "生成失败")
+                .set(TenderDocumentEntity::getGenerationError, errorMessage)) == 1;
     }
 
-    /** 覆盖当前正文，并使旧定稿和旧审核报告立即失效。 */
-    public Optional<TenderDocumentEntity> saveMarkdown(
+    /**
+     * 覆盖当前正文，并使旧定稿和旧审核报告立即失效。
+     *
+     * <p>同时比较正文版本与调用方读取到的定稿状态，让并发的编辑和定稿请求最多只有一个成功。</p>
+     */
+    public boolean saveMarkdown(
             String taskId, int expectedRevision, boolean expectedFinalized, String markdown) {
-        int updated = mapper.update(null, Wrappers.<TenderDocumentEntity>lambdaUpdate()
+        return mapper.update(null, Wrappers.<TenderDocumentEntity>lambdaUpdate()
                 .eq(TenderDocumentEntity::getTaskId, taskId)
                 .eq(TenderDocumentEntity::getContentRevision, expectedRevision)
                 .eq(TenderDocumentEntity::getFinalized, expectedFinalized)
@@ -74,47 +99,45 @@ public class TenderDocumentStore {
                 .set(TenderDocumentEntity::getFinalized, false)
                 .set(TenderDocumentEntity::getFinalizedAt, null)
                 .set(TenderDocumentEntity::getReviewRevision, null)
-                .set(TenderDocumentEntity::getReviewStatus, REVIEW_NOT_STARTED)
+                .set(TenderDocumentEntity::getReviewStatus, TenderReviewStatus.NOT_STARTED.name())
                 .set(TenderDocumentEntity::getReviewStage, null)
                 .set(TenderDocumentEntity::getReviewReport, null)
                 .set(TenderDocumentEntity::getReviewError, null)
-                .set(TenderDocumentEntity::getReviewedAt, null));
-        return updated == 1 ? findByTaskId(taskId) : Optional.empty();
+                .set(TenderDocumentEntity::getReviewedAt, null)) == 1;
     }
 
-    /** 将当前正文确认为定稿，并为同一正文版本初始化审核状态。 */
-    public Optional<TenderDocumentEntity> finalizeDocument(String taskId, int expectedRevision) {
-        LocalDateTime now = LocalDateTime.now();
-        int updated = mapper.update(null, Wrappers.<TenderDocumentEntity>lambdaUpdate()
+    /** 将生成完成的当前正文确认为定稿，并将审核任务绑定到同一正文版本。 */
+    public boolean finalizeDocument(String taskId, int expectedRevision) {
+        return mapper.update(null, Wrappers.<TenderDocumentEntity>lambdaUpdate()
                 .eq(TenderDocumentEntity::getTaskId, taskId)
                 .eq(TenderDocumentEntity::getContentRevision, expectedRevision)
                 .eq(TenderDocumentEntity::getFinalized, false)
+                .eq(TenderDocumentEntity::getGenerationStatus, GenerationTaskStatus.COMPLETED.name())
                 .set(TenderDocumentEntity::getFinalized, true)
-                .set(TenderDocumentEntity::getFinalizedAt, now)
+                .set(TenderDocumentEntity::getFinalizedAt, LocalDateTime.now())
                 .set(TenderDocumentEntity::getGenerationStage, "已确认定稿")
                 .set(TenderDocumentEntity::getReviewRevision, expectedRevision)
-                .set(TenderDocumentEntity::getReviewStatus, "PENDING")
+                .set(TenderDocumentEntity::getReviewStatus, TenderReviewStatus.PENDING.name())
                 .set(TenderDocumentEntity::getReviewStage, "等待审核")
                 .set(TenderDocumentEntity::getReviewReport, null)
                 .set(TenderDocumentEntity::getReviewError, null)
-                .set(TenderDocumentEntity::getReviewedAt, null));
-        return updated == 1 ? findByTaskId(taskId) : Optional.empty();
+                .set(TenderDocumentEntity::getReviewedAt, null)) == 1;
     }
 
     /** 原子抢占待执行或失败的审核任务，避免同一版本被重复提交。 */
-    public boolean beginReview(String taskId, int revision, String expectedStatus) {
-        return mapper.update(null, reviewUpdate(taskId, revision)
-                .eq(TenderDocumentEntity::getReviewStatus, expectedStatus)
-                .set(TenderDocumentEntity::getReviewStatus, "REVIEWING")
+    public boolean beginReview(String taskId, int revision, TenderReviewStatus expectedStatus) {
+        return mapper.update(null, currentReviewUpdate(taskId, revision)
+                .eq(TenderDocumentEntity::getReviewStatus, expectedStatus.name())
+                .set(TenderDocumentEntity::getReviewStatus, TenderReviewStatus.REVIEWING.name())
                 .set(TenderDocumentEntity::getReviewStage, "正在生成审核报告")
                 .set(TenderDocumentEntity::getReviewError, null)) == 1;
     }
 
     /** 仅允许当前定稿版本的审核任务写入结果，旧任务完成后会被自动丢弃。 */
     public boolean completeReview(String taskId, int revision, String report) {
-        return mapper.update(null, reviewUpdate(taskId, revision)
-                .eq(TenderDocumentEntity::getReviewStatus, "REVIEWING")
-                .set(TenderDocumentEntity::getReviewStatus, "COMPLETED")
+        return mapper.update(null, currentReviewUpdate(taskId, revision)
+                .eq(TenderDocumentEntity::getReviewStatus, TenderReviewStatus.REVIEWING.name())
+                .set(TenderDocumentEntity::getReviewStatus, TenderReviewStatus.COMPLETED.name())
                 .set(TenderDocumentEntity::getReviewStage, "审核报告已生成")
                 .set(TenderDocumentEntity::getReviewReport, report)
                 .set(TenderDocumentEntity::getReviewError, null)
@@ -123,15 +146,31 @@ public class TenderDocumentStore {
 
     /** 审核失败状态同样绑定正文版本，不能覆盖后续人工编辑产生的新版本。 */
     public boolean failReview(String taskId, int revision, String error) {
-        return mapper.update(null, reviewUpdate(taskId, revision)
-                .eq(TenderDocumentEntity::getReviewStatus, "REVIEWING")
-                .set(TenderDocumentEntity::getReviewStatus, "FAILED")
+        return mapper.update(null, currentReviewUpdate(taskId, revision)
+                .eq(TenderDocumentEntity::getReviewStatus, TenderReviewStatus.REVIEWING.name())
+                .set(TenderDocumentEntity::getReviewStatus, TenderReviewStatus.FAILED.name())
                 .set(TenderDocumentEntity::getReviewStage, "审核失败")
                 .set(TenderDocumentEntity::getReviewReport, null)
                 .set(TenderDocumentEntity::getReviewError, error)) == 1;
     }
 
-    private LambdaUpdateWrapper<TenderDocumentEntity> reviewUpdate(
+    /**
+     * 收口已被当前线程抢占、但执行前发现失效的审核任务。
+     *
+     * <p>这里只校验审核版本令牌；人工编辑会清空审核版本，因此旧线程无法误伤新审核任务。</p>
+     */
+    public boolean invalidateReview(String taskId, int revision, String error) {
+        return mapper.update(null, Wrappers.<TenderDocumentEntity>lambdaUpdate()
+                .eq(TenderDocumentEntity::getTaskId, taskId)
+                .eq(TenderDocumentEntity::getReviewRevision, revision)
+                .eq(TenderDocumentEntity::getReviewStatus, TenderReviewStatus.REVIEWING.name())
+                .set(TenderDocumentEntity::getReviewStatus, TenderReviewStatus.FAILED.name())
+                .set(TenderDocumentEntity::getReviewStage, "审核任务已失效")
+                .set(TenderDocumentEntity::getReviewReport, null)
+                .set(TenderDocumentEntity::getReviewError, error)) == 1;
+    }
+
+    private LambdaUpdateWrapper<TenderDocumentEntity> currentReviewUpdate(
             String taskId, int revision) {
         return Wrappers.<TenderDocumentEntity>lambdaUpdate()
                 .eq(TenderDocumentEntity::getTaskId, taskId)
@@ -140,22 +179,12 @@ public class TenderDocumentStore {
                 .eq(TenderDocumentEntity::getFinalized, true);
     }
 
-    private void updateGeneration(
-            String taskId,
-            GenerationTaskStatus status,
-            String stage,
-            String error,
-            String markdown) {
-        var update = Wrappers.<TenderDocumentEntity>lambdaUpdate()
+    /** 所有初稿生成迁移都限定在尚未产生正文的初始版本。 */
+    private LambdaUpdateWrapper<TenderDocumentEntity> initialGenerationUpdate(String taskId) {
+        return Wrappers.<TenderDocumentEntity>lambdaUpdate()
                 .eq(TenderDocumentEntity::getTaskId, taskId)
-                .set(TenderDocumentEntity::getGenerationStatus, status.name())
-                .set(TenderDocumentEntity::getGenerationStage, stage)
-                .set(TenderDocumentEntity::getGenerationError, error);
-        if (markdown != null) {
-            update.set(TenderDocumentEntity::getDocumentMarkdown, markdown)
-                    .set(TenderDocumentEntity::getContentRevision, 1);
-        }
-        mapper.update(null, update);
+                .eq(TenderDocumentEntity::getContentRevision, 0)
+                .eq(TenderDocumentEntity::getFinalized, false);
     }
 
     private String shortUuid() {

@@ -83,11 +83,12 @@ public class TenderDocumentTaskService {
             throw new IllegalStateException("当前任务状态不能保存人工版本: " + document.getGenerationStatus());
         }
         int revision = currentRevision(document);
-        TenderDocumentEntity saved = documentStore.saveMarkdown(taskId, revision,
-                        Boolean.TRUE.equals(document.getFinalized()), markdown.trim())
-                .orElseThrow(TenderDocumentTaskService::concurrentModification);
+        boolean saved = documentStore.saveMarkdown(
+                taskId, revision, Boolean.TRUE.equals(document.getFinalized()), markdown.trim());
+        if (!saved) throw concurrentModification();
+        // 不在条件更新后重新查询，避免并发写入让本请求读到其他请求产生的版本。
         return Optional.of(new DocumentVersion(
-                saved.getId(), saved.getTaskId(), saved.getContentRevision(), "MANUAL_EDIT", false));
+                document.getId(), document.getTaskId(), revision + 1, "MANUAL_EDIT", false));
     }
 
     /** 将指定的已保存版本确认为当前任务的定稿版本。 */
@@ -98,19 +99,23 @@ public class TenderDocumentTaskService {
         if (document.getDocumentMarkdown() == null || document.getDocumentMarkdown().isBlank()) {
             throw new IllegalStateException("招标文件正文为空，不能确认定稿");
         }
-        TenderDocumentEntity saved = documentStore.finalizeDocument(taskId, currentRevision(document))
-                .orElseThrow(TenderDocumentTaskService::concurrentModification);
+        int revision = currentRevision(document);
+        if (!documentStore.finalizeDocument(taskId, revision)) throw concurrentModification();
         reviewTaskService.start(taskId, versionId);
-        return Optional.of(currentVersion(saved));
+        // 定稿没有产生新的正文版本，成功响应应绑定本次条件更新使用的版本。
+        return Optional.of(new DocumentVersion(
+                document.getId(), document.getTaskId(), revision,
+                revision > 1 ? "MANUAL_EDIT" : "AI_GENERATED", true));
     }
 
     /** 旧项目入口生成的正文和状态直接写入数据库。 */
     private void generateDatabase(String taskId, String templateHtml, JsonNode projectData) {
+        // 只有成功把 PENDING 原子迁移到 GENERATING 的线程才有资格调用模型。
+        if (!documentStore.markGenerating(taskId)) return;
         try {
-            documentStore.markGenerating(taskId);
             documentStore.completeGeneration(taskId, aiService.generateDraft(templateHtml, projectData));
         } catch (Exception exception) {
-            documentStore.failGeneration(taskId, exception.getMessage());
+            documentStore.failGeneration(taskId, GenerationTaskStatus.GENERATING, exception.getMessage());
         }
     }
 
