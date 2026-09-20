@@ -65,6 +65,24 @@
             <version>4.15.0</version>
         </dependency>
 
+        <!-- Tika 4：PDF 文本提取；tika-vlm 通过 OpenAI 兼容协议调用百炼视觉模型。 -->
+        <dependency>
+            <groupId>org.apache.tika</groupId>
+            <artifactId>tika-parsers-standard-package</artifactId>
+            <version>4.0.0</version>
+            <type>pom</type>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.tika</groupId>
+            <artifactId>tika-vlm</artifactId>
+            <version>4.0.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.tika</groupId>
+            <artifactId>tika-serialization</artifactId>
+            <version>4.0.0</version>
+        </dependency>
+
         <dependency>
             <groupId>com.github.victools</groupId>
             <artifactId>jsonschema-generator</artifactId>
