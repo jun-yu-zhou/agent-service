@@ -19,8 +19,10 @@ import org.docx4j.wml.ObjectFactory;
 import org.docx4j.wml.P;
 import org.docx4j.wml.PPr;
 import org.docx4j.wml.R;
+import org.docx4j.wml.RPr;
 import org.docx4j.wml.STVerticalJc;
 import org.docx4j.wml.SectPr;
+import org.docx4j.wml.Style;
 import org.docx4j.wml.Tbl;
 import org.docx4j.wml.TblPr;
 import org.docx4j.wml.TblWidth;
@@ -31,6 +33,7 @@ import org.docx4j.wml.Text;
 
 import java.math.BigInteger;
 import java.util.List;
+import java.util.Set;
 
 /**
  * 使用 docx4j 统一处理招标文件目录、页码和页面版式。
@@ -47,6 +50,8 @@ public final class DocxFormatter {
     private static final BigInteger A4_HEIGHT = BigInteger.valueOf(16838);
     private static final BigInteger PAGE_MARGIN = BigInteger.valueOf(1440);
     private static final BigInteger CONTENT_WIDTH = BigInteger.valueOf(9026);
+    private static final Set<String> HEADING_STYLES =
+            Set.of("Heading1", "Heading2", "Heading3", "Heading4", "Heading5", "Heading6");
 
     private final WordprocessingMLPackage document;
 
@@ -118,6 +123,7 @@ public final class DocxFormatter {
     public void apply() throws Exception {
         SectPr section = section();
         if (a4) configureA4(section);
+        formatHeadingStyles();
         List<Object> content = body();
         if (autoTocHeading) ensureTocHeading(content);
         int directoryIndex = directoryIndex(content);
@@ -170,6 +176,21 @@ public final class DocxFormatter {
                 .map(org.docx4j.XmlUtils::unwrap).filter(P.class::isInstance).map(P.class::cast)
                 .filter(paragraph -> headingLevel(paragraph) == majorLevel)
                 .forEach(paragraph -> properties(paragraph).setPageBreakBefore(FACTORY.createBooleanDefaultTrue()));
+    }
+
+    /** 中文正式文档标题统一取消斜体，其他字号、字体和加粗规则保持转换器默认值。 */
+    private void formatHeadingStyles() throws Exception {
+        for (Style style : document.getMainDocumentPart()
+                .getStyleDefinitionsPart().getJaxbElement().getStyle()) {
+            if (!HEADING_STYLES.contains(style.getStyleId())) continue;
+            RPr properties = style.getRPr();
+            if (properties == null) {
+                properties = FACTORY.createRPr();
+                style.setRPr(properties);
+            }
+            properties.setI(booleanValue(false));
+            properties.setICs(booleanValue(false));
+        }
     }
 
     /** 在第一个标题后加入目录标题，正文目录条目仍由 docx4j 生成。 */
@@ -352,6 +373,12 @@ public final class DocxFormatter {
         Jc alignment = FACTORY.createJc();
         alignment.setVal(value);
         return alignment;
+    }
+
+    private org.docx4j.wml.BooleanDefaultTrue booleanValue(boolean value) {
+        var result = FACTORY.createBooleanDefaultTrue();
+        result.setVal(value);
+        return result;
     }
 
     /** 创建以 twip 为单位的固定宽度定义。 */
