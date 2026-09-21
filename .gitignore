@@ -3,6 +3,9 @@ target/
 !**/src/main/**/target/
 !**/src/test/**/target/
 
+# Maven 本地仓库固定在 G:\repository\repository，项目目录内不应出现 .m2。
+.m2/
+
 ### STS ###
 .apt_generated
 .classpath
