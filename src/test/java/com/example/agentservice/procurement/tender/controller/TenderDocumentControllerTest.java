@@ -71,7 +71,7 @@ class TenderDocumentControllerTest {
         TenderReviewTaskService reviewService = mock(TenderReviewTaskService.class);
         TenderReviewSnapshot review = new TenderReviewSnapshot(
                 "task-1", "version-1", TenderReviewStatus.REVIEWING,
-                "正在生成审核报告", null, null, Instant.now(), Instant.now());
+                "正在生成审核报告", false, null, Instant.now(), Instant.now());
         when(reviewService.find("task-1", "version-1")).thenReturn(Optional.of(review));
         TenderDocumentController controller = new TenderDocumentController(
                 mock(TenderDocumentTaskService.class), mock(TenderDocumentArtifactService.class), reviewService);

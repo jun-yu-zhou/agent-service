@@ -31,10 +31,12 @@ class TenderDocumentExportTest {
             new Docx4jMarkdownDocxRenderer().render("# 招标文件\n\n项目名称：测试项目\n\n招标编号：TEST-001\n\n"
                     + "招 标 人：测试单位\n\n组织招标：测试机构\n\n发布日期：2026-09-09\n\n"
                     + "# 目录\n\n第一章 投标邀请 ...... 1\n\n## 第一章 投标邀请\n\n### 一、项目概况\n\n"
+                    + "#### 1.1 项目说明\n\n##### 1.1.1 技术要求\n\n###### 1.1.1.1 参数说明\n\n"
                     + "## 第二章 投标人须知\n\n| 项目 | 数量 |\n| --- | --- |\n| 示例服务 | 1 |", docx);
 
             try (ZipFile archive = new ZipFile(docx.toFile())) {
                 String documentXml = xml(archive, "word/document.xml");
+                String stylesXml = xml(archive, "word/styles.xml");
                 String footerXml = xml(archive, archive.stream()
                         .map(ZipEntry::getName)
                         .filter(name -> name.startsWith("word/footer"))
@@ -51,6 +53,7 @@ class TenderDocumentExportTest {
                 assertTrue(documentXml.split("w:pageBreakBefore", -1).length - 1 >= 2);
                 assertTrue(documentXml.contains("w:type w:val=\"nextPage\""));
                 assertTrue(footerXml.contains("PAGE"));
+                assertTrue(stylesXml.split("<w:i w:val=\"false\"", -1).length - 1 >= 6);
             }
             assertTrue(Files.size(docx) > 0);
         } finally {

@@ -85,7 +85,12 @@ class TenderDocumentTaskServiceTest {
                 "template-1", "<h1>招标文件</h1>", projectData));
         TenderDocumentAiService aiService = mock(TenderDocumentAiService.class);
         when(documentStore.markGenerating(any())).thenReturn(true);
-        when(aiService.generateDraft("<h1>招标文件</h1>", projectData)).thenReturn("# 招标文件");
+        when(documentStore.saveGenerationSession(any(), any())).thenReturn(true);
+        TenderDocumentAiService.DraftSession draftSession = new TenderDocumentAiService.DraftSession(
+                "session-1", "/mnt/session/uploads/template/template.html");
+        when(aiService.createDraftSession("<h1>招标文件</h1>", projectData)).thenReturn(draftSession);
+        when(aiService.generateDraft(draftSession))
+                .thenReturn("# 招标文件");
         TenderDocumentTaskService service = new TenderDocumentTaskService(
                 aiService, projectService, documentStore,
                 mock(TenderReviewTaskService.class), executor);
@@ -97,8 +102,72 @@ class TenderDocumentTaskServiceTest {
         verify(executor).execute(runnable.capture());
         runnable.getValue().run();
         verify(documentStore).markGenerating(task.taskId());
-        verify(documentStore).completeGeneration(task.taskId(), "# 招标文件");
+        verify(documentStore).saveGenerationSession(task.taskId(), "session-1");
+        verify(documentStore).completeGeneration(task.taskId(), "session-1", "# 招标文件");
         assertEquals(GenerationTaskStatus.PENDING, task.status());
+    }
+
+    @Test
+    void shouldCreateTaskWithUploadedTemplate() throws Exception {
+        TenderProjectDataService projectService = mock(TenderProjectDataService.class);
+        TenderDocumentStore documentStore = mock(TenderDocumentStore.class);
+        ExecutorService executor = mock(ExecutorService.class);
+        JsonNode projectData = new ObjectMapper().readTree("{\"projectName\":\"测试项目\"}");
+        when(projectService.load("project-1")).thenReturn(new TenderProjectDataService.GenerationInput(
+                "template-1", "<h1>默认模板</h1>", projectData));
+        TenderDocumentAiService aiService = mock(TenderDocumentAiService.class);
+        when(aiService.uploadTemplate(any(byte[].class), org.mockito.ArgumentMatchers.eq("用户模板.docx"),
+                org.mockito.ArgumentMatchers.eq("application/octet-stream")))
+                .thenReturn("file-1");
+        when(documentStore.markGenerating(any())).thenReturn(true);
+        when(documentStore.saveGenerationSession(any(), any())).thenReturn(true);
+        TenderDocumentAiService.DraftSession draftSession = new TenderDocumentAiService.DraftSession(
+                "session-1", "/mnt/session/uploads/template/用户模板.docx");
+        when(aiService.createDraftSession("file-1", "用户模板.docx", projectData)).thenReturn(draftSession);
+        when(aiService.generateDraft(draftSession))
+                .thenReturn("# 招标文件");
+        TenderDocumentTaskService service = new TenderDocumentTaskService(
+                aiService, projectService, documentStore,
+                mock(TenderReviewTaskService.class), executor);
+
+        DocumentGenerationTask task = service.submitProjectWithTemplate(
+                "project-1", new byte[] {1, 2}, "用户模板.docx", "application/octet-stream");
+
+        verify(documentStore).create(task.taskId(), "project-1", "template-1", projectData, "file-1", "用户模板.docx");
+        ArgumentCaptor<Runnable> runnable = ArgumentCaptor.forClass(Runnable.class);
+        verify(executor).execute(runnable.capture());
+        runnable.getValue().run();
+        verify(documentStore).saveGenerationSession(task.taskId(), "session-1");
+        verify(documentStore).completeGeneration(task.taskId(), "session-1", "# 招标文件");
+    }
+
+    @Test
+    void shouldKeepSessionWhenFirstAgentMessageFails() throws Exception {
+        TenderProjectDataService projectService = mock(TenderProjectDataService.class);
+        TenderDocumentStore documentStore = mock(TenderDocumentStore.class);
+        ExecutorService executor = mock(ExecutorService.class);
+        JsonNode projectData = new ObjectMapper().readTree("{\"projectName\":\"测试项目\"}");
+        when(projectService.load("project-1")).thenReturn(new TenderProjectDataService.GenerationInput(
+                "template-1", "<h1>招标文件</h1>", projectData));
+        TenderDocumentAiService aiService = mock(TenderDocumentAiService.class);
+        when(documentStore.markGenerating(any())).thenReturn(true);
+        when(documentStore.saveGenerationSession(any(), any())).thenReturn(true);
+        TenderDocumentAiService.DraftSession draftSession = new TenderDocumentAiService.DraftSession(
+                "session-1", "/mnt/session/uploads/template/template.html");
+        when(aiService.createDraftSession("<h1>招标文件</h1>", projectData)).thenReturn(draftSession);
+        when(aiService.generateDraft(draftSession))
+                .thenThrow(new IllegalStateException("事件发送失败"));
+        TenderDocumentTaskService service = new TenderDocumentTaskService(
+                aiService, projectService, documentStore,
+                mock(TenderReviewTaskService.class), executor);
+
+        DocumentGenerationTask task = service.submitProject("project-1");
+
+        ArgumentCaptor<Runnable> runnable = ArgumentCaptor.forClass(Runnable.class);
+        verify(executor).execute(runnable.capture());
+        runnable.getValue().run();
+        verify(documentStore).saveGenerationSession(task.taskId(), "session-1");
+        verify(documentStore).failGeneration(task.taskId(), GenerationTaskStatus.GENERATING, "事件发送失败");
     }
 
     @Test

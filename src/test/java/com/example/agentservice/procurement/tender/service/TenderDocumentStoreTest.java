@@ -49,7 +49,24 @@ class TenderDocumentStoreTest {
                 update = ArgumentCaptor.forClass(com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper.class);
 
         assertTrue(new TenderDocumentStore(mapper)
-                .completeGeneration("task-1", "# 招标文件"));
+                .completeGeneration("task-1", "session-1", "# 招标文件"));
+
+        verify(mapper).update(any(), update.capture());
+        String conditions = update.getValue().getSqlSegment().toLowerCase();
+        assertTrue(conditions.contains("task_id"));
+        assertTrue(conditions.contains("generation_status"));
+        assertTrue(conditions.contains("content_revision"));
+        assertTrue(conditions.contains("finalized"));
+    }
+
+    @Test
+    void shouldSaveSessionOnlyForGeneratingInitialTask() {
+        TenderDocumentMapper mapper = mock(TenderDocumentMapper.class);
+        when(mapper.update(any(), any())).thenReturn(1);
+        ArgumentCaptor<com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<TenderDocumentEntity>>
+                update = ArgumentCaptor.forClass(com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper.class);
+
+        assertTrue(new TenderDocumentStore(mapper).saveGenerationSession("task-1", "session-1"));
 
         verify(mapper).update(any(), update.capture());
         String conditions = update.getValue().getSqlSegment().toLowerCase();
