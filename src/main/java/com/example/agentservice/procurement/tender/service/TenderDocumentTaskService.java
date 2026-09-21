@@ -51,6 +51,20 @@ public class TenderDocumentTaskService {
         return task;
     }
 
+    /** 使用用户上传的模板和同一项目资料创建初稿生成任务。 */
+    public DocumentGenerationTask submitProjectWithTemplate(
+            String projectId, byte[] templateContent, String templateFileName, String contentType) {
+        TenderProjectDataService.GenerationInput input = projectDataService.load(projectId);
+        String templateFileId = aiService.uploadTemplate(templateContent, templateFileName, contentType);
+        String taskId = UUID.randomUUID().toString();
+        Instant now = Instant.now();
+        DocumentGenerationTask task = snapshot(
+                taskId, GenerationTaskStatus.PENDING, "等待生成", null, now, now);
+        documentStore.create(taskId, projectId, input.templateId(), input.projectData(), templateFileId, templateFileName);
+        executor.execute(() -> generateDatabase(taskId, templateFileId, templateFileName, input.projectData()));
+        return task;
+    }
+
     /** 从数据库查询任务状态，供前端轮询生成进度。 */
     public Optional<DocumentGenerationTask> findTask(String taskId) {
         return documentStore.findByTaskId(taskId).map(this::taskSnapshot);
@@ -113,7 +127,26 @@ public class TenderDocumentTaskService {
         // 只有成功把 PENDING 原子迁移到 GENERATING 的线程才有资格调用模型。
         if (!documentStore.markGenerating(taskId)) return;
         try {
-            documentStore.completeGeneration(taskId, aiService.generateDraft(templateHtml, projectData));
+            TenderDocumentAiService.DraftSession session =
+                    aiService.createDraftSession(templateHtml, projectData);
+            if (!documentStore.saveGenerationSession(taskId, session.sessionId())) return;
+            String markdown = aiService.generateDraft(session);
+            documentStore.completeGeneration(taskId, session.sessionId(), markdown);
+        } catch (Exception exception) {
+            documentStore.failGeneration(taskId, GenerationTaskStatus.GENERATING, exception.getMessage());
+        }
+    }
+
+    /** 用户模板已上传到 Agent，后台线程只负责创建会话和读取初稿文件。 */
+    private void generateDatabase(
+            String taskId, String templateFileId, String templateFileName, JsonNode projectData) {
+        if (!documentStore.markGenerating(taskId)) return;
+        try {
+            TenderDocumentAiService.DraftSession session =
+                    aiService.createDraftSession(templateFileId, templateFileName, projectData);
+            if (!documentStore.saveGenerationSession(taskId, session.sessionId())) return;
+            String markdown = aiService.generateDraft(session);
+            documentStore.completeGeneration(taskId, session.sessionId(), markdown);
         } catch (Exception exception) {
             documentStore.failGeneration(taskId, GenerationTaskStatus.GENERATING, exception.getMessage());
         }

@@ -3,8 +3,6 @@ package com.example.agentservice.procurement.tender.service;
 import com.example.agentservice.procurement.tender.domain.TenderReviewSnapshot;
 import com.example.agentservice.procurement.tender.domain.TenderReviewStatus;
 import com.example.agentservice.procurement.tender.persistence.TenderDocumentEntity;
-import com.example.agentservice.procurement.tender.persistence.TenderProjectMapper;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.util.Optional;
@@ -17,21 +15,15 @@ import org.springframework.stereotype.Service;
 public class TenderReviewTaskService {
 
     private final TenderDocumentStore documentStore;
-    private final TenderProjectMapper projectMapper;
     private final TenderDocumentAiService aiService;
-    private final ObjectMapper objectMapper;
     private final ExecutorService executor;
 
     public TenderReviewTaskService(
             TenderDocumentStore documentStore,
-            TenderProjectMapper projectMapper,
             TenderDocumentAiService aiService,
-            ObjectMapper objectMapper,
             @Qualifier("procurementDocumentExecutor") ExecutorService executor) {
         this.documentStore = documentStore;
-        this.projectMapper = projectMapper;
         this.aiService = aiService;
-        this.objectMapper = objectMapper;
         this.executor = executor;
     }
 
@@ -85,10 +77,12 @@ public class TenderReviewTaskService {
                 documentStore.invalidateReview(taskId, revision, "审核对应的正文版本已经失效");
                 return;
             }
-            String templateHtml = projectMapper.selectTemplateHtml(document.getTemplateId());
-            String report = aiService.review(
-                    templateHtml, objectMapper.readTree(document.getProjectData()), document.getDocumentMarkdown());
-            documentStore.completeReview(taskId, revision, report);
+            if (document.getSessionId() == null || document.getSessionId().isBlank()) {
+                throw new IllegalStateException("招标文件缺少 Managed Agent 会话，无法生成定稿产物");
+            }
+            String reviewReport = aiService.reviewFinalizedDocument(
+                    document.getSessionId(), document.getDocumentMarkdown());
+            documentStore.completeReview(taskId, revision, reviewReport);
         } catch (Exception exception) {
             documentStore.failReview(taskId, revision, exception.getMessage());
         }
@@ -103,7 +97,8 @@ public class TenderReviewTaskService {
         Instant updatedAt = toInstant(document.getReviewedAt());
         return new TenderReviewSnapshot(
                 document.getTaskId(), document.getId(), TenderReviewStatus.valueOf(document.getReviewStatus()),
-                document.getReviewStage(), document.getReviewReport(), document.getReviewError(),
+                document.getReviewStage(), TenderReviewStatus.COMPLETED.name().equals(document.getReviewStatus()),
+                document.getReviewError(),
                 createdAt, updatedAt == null ? createdAt : updatedAt);
     }
 

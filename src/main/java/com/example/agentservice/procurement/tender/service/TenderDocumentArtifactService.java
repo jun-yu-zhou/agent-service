@@ -7,7 +7,7 @@ import java.io.IOException;
 import java.util.Optional;
 import org.springframework.stereotype.Service;
 
-/** 将招标文件定稿及其审核报告生成为可下载的 Word 内容。 */
+/** 将人工定稿和 Managed Agent 审核报告转换为 Word 文件。 */
 @Service
 public class TenderDocumentArtifactService {
 

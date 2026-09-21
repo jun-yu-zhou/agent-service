@@ -16,8 +16,8 @@ public record TenderReviewSnapshot(
         // 供页面展示的当前处理阶段。
         String currentStage,
 
-        // 模型生成的完整 Markdown 审核报告。
-        String reportMarkdown,
+        // 审核报告是否已经生成，可用于控制导出按钮。
+        boolean exportReady,
 
         // 审核失败原因，成功时为空。
         String errorMessage,

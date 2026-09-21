@@ -12,6 +12,7 @@ import com.example.agentservice.procurement.tender.service.TenderReviewTaskServi
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
@@ -22,7 +23,10 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 /** 根据上传 HTML 模板和结构化项目数据生成招标文件初稿并管理人工编辑版本。 */
 @RestController
@@ -47,6 +51,16 @@ public class TenderDocumentController {
     @Operation(summary = "根据项目创建招标初稿任务", description = "按业务项目 ID 读取项目资料和 HTML 模板，异步生成初稿。")
     public R<DocumentGenerationTask> createTask(@RequestBody TenderProjectTaskRequest request) {
         return R.success(taskService.submitProject(request.id()));
+    }
+
+    /** 通过用户上传的模板文件创建异步招标文件生成任务。 */
+    @PostMapping(value = "/tasks/with-template", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "根据项目和上传模板创建招标初稿任务", description = "不校验模板格式，直接交由 Managed Agent 使用。")
+    public R<DocumentGenerationTask> createTaskWithTemplate(
+            @RequestParam("projectId") String projectId,
+            @RequestPart("templateFile") MultipartFile templateFile) throws IOException {
+        return R.success(taskService.submitProjectWithTemplate(
+                projectId, templateFile.getBytes(), templateFile.getOriginalFilename(), templateFile.getContentType()));
     }
 
     /** 查询招标文件生成任务的当前状态。 */
@@ -107,9 +121,9 @@ public class TenderDocumentController {
                 .orElseGet(() -> R.error(404, "审核记录不存在"));
     }
 
-    /** 将审核报告转换为 Word 文件并作为附件下载。 */
+    /** 将 Markdown 审核报告转换为 Word 文件并下载。 */
     @GetMapping("/tasks/{taskId}/versions/{versionId}/review/export")
-    @Operation(summary = "导出定稿审核报告", description = "将审核完成的报告作为 Word 附件直接返回。")
+    @Operation(summary = "导出定稿审核报告", description = "将审核报告转换为 Word 附件并直接返回。")
     public ResponseEntity<byte[]> exportReview(
             @PathVariable String taskId, @PathVariable String versionId) throws Exception {
         return artifactService.exportReview(taskId, versionId)
@@ -124,9 +138,9 @@ public class TenderDocumentController {
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    /** 将指定定稿版本转换为 Word 招标文件并作为附件下载。 */
+    /** 将数据库中的人工定稿转换为 Word 招标文件并下载。 */
     @PostMapping("/tasks/{taskId}/versions/{versionId}/artifacts/export")
-    @Operation(summary = "导出定稿 DOCX", description = "在内存中生成已确认定稿版本，并直接作为附件返回。")
+    @Operation(summary = "导出最终版招标文件", description = "将人工确认稿转换为 Word 附件并直接返回。")
     public ResponseEntity<byte[]> exportArtifacts(
             @PathVariable String taskId, @PathVariable String versionId) throws Exception {
         return artifactService.exportDocument(taskId, versionId)

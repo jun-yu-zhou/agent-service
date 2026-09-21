@@ -32,11 +32,20 @@ public class TenderDocumentStore {
     /** 创建任务主记录，正文由后台生成完成后写入。 */
     public TenderDocumentEntity create(
             String taskId, String projectId, String templateId, JsonNode projectData) {
+        return create(taskId, projectId, templateId, projectData, null, null);
+    }
+
+    /** 创建任务主记录，并保留用户模板在 Managed Agent 中的文件标识。 */
+    public TenderDocumentEntity create(
+            String taskId, String projectId, String templateId, JsonNode projectData,
+            String templateFileId, String templateFileName) {
         TenderDocumentEntity document = new TenderDocumentEntity();
         document.setId(shortUuid());
         document.setTaskId(taskId);
         document.setProjectId(projectId);
         document.setTemplateId(templateId);
+        document.setTemplateFileId(templateFileId);
+        document.setTemplateFileName(templateFileName);
         document.setProjectData(projectData == null || projectData.isNull() ? null : projectData.toString());
         document.setGenerationStatus(GenerationTaskStatus.PENDING.name());
         document.setGenerationStage("等待生成");
@@ -61,14 +70,27 @@ public class TenderDocumentStore {
     }
 
     /** 仅允许仍在生成的初始版本写入正文，旧线程不能覆盖人工编辑或定稿内容。 */
-    public boolean completeGeneration(String taskId, String markdown) {
+    public boolean completeGeneration(String taskId, String sessionId, String markdown) {
         return mapper.update(null, initialGenerationUpdate(taskId)
                 .eq(TenderDocumentEntity::getGenerationStatus, GenerationTaskStatus.GENERATING.name())
                 .set(TenderDocumentEntity::getGenerationStatus, GenerationTaskStatus.COMPLETED.name())
                 .set(TenderDocumentEntity::getGenerationStage, "初稿生成完成")
                 .set(TenderDocumentEntity::getGenerationError, null)
+                .set(TenderDocumentEntity::getSessionId, sessionId)
                 .set(TenderDocumentEntity::getDocumentMarkdown, markdown)
                 .set(TenderDocumentEntity::getContentRevision, 1)) == 1;
+    }
+
+    /**
+     * 会话创建成功即保存会话标识，避免首轮事件发送失败后无法回到百炼控制台追踪该会话。
+     *
+     * <p>仍限定为正在生成的初始版本，过期后台线程不能向已完成任务写入会话。</p>
+     */
+    public boolean saveGenerationSession(String taskId, String sessionId) {
+        return mapper.update(null, initialGenerationUpdate(taskId)
+                .eq(TenderDocumentEntity::getGenerationStatus, GenerationTaskStatus.GENERATING.name())
+                .set(TenderDocumentEntity::getSessionId, sessionId)
+                .set(TenderDocumentEntity::getGenerationStage, "Managed Agent 会话已创建")) == 1;
     }
 
     /** 生成失败只能结束预期的生成状态，不能把已完成任务回退为失败。 */
@@ -134,12 +156,12 @@ public class TenderDocumentStore {
     }
 
     /** 仅允许当前定稿版本的审核任务写入结果，旧任务完成后会被自动丢弃。 */
-    public boolean completeReview(String taskId, int revision, String report) {
+    public boolean completeReview(String taskId, int revision, String reviewReport) {
         return mapper.update(null, currentReviewUpdate(taskId, revision)
                 .eq(TenderDocumentEntity::getReviewStatus, TenderReviewStatus.REVIEWING.name())
                 .set(TenderDocumentEntity::getReviewStatus, TenderReviewStatus.COMPLETED.name())
                 .set(TenderDocumentEntity::getReviewStage, "审核报告已生成")
-                .set(TenderDocumentEntity::getReviewReport, report)
+                .set(TenderDocumentEntity::getReviewReport, reviewReport)
                 .set(TenderDocumentEntity::getReviewError, null)
                 .set(TenderDocumentEntity::getReviewedAt, LocalDateTime.now())) == 1;
     }

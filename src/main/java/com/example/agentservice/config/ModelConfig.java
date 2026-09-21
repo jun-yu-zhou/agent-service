@@ -258,46 +258,6 @@ public class ModelConfig {
                 .build();
     }
 
-    /** 招标文件初稿正文较长，使用独立配置避免受审查报告输出长度限制，走 DashScope 原生通道。 */
-    @Bean
-    @Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)
-    public DashScopeChatModel qwen37PlusTenderGenerationModel() {
-        return DashScopeChatModel.builder()
-                .apiKey(AgentServiceConfig.dashScopeApiKey())
-                .modelName(QWEN37_PLUS_MODEL_NAME)
-                .baseUrl(AgentServiceConfig.dashScopeBaseUrl())
-                .endpointType(EndpointType.MULTIMODAL)
-                .httpTransport(newHttpTransport())
-                .stream(true)
-                .enableThinking(false)
-                .defaultOptions(GenerateOptions.builder()
-                        .maxTokens(32768)
-                        .temperature(0.2D)
-                        .executionConfig(longExecutionConfig())
-                        .build())
-                .build();
-    }
-
-    /** 对招标文件初稿执行全文一致性修订，使用 Flash 降低第二次长文本调用成本。 */
-    @Bean
-    @Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)
-    public DashScopeChatModel qwen37FlashTenderRevisionModel() {
-        return DashScopeChatModel.builder()
-                .apiKey(AgentServiceConfig.dashScopeApiKey())
-                .modelName(QWEN37_FLASH_MODEL_NAME)
-                .baseUrl(AgentServiceConfig.dashScopeBaseUrl())
-                .endpointType(EndpointType.MULTIMODAL)
-                .httpTransport(newHttpTransport())
-                .stream(true)
-                .enableThinking(false)
-                .defaultOptions(GenerateOptions.builder()
-                        .maxTokens(32768)
-                        .temperature(0.1D)
-                        .executionConfig(longExecutionConfig())
-                        .build())
-                .build();
-    }
-
     /** 根据招标要求和企业资料生成可编辑的投标技术方案目录。 */
     @Bean
     @Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)
@@ -371,26 +331,6 @@ public class ModelConfig {
                 .stream(true)
                 .defaultOptions(GenerateOptions.builder()
                         .maxTokens(8192)
-                        .temperature(0.1D)
-                        .executionConfig(longExecutionConfig())
-                        .build())
-                .build();
-    }
-
-    /** 长篇招标文件审核使用独立模型配置，保证逐项报告拥有足够的输出空间。 */
-    @Bean
-    @Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)
-    public DashScopeChatModel qwen37PlusTenderReviewModel() {
-        return DashScopeChatModel.builder()
-                .apiKey(AgentServiceConfig.dashScopeApiKey())
-                .modelName(QWEN37_PLUS_MODEL_NAME)
-                .baseUrl(AgentServiceConfig.dashScopeBaseUrl())
-                .endpointType(EndpointType.MULTIMODAL)
-                .httpTransport(newHttpTransport())
-                .stream(true)
-                .enableThinking(false)
-                .defaultOptions(GenerateOptions.builder()
-                        .maxTokens(32768)
                         .temperature(0.1D)
                         .executionConfig(longExecutionConfig())
                         .build())
