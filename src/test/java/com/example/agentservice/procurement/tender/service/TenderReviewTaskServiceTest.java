@@ -23,13 +23,17 @@ class TenderReviewTaskServiceTest {
     void shouldCompleteQueuedReviewWithSameSession() {
         TenderDocumentStore store = mock(TenderDocumentStore.class);
         TenderDocumentAiService agent = mock(TenderDocumentAiService.class);
+        TenderArtifactStorage storage = mock(TenderArtifactStorage.class);
         ExecutorService executor = mock(ExecutorService.class);
         TenderDocumentEntity document = document();
         when(store.findByTaskId("task-1")).thenReturn(Optional.of(document));
         when(store.beginReview("task-1", 1, TenderReviewStatus.PENDING)).thenReturn(true);
         when(agent.reviewFinalizedDocument("session-1", "# 招标文件"))
-                .thenReturn("# 审核报告");
-        TenderReviewTaskService service = new TenderReviewTaskService(store, agent, executor);
+                .thenReturn(artifacts());
+        when(storage.store(org.mockito.ArgumentMatchers.eq("task-1"),
+                org.mockito.ArgumentMatchers.eq(1), any()))
+                .thenReturn(new TenderArtifactStorage.StoredArtifacts("document.docx", "review.docx"));
+        TenderReviewTaskService service = new TenderReviewTaskService(store, agent, storage, executor);
 
         assertEquals(TenderReviewStatus.PENDING,
                 service.start("task-1", "version-1").orElseThrow().status());
@@ -38,13 +42,14 @@ class TenderReviewTaskServiceTest {
         verify(store).beginReview("task-1", 1, TenderReviewStatus.PENDING);
         task.getValue().run();
 
-        verify(store).completeReview("task-1", 1, "# 审核报告");
+        verify(store).completeReview("task-1", 1, "document.docx", "review.docx");
     }
 
     @Test
     void shouldCloseClaimWhenReviewVersionBecomesInvalid() {
         TenderDocumentStore store = mock(TenderDocumentStore.class);
         TenderDocumentAiService agent = mock(TenderDocumentAiService.class);
+        TenderArtifactStorage storage = mock(TenderArtifactStorage.class);
         ExecutorService executor = mock(ExecutorService.class);
         TenderDocumentEntity pending = document();
         TenderDocumentEntity invalid = document();
@@ -53,7 +58,7 @@ class TenderReviewTaskServiceTest {
         when(store.findByTaskId("task-1")).thenReturn(
                 Optional.of(pending), Optional.of(pending), Optional.of(invalid));
         when(store.beginReview("task-1", 1, TenderReviewStatus.PENDING)).thenReturn(true);
-        TenderReviewTaskService service = new TenderReviewTaskService(store, agent, executor);
+        TenderReviewTaskService service = new TenderReviewTaskService(store, agent, storage, executor);
 
         service.start("task-1", "version-1");
         ArgumentCaptor<Runnable> task = ArgumentCaptor.forClass(Runnable.class);
@@ -68,12 +73,13 @@ class TenderReviewTaskServiceTest {
     void shouldFailPendingReviewWhenExecutorRejectsTask() {
         TenderDocumentStore store = mock(TenderDocumentStore.class);
         TenderDocumentAiService agent = mock(TenderDocumentAiService.class);
+        TenderArtifactStorage storage = mock(TenderArtifactStorage.class);
         ExecutorService executor = mock(ExecutorService.class);
         when(store.findByTaskId("task-1")).thenReturn(Optional.of(document()));
         when(store.beginReview("task-1", 1, TenderReviewStatus.PENDING)).thenReturn(true);
         doThrow(new RejectedExecutionException("审核队列已满"))
                 .when(executor).execute(any(Runnable.class));
-        TenderReviewTaskService service = new TenderReviewTaskService(store, agent, executor);
+        TenderReviewTaskService service = new TenderReviewTaskService(store, agent, storage, executor);
 
         service.start("task-1", "version-1");
 
@@ -94,5 +100,10 @@ class TenderReviewTaskServiceTest {
         document.setReviewStage("等待审核");
         document.setFinalizedAt(LocalDateTime.now());
         return document;
+    }
+
+    private TenderDocumentAiService.FinalizedArtifacts artifacts() {
+        return new TenderDocumentAiService.FinalizedArtifacts(
+                "定稿.docx", new byte[] {1}, "审核报告.docx", new byte[] {2});
     }
 }
