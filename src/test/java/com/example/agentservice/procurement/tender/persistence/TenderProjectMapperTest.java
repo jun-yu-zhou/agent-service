@@ -23,15 +23,6 @@ class TenderProjectMapperTest {
     }
 
     @Test
-    void reviewQueryRejectsDeletedOrEmptyTemplate() throws Exception {
-        String sql = sql("selectTemplateHtml", String.class);
-
-        assertTrue(sql.contains("DEL_FLAG = '1'"));
-        assertTrue(sql.contains("COMMENTS IS NOT NULL"));
-        assertTrue(sql.contains("TRIM(COMMENTS) <> ''"));
-    }
-
-    @Test
     void businessDetailsUseConfiguredDisplayOrder() throws Exception {
         for (String method : new String[] { "selectQualifications", "selectScoreRules",
                 "selectComments", "selectRequirements", "selectRequirementDetails" }) {

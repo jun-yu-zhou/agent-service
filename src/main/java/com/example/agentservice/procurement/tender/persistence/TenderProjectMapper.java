@@ -71,12 +71,4 @@ public interface TenderProjectMapper extends BaseMapper<TenderProjectEntity> {
     Map<String, Object> selectTemplate(
             @Param("collegeId") String collegeId, @Param("templateType") String templateType);
 
-    /** 根据模板 ID 查询审核阶段使用的原始 HTML 模板正文。 */
-    @Select("""
-            SELECT COMMENTS FROM zb_project_template
-            WHERE TEMPLATE_ID = #{id} AND DEL_FLAG = '1'
-              AND COMMENTS IS NOT NULL AND TRIM(COMMENTS) <> ''
-            LIMIT 1
-            """)
-    String selectTemplateHtml(@Param("id") String templateId);
 }

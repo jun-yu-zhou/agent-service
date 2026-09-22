@@ -11,7 +11,6 @@ import static org.mockito.Mockito.when;
 
 import com.example.agentservice.procurement.tender.persistence.TenderDocumentEntity;
 import com.example.agentservice.procurement.tender.persistence.TenderDocumentMapper;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.baomidou.mybatisplus.core.MybatisConfiguration;
 import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import org.apache.ibatis.builder.MapperBuilderAssistant;
@@ -81,8 +80,7 @@ class TenderDocumentStoreTest {
         TenderDocumentMapper mapper = mock(TenderDocumentMapper.class);
         TenderDocumentStore store = new TenderDocumentStore(mapper);
 
-        store.create("task-1", "project-1", "template-1",
-                new ObjectMapper().readTree("{\"projectName\":\"测试项目\"}"));
+        store.create("task-1", "project-1", "template-1");
 
         ArgumentCaptor<TenderDocumentEntity> captor = ArgumentCaptor.forClass(TenderDocumentEntity.class);
         verify(mapper).insert(captor.capture());
@@ -91,7 +89,6 @@ class TenderDocumentStoreTest {
         assertEquals("task-1", document.getTaskId());
         assertEquals("project-1", document.getProjectId());
         assertEquals("template-1", document.getTemplateId());
-        assertEquals("{\"projectName\":\"测试项目\"}", document.getProjectData());
         assertEquals("PENDING", document.getGenerationStatus());
         assertEquals("NOT_STARTED", document.getReviewStatus());
         assertFalse(document.getFinalized());

@@ -22,13 +22,12 @@ public class TenderDocumentAiService {
         this.objectMapper = objectMapper;
     }
 
-    /** 上传数据库 HTML 模板和项目资料，并创建会话。 */
-    public DraftSession createDraftSession(String templateHtml, JsonNode projectData) {
+    /** 将数据库中的 HTML 模板上传到 Managed Agent 文件服务。 */
+    public String uploadTemplateHtml(String templateHtml) {
         if (templateHtml == null || templateHtml.isBlank()) {
             throw new IllegalArgumentException("招标文件 HTML 模板不能为空");
         }
-        String templateFileId = uploadText(templateHtml, "template.html", "text/html");
-        return createDraftSession(templateFileId, "template.html", projectData);
+        return uploadText(templateHtml, "template.html", "text/html");
     }
 
     /** 上传项目资料，并与用户模板一起挂载到会话。 */

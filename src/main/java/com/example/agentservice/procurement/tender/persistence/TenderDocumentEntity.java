@@ -27,15 +27,6 @@ public class TenderDocumentEntity {
     /** 百炼 Managed Agent 会话 ID。 */
     private String sessionId;
 
-    /** 上传到百炼的模板文件 ID。 */
-    private String templateFileId;
-
-    /** 用户上传的模板文件名。 */
-    private String templateFileName;
-
-    /** 招标单位确认的结构化项目数据 JSON。 */
-    private String projectData;
-
     /** 用户当前编辑的最新 Markdown 正文。 */
     private String documentMarkdown;
 
@@ -68,12 +59,6 @@ public class TenderDocumentEntity {
 
     /** 当前定稿对应的 Markdown 审核报告。 */
     private String reviewReport;
-
-    /** 最终招标文件在 OSS 中的对象路径。 */
-    private String finalDocumentObjectKey;
-
-    /** 审核报告在 OSS 中的对象路径。 */
-    private String reviewReportObjectKey;
 
     /** 审核报告生成失败原因。 */
     private String reviewError;

@@ -84,11 +84,12 @@ class TenderDocumentTaskServiceTest {
         when(projectService.load("project-1")).thenReturn(new TenderProjectDataService.GenerationInput(
                 "template-1", "<h1>招标文件</h1>", projectData));
         TenderDocumentAiService aiService = mock(TenderDocumentAiService.class);
+        when(aiService.uploadTemplateHtml("<h1>招标文件</h1>")).thenReturn("file-1");
         when(documentStore.markGenerating(any())).thenReturn(true);
         when(documentStore.saveGenerationSession(any(), any())).thenReturn(true);
         TenderDocumentAiService.DraftSession draftSession = new TenderDocumentAiService.DraftSession(
                 "session-1", "/mnt/session/uploads/template/template.html");
-        when(aiService.createDraftSession("<h1>招标文件</h1>", projectData)).thenReturn(draftSession);
+        when(aiService.createDraftSession("file-1", "template.html", projectData)).thenReturn(draftSession);
         when(aiService.generateDraft(draftSession))
                 .thenReturn("# 招标文件");
         TenderDocumentTaskService service = new TenderDocumentTaskService(
@@ -97,7 +98,7 @@ class TenderDocumentTaskServiceTest {
 
         DocumentGenerationTask task = service.submitProject("project-1");
 
-        verify(documentStore).create(task.taskId(), "project-1", "template-1", projectData);
+        verify(documentStore).create(task.taskId(), "project-1", "template-1");
         ArgumentCaptor<Runnable> runnable = ArgumentCaptor.forClass(Runnable.class);
         verify(executor).execute(runnable.capture());
         runnable.getValue().run();
@@ -133,7 +134,7 @@ class TenderDocumentTaskServiceTest {
         DocumentGenerationTask task = service.submitProjectWithTemplate(
                 "project-1", new byte[] {1, 2}, "用户模板.docx", "application/octet-stream");
 
-        verify(documentStore).create(task.taskId(), "project-1", "template-1", projectData, "file-1", "用户模板.docx");
+        verify(documentStore).create(task.taskId(), "project-1", "template-1");
         ArgumentCaptor<Runnable> runnable = ArgumentCaptor.forClass(Runnable.class);
         verify(executor).execute(runnable.capture());
         runnable.getValue().run();
@@ -150,11 +151,12 @@ class TenderDocumentTaskServiceTest {
         when(projectService.load("project-1")).thenReturn(new TenderProjectDataService.GenerationInput(
                 "template-1", "<h1>招标文件</h1>", projectData));
         TenderDocumentAiService aiService = mock(TenderDocumentAiService.class);
+        when(aiService.uploadTemplateHtml("<h1>招标文件</h1>")).thenReturn("file-1");
         when(documentStore.markGenerating(any())).thenReturn(true);
         when(documentStore.saveGenerationSession(any(), any())).thenReturn(true);
         TenderDocumentAiService.DraftSession draftSession = new TenderDocumentAiService.DraftSession(
                 "session-1", "/mnt/session/uploads/template/template.html");
-        when(aiService.createDraftSession("<h1>招标文件</h1>", projectData)).thenReturn(draftSession);
+        when(aiService.createDraftSession("file-1", "template.html", projectData)).thenReturn(draftSession);
         when(aiService.generateDraft(draftSession))
                 .thenThrow(new IllegalStateException("事件发送失败"));
         TenderDocumentTaskService service = new TenderDocumentTaskService(

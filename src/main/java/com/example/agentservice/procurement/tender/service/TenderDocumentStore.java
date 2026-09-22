@@ -7,7 +7,6 @@ import com.example.agentservice.procurement.tender.domain.GenerationTaskStatus;
 import com.example.agentservice.procurement.tender.domain.TenderReviewStatus;
 import com.example.agentservice.procurement.tender.persistence.TenderDocumentEntity;
 import com.example.agentservice.procurement.tender.persistence.TenderDocumentMapper;
-import com.fasterxml.jackson.databind.JsonNode;
 import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
@@ -30,23 +29,12 @@ public class TenderDocumentStore {
     }
 
     /** 创建任务主记录，正文由后台生成完成后写入。 */
-    public TenderDocumentEntity create(
-            String taskId, String projectId, String templateId, JsonNode projectData) {
-        return create(taskId, projectId, templateId, projectData, null, null);
-    }
-
-    /** 创建任务主记录，并保留用户模板在 Managed Agent 中的文件标识。 */
-    public TenderDocumentEntity create(
-            String taskId, String projectId, String templateId, JsonNode projectData,
-            String templateFileId, String templateFileName) {
+    public TenderDocumentEntity create(String taskId, String projectId, String templateId) {
         TenderDocumentEntity document = new TenderDocumentEntity();
         document.setId(shortUuid());
         document.setTaskId(taskId);
         document.setProjectId(projectId);
         document.setTemplateId(templateId);
-        document.setTemplateFileId(templateFileId);
-        document.setTemplateFileName(templateFileName);
-        document.setProjectData(projectData == null || projectData.isNull() ? null : projectData.toString());
         document.setGenerationStatus(GenerationTaskStatus.PENDING.name());
         document.setGenerationStage("等待生成");
         document.setFinalized(false);
