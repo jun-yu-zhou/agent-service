@@ -13,6 +13,7 @@ import com.google.gson.JsonObject;
 import java.io.ByteArrayInputStream;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -44,7 +45,7 @@ public class ManagedAgentClient implements AutoCloseable {
 
     /** 等待输入文件可用后创建会话并完成挂载。 */
     public String createSession(SessionFile... files) {
-        waitForAvailable(List.of(files));
+        waitForAvailable(List.of(files).stream().map(SessionFile::fileId).toList());
         List<Map<String, Object>> resources = List.of(files).stream()
                 .map(file -> Map.<String, Object>of(
                         "type", "file", "file_id", file.fileId(), "mount_path", file.mountPath()))
@@ -76,18 +77,42 @@ public class ManagedAgentClient implements AutoCloseable {
 
     /** 先订阅 SSE，再发送消息并等待本轮正常结束。 */
     public List<ManagedAgentArtifact> sendMessage(String sessionId, String message) {
+        return sendMessage(sessionId, ClientEvents.userMessage(message));
+    }
+
+    /** 等待附件可用后，将文件随本轮用户消息提交给原会话。 */
+    public List<ManagedAgentArtifact> sendMessage(
+            String sessionId, String message, MessageFile... files) {
+        waitForAvailable(List.of(files).stream().map(MessageFile::fileId).toList());
+        List<JsonObject> content = new ArrayList<>();
+        JsonObject text = new JsonObject();
+        text.addProperty("type", "text");
+        text.addProperty("text", message);
+        content.add(text);
+        for (MessageFile file : files) {
+            JsonObject block = new JsonObject();
+            block.addProperty("type", "file");
+            block.addProperty("file_id", file.fileId());
+            block.addProperty("filename", safeFileName(file.fileName()));
+            content.add(block);
+        }
+        return sendMessage(sessionId, ClientEvents.userMessage(content));
+    }
+
+    private List<ManagedAgentArtifact> sendMessage(String sessionId, JsonObject userMessage) {
         ManagedAgentEventParser parser = new ManagedAgentEventParser(Instant.now().minusSeconds(5));
         int receivedEventCount = 0;
         try (AgentStudioEventStream stream = client.sessions().events()
                 .stream(sessionId, TURN_TIMEOUT.toMillis())) {
             JsonObject accepted = client.sessions().events()
-                    .send(sessionId, List.of(ClientEvents.userMessage(message)));
+                    .send(sessionId, List.of(userMessage));
             JsonArray events = accepted.getAsJsonArray("data");
             if (events == null || events.isEmpty()) {
                 throw new IllegalStateException("Managed Agent 未返回事件受理记录: " + accepted);
             }
-            log.info("Managed Agent 事件已受理，sessionId={}，requestId={}，eventCount={}",
-                    sessionId, text(accepted, "request_id"), events.size());
+            log.info("Managed Agent 事件已受理，sessionId={}，requestId={}，userEventId={}，eventCount={}",
+                    sessionId, text(accepted, "request_id"),
+                    text(events.get(0).getAsJsonObject(), "id"), events.size());
             for (Message event : stream) {
                 receivedEventCount++;
                 if (parser.accept(event)) {
@@ -119,21 +144,20 @@ public class ManagedAgentClient implements AutoCloseable {
     }
 
     /** 所有输入文件共用一个截止时间，避免逐个等待叠加超时。 */
-    private void waitForAvailable(List<SessionFile> files) {
+    private void waitForAvailable(List<String> fileIds) {
         long deadline = System.nanoTime() + FILE_READY_TIMEOUT.toNanos();
-        Set<String> pending = new HashSet<>();
-        files.forEach(file -> pending.add(file.fileId()));
+        Set<String> pending = new HashSet<>(fileIds);
         while (!pending.isEmpty() && System.nanoTime() < deadline) {
-            for (SessionFile file : files) {
-                if (!pending.contains(file.fileId())) continue;
-                AgentStudioFile metadata = client.files().retrieve(file.fileId());
+            for (String fileId : fileIds) {
+                if (!pending.contains(fileId)) continue;
+                AgentStudioFile metadata = client.files().retrieve(fileId);
                 if ("available".equals(metadata.getStatus())) {
-                    pending.remove(file.fileId());
+                    pending.remove(fileId);
                 }
                 else if ("rejected".equals(metadata.getStatus())
                         || "type_rejected".equals(metadata.getStatus())) {
                     throw new IllegalStateException("Managed Agent 文件未通过审核，fileId="
-                            + file.fileId() + "，fileName=" + metadata.getFilename()
+                            + fileId + "，fileName=" + metadata.getFilename()
                             + "，status=" + metadata.getStatus());
                 }
             }
@@ -171,5 +195,9 @@ public class ManagedAgentClient implements AutoCloseable {
 
     /** 创建会话时挂载的输入文件，路径必须位于 uploads 目录。 */
     public record SessionFile(String fileId, String mountPath) {
+    }
+
+    /** 随用户消息发送、仅在当前轮次使用的文件。 */
+    public record MessageFile(String fileId, String fileName) {
     }
 }

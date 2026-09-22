@@ -9,7 +9,7 @@ public final class TenderDocumentPrompts {
             """;
 
     public static final String FINALIZE_REQUEST = """
-            请审核 finalizedMarkdown 中的人工定稿，生成 Markdown 审核报告并标记为产出物。
+            请确认定稿并审核。附件是人工确认后的完整招标文件，请按既定要求生成并交付本阶段产物。
             """;
 
     private TenderDocumentPrompts() {
