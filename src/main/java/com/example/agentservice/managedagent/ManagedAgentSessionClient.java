@@ -7,6 +7,8 @@ import com.alibaba.dashscope.agentstudio.message.Message;
 import com.alibaba.dashscope.agentstudio.model.AgentStudioFile;
 import com.alibaba.dashscope.agentstudio.model.Session;
 import com.alibaba.dashscope.agentstudio.param.SessionCreateParam;
+import com.alibaba.dashscope.agentstudio.param.SessionEventListParam;
+import com.alibaba.dashscope.agentstudio.pagination.CursorPage;
 import com.alibaba.dashscope.agentstudio.resource.AgentStudioEventStream;
 import com.example.agentservice.config.AgentServiceConfig;
 import com.google.gson.JsonArray;
@@ -14,9 +16,11 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import java.io.ByteArrayInputStream;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -35,6 +39,8 @@ import org.springframework.web.client.RestTemplate;
 public class ManagedAgentSessionClient implements AutoCloseable {
 
     private static final Duration FILE_READY_TIMEOUT = Duration.ofMinutes(30);
+    private static final Duration TURN_TIMEOUT = Duration.ofMinutes(30);
+    private static final int HISTORY_RETRY_COUNT = 3;
 
     private final String apiKey = AgentServiceConfig.dashScopeApiKey();
 
@@ -83,30 +89,71 @@ public class ManagedAgentSessionClient implements AutoCloseable {
 
     /** 发送一轮消息并等待 Agent 本轮结束。 */
     public ManagedAgentTurn sendMessage(String sessionId, String message) {
+        Instant turnStartedAt = Instant.now().minusSeconds(5);
         StringBuilder text = new StringBuilder();
         List<ManagedAgentTurn.ManagedAgentFile> files = new ArrayList<>();
-        try (AgentStudioEventStream stream = client.sessions().events().stream(sessionId)) {
-            JsonObject accepted = client.sessions().events()
-                    .send(sessionId, List.of(ClientEvents.userMessage(message)));
-            JsonArray events = accepted.getAsJsonArray("data");
-            if (events == null || events.isEmpty()) {
-                throw new IllegalStateException("Managed Agent 未返回事件受理记录: " + accepted);
-            }
-            log.info("Managed Agent 事件已受理，sessionId={}，requestId={}，eventCount={}",
-                    sessionId, text(accepted, "request_id"), events.size());
+        JsonObject accepted = client.sessions().events()
+                .send(sessionId, List.of(ClientEvents.userMessage(message)));
+        JsonArray events = accepted.getAsJsonArray("data");
+        if (events == null || events.isEmpty()) {
+            throw new IllegalStateException("Managed Agent 未返回事件受理记录: " + accepted);
+        }
+        log.info("Managed Agent 事件已受理，sessionId={}，requestId={}，eventCount={}",
+                sessionId, text(accepted, "request_id"), events.size());
+        int receivedEventCount = 0;
+        try (AgentStudioEventStream stream = client.sessions().events()
+                .stream(sessionId, TURN_TIMEOUT.toMillis())) {
             for (Message event : stream) {
+                receivedEventCount++;
                 String error = runtimeError(event);
                 if (error != null) {
                     throw new IllegalStateException("Managed Agent 执行失败: " + error);
                 }
                 collectResult(event, text, files);
-                if (isTurnFinished(event)) {
-                    log.info("Managed Agent 本轮执行完成，sessionId={}，fileCount={}", sessionId, files.size());
-                    return new ManagedAgentTurn(text.toString().trim(), List.copyOf(files));
+                if (isTurnFinished(event, turnStartedAt)) {
+                    if (files.isEmpty()) {
+                        collectHistory(sessionId, turnStartedAt, text, files);
+                    }
+                    List<ManagedAgentTurn.ManagedAgentFile> resultFiles = distinctFiles(files);
+                    log.info("Managed Agent 本轮执行完成，sessionId={}，receivedEventCount={}，fileCount={}",
+                            sessionId, receivedEventCount, resultFiles.size());
+                    return new ManagedAgentTurn(text.toString().trim(), resultFiles);
                 }
             }
         }
-        throw new IllegalStateException("Managed Agent 事件流在本轮完成前结束");
+        throw new IllegalStateException("Managed Agent 事件流在本轮完成前结束，sessionId="
+                + sessionId + "，receivedEventCount=" + receivedEventCount);
+    }
+
+    /** 实时流可能错过快速完成的工具事件，按本轮开始时间从事件历史补取产物。 */
+    private void collectHistory(String sessionId, Instant turnStartedAt, StringBuilder text,
+            List<ManagedAgentTurn.ManagedAgentFile> files) {
+        for (int attempt = 1; attempt <= HISTORY_RETRY_COUNT && files.isEmpty(); attempt++) {
+            SessionEventListParam param = SessionEventListParam.builder()
+                    .createdAtGte(turnStartedAt.toString())
+                    .order("asc")
+                    .limit(100)
+                    .build();
+            CursorPage<Message> page = client.sessions().events().list(sessionId, param);
+            while (page != null) {
+                page.getData().forEach(event -> collectResult(event, text, files));
+                if (!page.hasNext()) break;
+                page = page.getNext().join();
+            }
+            log.info("Managed Agent 历史事件补取完成，sessionId={}，attempt={}，fileCount={}",
+                    sessionId, attempt, files.size());
+            if (files.isEmpty() && attempt < HISTORY_RETRY_COUNT) waitOneSecond();
+        }
+    }
+
+    private static List<ManagedAgentTurn.ManagedAgentFile> distinctFiles(
+            List<ManagedAgentTurn.ManagedAgentFile> files) {
+        Map<String, ManagedAgentTurn.ManagedAgentFile> distinct = new LinkedHashMap<>();
+        for (ManagedAgentTurn.ManagedAgentFile file : files) {
+            String key = StringUtils.hasText(file.fileId()) ? file.fileId() : file.fileName();
+            distinct.putIfAbsent(key, file);
+        }
+        return List.copyOf(distinct.values());
     }
 
     /** 下载 Agent 输出文件，优先读取返回的内嵌内容。 */
@@ -227,21 +274,39 @@ public class ManagedAgentSessionClient implements AutoCloseable {
         }
     }
 
-    private static boolean isTurnFinished(Message event) {
-        if ("session_status".equals(event.getType())) {
-            String sessionStatus = sessionStatus(event);
-            if ("terminated".equals(sessionStatus)) {
-                throw new IllegalStateException("Managed Agent 会话已终止");
-            }
-        }
-        Session.StopReason stopReason = event.getStopReason();
-        if (stopReason == null) {
+    /** 只接受本轮产生的 idle 状态，避免复用会话时把上一轮 end_turn 当成本轮结束。 */
+    static boolean isTurnFinished(Message event, Instant turnStartedAt) {
+        if (!"session_status".equals(event.getType()) || !belongsToTurn(event, turnStartedAt)) {
             return false;
         }
+        String sessionStatus = sessionStatus(event);
+        if ("terminated".equals(sessionStatus)) {
+            throw new IllegalStateException("Managed Agent 会话已终止");
+        }
+        if (!"idle".equals(sessionStatus)) return false;
+        Session.StopReason stopReason = event.getStopReason();
+        if (stopReason == null) return false;
         if ("requires_action".equals(stopReason.getType())) {
             throw new IllegalStateException("Managed Agent 等待工具审批，无法继续执行");
         }
-        return "end_turn".equals(stopReason.getType()) || "retries_exhausted".equals(stopReason.getType());
+        if ("retries_exhausted".equals(stopReason.getType())) {
+            throw new IllegalStateException("Managed Agent 本轮重试次数已耗尽");
+        }
+        return "end_turn".equals(stopReason.getType());
+    }
+
+    private static boolean belongsToTurn(Message event, Instant turnStartedAt) {
+        if (!StringUtils.hasText(event.getCreatedAt())) return true;
+        try {
+            String createdAt = event.getCreatedAt();
+            Instant eventTime = createdAt.chars().allMatch(Character::isDigit)
+                    ? Instant.ofEpochMilli(Long.parseLong(createdAt))
+                    : Instant.parse(createdAt);
+            return !eventTime.isBefore(turnStartedAt);
+        }
+        catch (RuntimeException ignored) {
+            return true;
+        }
     }
 
     /** 仅 error 事件代表会话运行失败；工具局部失败会交给 Agent 自行恢复。 */
