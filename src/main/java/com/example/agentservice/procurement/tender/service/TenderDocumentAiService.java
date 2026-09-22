@@ -1,23 +1,24 @@
 package com.example.agentservice.procurement.tender.service;
 
-import com.example.agentservice.managedagent.ManagedAgentSessionClient;
-import com.example.agentservice.managedagent.ManagedAgentTurn;
+import com.example.agentservice.managedagent.ManagedAgentArtifact;
+import com.example.agentservice.managedagent.ManagedAgentClient;
 import com.example.agentservice.procurement.tender.prompt.TenderDocumentPrompts;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import org.springframework.stereotype.Service;
 
 /** 通过百炼 Managed Agent 生成招标文件初稿并驱动定稿审核。 */
 @Service
 public class TenderDocumentAiService {
 
-    private final ManagedAgentSessionClient managedAgentClient;
+    private final ManagedAgentClient managedAgentClient;
     private final ObjectMapper objectMapper;
 
     public TenderDocumentAiService(
-            ManagedAgentSessionClient managedAgentClient, ObjectMapper objectMapper) {
+            ManagedAgentClient managedAgentClient, ObjectMapper objectMapper) {
         this.managedAgentClient = managedAgentClient;
         this.objectMapper = objectMapper;
     }
@@ -39,18 +40,18 @@ public class TenderDocumentAiService {
         String templateName = safeFileName(templateFileName);
         String templatePath = "/uploads/template/" + templateName;
         String sessionId = managedAgentClient.createSession(
-                new ManagedAgentSessionClient.SessionFile(
-                        templateFileId, templatePath, "模板文件"),
-                new ManagedAgentSessionClient.SessionFile(
-                        projectDataFileId, "/uploads/data/project-data.json", "项目资料"));
+                new ManagedAgentClient.SessionFile(
+                        templateFileId, templatePath),
+                new ManagedAgentClient.SessionFile(
+                        projectDataFileId, "/uploads/data/project-data.json"));
         return new DraftSession(sessionId, "/mnt/session" + templatePath);
     }
 
     /** 让 Agent 从会话挂载文件读取模板和项目资料，避免将大段内容塞入事件消息。 */
     public String generateDraft(DraftSession session) {
-        ManagedAgentTurn result = managedAgentClient.sendMessage(session.sessionId(),
+        List<ManagedAgentArtifact> artifacts = managedAgentClient.sendMessage(session.sessionId(),
                 TenderDocumentPrompts.DRAFT_REQUEST.formatted(session.templatePath()));
-        return markdown(result);
+        return markdown(artifacts, null);
     }
 
     /** 将用户上传的模板交由 Managed Agent 文件服务保存。 */
@@ -66,8 +67,7 @@ public class TenderDocumentAiService {
         ObjectNode request = objectMapper.createObjectNode();
         request.put("task", TenderDocumentPrompts.FINALIZE_REQUEST);
         request.put("finalizedMarkdown", finalizedMarkdown);
-        ManagedAgentTurn result = managedAgentClient.sendMessage(sessionId, request.toString());
-        return markdown(result, "审核");
+        return markdown(managedAgentClient.sendMessage(sessionId, request.toString()), "审核");
     }
 
     private String uploadText(String content, String fileName, String contentType) {
@@ -80,13 +80,9 @@ public class TenderDocumentAiService {
                 ? "template" : value.replace('/', '_').replace('\\', '_');
     }
 
-    /** 初稿必须来自 Agent 返回的可下载 Markdown 文件，避免把说明性文本当成正文。 */
-    private String markdown(ManagedAgentTurn result) {
-        return markdown(result, null);
-    }
-
-    private String markdown(ManagedAgentTurn result, String name) {
-        ManagedAgentTurn.ManagedAgentFile file = result.files().stream()
+    /** 正文只读取 Agent 通过 mark_artifacts 明确交付的 Markdown 文件。 */
+    private String markdown(List<ManagedAgentArtifact> artifacts, String name) {
+        ManagedAgentArtifact file = artifacts.stream()
                 .filter(value -> value.fileName() != null && value.fileName().toLowerCase().endsWith(".md"))
                 .filter(value -> name == null || value.fileName().toLowerCase().contains(name))
                 .findFirst()
