@@ -112,6 +112,8 @@ public class TenderDocumentStore {
                 .set(TenderDocumentEntity::getReviewStatus, TenderReviewStatus.NOT_STARTED.name())
                 .set(TenderDocumentEntity::getReviewStage, null)
                 .set(TenderDocumentEntity::getReviewReport, null)
+                .set(TenderDocumentEntity::getFinalDocumentObjectKey, null)
+                .set(TenderDocumentEntity::getReviewReportObjectKey, null)
                 .set(TenderDocumentEntity::getReviewError, null)
                 .set(TenderDocumentEntity::getReviewedAt, null)) == 1;
     }
@@ -130,6 +132,8 @@ public class TenderDocumentStore {
                 .set(TenderDocumentEntity::getReviewStatus, TenderReviewStatus.PENDING.name())
                 .set(TenderDocumentEntity::getReviewStage, "等待审核")
                 .set(TenderDocumentEntity::getReviewReport, null)
+                .set(TenderDocumentEntity::getFinalDocumentObjectKey, null)
+                .set(TenderDocumentEntity::getReviewReportObjectKey, null)
                 .set(TenderDocumentEntity::getReviewError, null)
                 .set(TenderDocumentEntity::getReviewedAt, null)) == 1;
     }
@@ -144,12 +148,14 @@ public class TenderDocumentStore {
     }
 
     /** 仅允许当前定稿版本的审核任务写入结果，旧任务完成后会被自动丢弃。 */
-    public boolean completeReview(String taskId, int revision, String reviewReport) {
+    public boolean completeReview(
+            String taskId, int revision, String documentObjectKey, String reviewObjectKey) {
         return mapper.update(null, currentReviewUpdate(taskId, revision)
                 .eq(TenderDocumentEntity::getReviewStatus, TenderReviewStatus.REVIEWING.name())
                 .set(TenderDocumentEntity::getReviewStatus, TenderReviewStatus.COMPLETED.name())
-                .set(TenderDocumentEntity::getReviewStage, "审核报告已生成")
-                .set(TenderDocumentEntity::getReviewReport, reviewReport)
+                .set(TenderDocumentEntity::getReviewStage, "定稿和审核报告已生成")
+                .set(TenderDocumentEntity::getFinalDocumentObjectKey, documentObjectKey)
+                .set(TenderDocumentEntity::getReviewReportObjectKey, reviewObjectKey)
                 .set(TenderDocumentEntity::getReviewError, null)
                 .set(TenderDocumentEntity::getReviewedAt, LocalDateTime.now())) == 1;
     }
@@ -161,6 +167,8 @@ public class TenderDocumentStore {
                 .set(TenderDocumentEntity::getReviewStatus, TenderReviewStatus.FAILED.name())
                 .set(TenderDocumentEntity::getReviewStage, "审核失败")
                 .set(TenderDocumentEntity::getReviewReport, null)
+                .set(TenderDocumentEntity::getFinalDocumentObjectKey, null)
+                .set(TenderDocumentEntity::getReviewReportObjectKey, null)
                 .set(TenderDocumentEntity::getReviewError, error)) == 1;
     }
 
@@ -177,6 +185,8 @@ public class TenderDocumentStore {
                 .set(TenderDocumentEntity::getReviewStatus, TenderReviewStatus.FAILED.name())
                 .set(TenderDocumentEntity::getReviewStage, "审核任务已失效")
                 .set(TenderDocumentEntity::getReviewReport, null)
+                .set(TenderDocumentEntity::getFinalDocumentObjectKey, null)
+                .set(TenderDocumentEntity::getReviewReportObjectKey, null)
                 .set(TenderDocumentEntity::getReviewError, error)) == 1;
     }
 

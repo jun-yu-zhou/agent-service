@@ -111,9 +111,9 @@ public class TenderDocumentController {
                 .orElseGet(() -> R.error(404, "审核记录不存在"));
     }
 
-    /** 将 Markdown 审核报告转换为 Word 文件并下载。 */
+    /** 下载 Managed Agent 已生成并保存到 OSS 的 Word 审核报告。 */
     @GetMapping("/tasks/{taskId}/versions/{versionId}/review/export")
-    @Operation(summary = "导出定稿审核报告", description = "将审核报告转换为 Word 附件并直接返回。")
+    @Operation(summary = "导出定稿审核报告", description = "从 OSS 读取 Word 审核报告并直接返回。")
     public ResponseEntity<byte[]> exportReview(
             @PathVariable String taskId, @PathVariable String versionId) throws Exception {
         return artifactService.exportReview(taskId, versionId)
@@ -128,9 +128,9 @@ public class TenderDocumentController {
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    /** 将数据库中的人工定稿转换为 Word 招标文件并下载。 */
+    /** 下载 Managed Agent 已生成并保存到 OSS 的 Word 招标文件定稿。 */
     @PostMapping("/tasks/{taskId}/versions/{versionId}/artifacts/export")
-    @Operation(summary = "导出最终版招标文件", description = "将人工确认稿转换为 Word 附件并直接返回。")
+    @Operation(summary = "导出最终版招标文件", description = "从 OSS 读取 Word 定稿并直接返回。")
     public ResponseEntity<byte[]> exportArtifacts(
             @PathVariable String taskId, @PathVariable String versionId) throws Exception {
         return artifactService.exportDocument(taskId, versionId)

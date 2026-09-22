@@ -18,14 +18,17 @@ public class TenderReviewTaskService {
 
     private final TenderDocumentStore documentStore;
     private final TenderDocumentAiService aiService;
+    private final TenderArtifactStorage artifactStorage;
     private final ExecutorService executor;
 
     public TenderReviewTaskService(
             TenderDocumentStore documentStore,
             TenderDocumentAiService aiService,
+            TenderArtifactStorage artifactStorage,
             @Qualifier("tenderReviewExecutor") ExecutorService executor) {
         this.documentStore = documentStore;
         this.aiService = aiService;
+        this.artifactStorage = artifactStorage;
         this.executor = executor;
     }
 
@@ -77,10 +80,13 @@ public class TenderReviewTaskService {
             }
             log.info("准备向 Managed Agent 原会话发送定稿审核请求，taskId={}，revision={}，sessionId={}",
                     taskId, revision, document.getSessionId());
-            String reviewReport = aiService.reviewFinalizedDocument(
+            TenderDocumentAiService.FinalizedArtifacts artifacts = aiService.reviewFinalizedDocument(
                     document.getSessionId(), document.getDocumentMarkdown());
-            documentStore.completeReview(taskId, revision, reviewReport);
-            log.info("招标文件审核报告生成完成，taskId={}，revision={}，sessionId={}",
+            TenderArtifactStorage.StoredArtifacts stored =
+                    artifactStorage.store(taskId, revision, artifacts);
+            documentStore.completeReview(
+                    taskId, revision, stored.documentObjectKey(), stored.reviewObjectKey());
+            log.info("招标文件定稿和审核报告生成完成，taskId={}，revision={}，sessionId={}",
                     taskId, revision, document.getSessionId());
         } catch (Exception exception) {
             documentStore.failReview(taskId, revision, errorMessage(exception));
