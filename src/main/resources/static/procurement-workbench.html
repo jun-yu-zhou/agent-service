@@ -61,7 +61,7 @@
   </aside>
   <main>
     <header class="top"><div><h1>招标文件协同工作台</h1><p>读取招标项目，生成初稿，人工编辑后确认定稿。</p></div>
-      <div class="actions"><button class="btn primary" onclick="saveVersion()">保存</button><button class="btn ghost" onclick="finalizeCurrent()">确认并审核</button><button class="btn ghost" onclick="exportFiles()">导出招标文件</button><button id="exportReviewBtn" class="btn ghost" onclick="exportReview()" disabled>导出审核报告</button><button id="retryReviewBtn" class="btn ghost" onclick="retryReview()" style="display:none">重试审核</button></div></header>
+      <div class="actions"><button class="btn primary" onclick="saveVersion()">保存</button><button class="btn ghost" onclick="finalizeCurrent()">确认并审核</button><button class="btn ghost" onclick="exportFiles()">导出招标文件</button><button id="exportReviewBtn" class="btn ghost" onclick="exportReview()" disabled>导出审核报告</button></div></header>
     <section class="workspace" id="workspace">
       <div class="panel-head"><b>文档编辑</b><span id="charCount">0 字</span></div>
       <div id="editor" class="editor"></div>
@@ -85,7 +85,7 @@ window.addEventListener('resize',()=>{$('editor').style.height=editorHeight()+'p
 async function api(url,options={}){const headers=options.body instanceof FormData?{}:{'Content-Type':'application/json'};const r=await fetch(url,{headers,...options});const result=await r.json();if(!r.ok||result.code!==200)throw new Error(result.message||('HTTP '+r.status));return result.data}
 function notify(text){$('toast').textContent=text;$('toast').classList.add('show');setTimeout(()=>$('toast').classList.remove('show'),2400)}
 function setActions(on){[...document.querySelectorAll('button')].forEach(b=>b.disabled=!on);$('projectId').disabled=!on;$('templateFile').disabled=!on;if(on)syncReviewActions()}
-function syncReviewActions(){$('exportReviewBtn').disabled=reviewStatus!=='COMPLETED';$('retryReviewBtn').style.display=reviewStatus==='FAILED'?'inline-block':'none';$('retryReviewBtn').disabled=reviewStatus!=='FAILED'}
+function syncReviewActions(){$('exportReviewBtn').disabled=reviewStatus!=='COMPLETED'}
 function showOverlay(kind,title){overlayKind=kind;$('busyTitle').textContent=title;setActions(false);$('overlay').classList.add('show')}
 function hideOverlay(){overlayKind=null;$('overlay').classList.remove('show');setActions(true)}
 async function createProjectTask(){
@@ -181,11 +181,6 @@ function watchReview(showBusy){
   clearInterval(reviewPollTimer);reviewPollTimer=null;
   refreshReview(showBusy).catch(e=>{if(overlayKind==='reviewing')hideOverlay();notify('查询审核状态失败：'+e.message)});
   reviewPollTimer=setInterval(()=>refreshReview(showBusy).catch(()=>{}),2500)
-}
-async function retryReview(){
-  if(reviewStatus!=='FAILED')return;
-  try{await api(base+'/tasks/'+task()+'/versions/'+currentVersionId+'/review/retry',{method:'POST'});watchReview(true)}
-  catch(e){notify('重试失败：'+(e.message||'请查看服务日志'))}
 }
 function saveDownload(blob,filename){
   const link=document.createElement('a');

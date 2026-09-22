@@ -111,16 +111,6 @@ public class TenderDocumentController {
                 .orElseGet(() -> R.error(404, "审核记录不存在"));
     }
 
-    /** 重新执行指定定稿版本的失败审核任务。 */
-    @PostMapping("/tasks/{taskId}/versions/{versionId}/review/retry")
-    @Operation(summary = "重试定稿审核", description = "重新执行审核失败的定稿版本。")
-    public R<TenderReviewSnapshot> retryReview(
-            @PathVariable String taskId, @PathVariable String versionId) {
-        return reviewTaskService.retry(taskId, versionId)
-                .map(R::success)
-                .orElseGet(() -> R.error(404, "审核记录不存在"));
-    }
-
     /** 将 Markdown 审核报告转换为 Word 文件并下载。 */
     @GetMapping("/tasks/{taskId}/versions/{versionId}/review/export")
     @Operation(summary = "导出定稿审核报告", description = "将审核报告转换为 Word 附件并直接返回。")

@@ -37,3 +37,5 @@ app:
   procurement-document:
     generation-model: ${PROCUREMENT_GENERATION_MODEL:qwen3.7-plus}
     max-concurrency: ${PROCUREMENT_MAX_CONCURRENCY:4}
+    review-concurrency: ${PROCUREMENT_REVIEW_CONCURRENCY:2}
+    review-queue-capacity: ${PROCUREMENT_REVIEW_QUEUE_CAPACITY:20}

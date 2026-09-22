@@ -7,11 +7,13 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.util.Optional;
 import java.util.concurrent.ExecutorService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 /** 使用数据库管理定稿审核任务及审核报告。 */
 @Service
+@Slf4j
 public class TenderReviewTaskService {
 
     private final TenderDocumentStore documentStore;
@@ -21,7 +23,7 @@ public class TenderReviewTaskService {
     public TenderReviewTaskService(
             TenderDocumentStore documentStore,
             TenderDocumentAiService aiService,
-            @Qualifier("procurementDocumentExecutor") ExecutorService executor) {
+            @Qualifier("tenderReviewExecutor") ExecutorService executor) {
         this.documentStore = documentStore;
         this.aiService = aiService;
         this.executor = executor;
@@ -41,7 +43,14 @@ public class TenderReviewTaskService {
         }
         int revision = currentRevision(document);
         if (documentStore.beginReview(taskId, revision, TenderReviewStatus.PENDING)) {
-            executor.execute(() -> review(taskId, revision));
+            try {
+                executor.execute(() -> review(taskId, revision));
+                log.info("招标文件审核任务已提交，taskId={}，revision={}", taskId, revision);
+            }
+            catch (RuntimeException exception) {
+                documentStore.failReview(taskId, revision, errorMessage(exception));
+                log.error("招标文件审核任务提交失败，taskId={}，revision={}", taskId, revision, exception);
+            }
         }
         return documentStore.findByTaskId(taskId).map(this::snapshot);
     }
@@ -50,23 +59,9 @@ public class TenderReviewTaskService {
         return current(taskId, versionId).map(this::snapshot);
     }
 
-    /** 失败的审核任务重新进入队列。 */
-    public Optional<TenderReviewSnapshot> retry(String taskId, String versionId) {
-        var optional = current(taskId, versionId);
-        if (optional.isEmpty()) return Optional.empty();
-        if (!TenderReviewStatus.FAILED.name().equals(optional.get().getReviewStatus())) {
-            throw new IllegalStateException("仅审核失败的报告可以重试");
-        }
-        TenderDocumentEntity document = optional.get();
-        int revision = currentRevision(document);
-        if (documentStore.beginReview(taskId, revision, TenderReviewStatus.FAILED)) {
-            executor.execute(() -> review(taskId, revision));
-        }
-        return documentStore.findByTaskId(taskId).map(this::snapshot);
-    }
-
     private void review(String taskId, int revision) {
         try {
+            log.info("招标文件审核线程开始执行，taskId={}，revision={}", taskId, revision);
             TenderDocumentEntity document = documentStore.findByTaskId(taskId).orElseThrow();
             if (!Boolean.TRUE.equals(document.getFinalized())
                     || document.getContentRevision() == null
@@ -80,11 +75,16 @@ public class TenderReviewTaskService {
             if (document.getSessionId() == null || document.getSessionId().isBlank()) {
                 throw new IllegalStateException("招标文件缺少 Managed Agent 会话，无法生成定稿产物");
             }
+            log.info("准备向 Managed Agent 原会话发送定稿审核请求，taskId={}，revision={}，sessionId={}",
+                    taskId, revision, document.getSessionId());
             String reviewReport = aiService.reviewFinalizedDocument(
                     document.getSessionId(), document.getDocumentMarkdown());
             documentStore.completeReview(taskId, revision, reviewReport);
+            log.info("招标文件审核报告生成完成，taskId={}，revision={}，sessionId={}",
+                    taskId, revision, document.getSessionId());
         } catch (Exception exception) {
-            documentStore.failReview(taskId, revision, exception.getMessage());
+            documentStore.failReview(taskId, revision, errorMessage(exception));
+            log.error("招标文件审核执行失败，taskId={}，revision={}", taskId, revision, exception);
         }
     }
 
@@ -108,6 +108,11 @@ public class TenderReviewTaskService {
 
     private int currentRevision(TenderDocumentEntity document) {
         return document.getContentRevision() == null ? 0 : document.getContentRevision();
+    }
+
+    private String errorMessage(Exception exception) {
+        return exception.getMessage() == null || exception.getMessage().isBlank()
+                ? exception.getClass().getSimpleName() : exception.getMessage();
     }
 
 }

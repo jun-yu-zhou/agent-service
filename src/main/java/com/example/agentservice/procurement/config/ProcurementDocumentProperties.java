@@ -11,6 +11,8 @@ public class ProcurementDocumentProperties {
     private String templateLocation = "classpath:/templates/procurement/";
     private String generationModel = "qwen3.7-plus";
     private int maxConcurrency = 4;
+    private int reviewConcurrency = 2;
+    private int reviewQueueCapacity = 20;
 
     public String getTemplateLocation() {
         return templateLocation;
@@ -34,6 +36,22 @@ public class ProcurementDocumentProperties {
 
     public void setMaxConcurrency(int maxConcurrency) {
         this.maxConcurrency = maxConcurrency;
+    }
+
+    public int getReviewConcurrency() {
+        return reviewConcurrency;
+    }
+
+    public void setReviewConcurrency(int reviewConcurrency) {
+        this.reviewConcurrency = reviewConcurrency;
+    }
+
+    public int getReviewQueueCapacity() {
+        return reviewQueueCapacity;
+    }
+
+    public void setReviewQueueCapacity(int reviewQueueCapacity) {
+        this.reviewQueueCapacity = reviewQueueCapacity;
     }
 
 }
