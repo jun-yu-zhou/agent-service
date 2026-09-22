@@ -7,8 +7,6 @@ import com.alibaba.dashscope.agentstudio.message.Message;
 import com.alibaba.dashscope.agentstudio.model.AgentStudioFile;
 import com.alibaba.dashscope.agentstudio.model.Session;
 import com.alibaba.dashscope.agentstudio.param.SessionCreateParam;
-import com.alibaba.dashscope.agentstudio.param.SessionEventListParam;
-import com.alibaba.dashscope.agentstudio.pagination.CursorPage;
 import com.alibaba.dashscope.agentstudio.resource.AgentStudioEventStream;
 import com.example.agentservice.config.AgentServiceConfig;
 import com.google.gson.JsonArray;
@@ -40,7 +38,6 @@ public class ManagedAgentSessionClient implements AutoCloseable {
 
     private static final Duration FILE_READY_TIMEOUT = Duration.ofMinutes(30);
     private static final Duration TURN_TIMEOUT = Duration.ofMinutes(30);
-    private static final int HISTORY_RETRY_COUNT = 3;
 
     private final String apiKey = AgentServiceConfig.dashScopeApiKey();
 
@@ -92,17 +89,18 @@ public class ManagedAgentSessionClient implements AutoCloseable {
         Instant turnStartedAt = Instant.now().minusSeconds(5);
         StringBuilder text = new StringBuilder();
         List<ManagedAgentTurn.ManagedAgentFile> files = new ArrayList<>();
-        JsonObject accepted = client.sessions().events()
-                .send(sessionId, List.of(ClientEvents.userMessage(message)));
-        JsonArray events = accepted.getAsJsonArray("data");
-        if (events == null || events.isEmpty()) {
-            throw new IllegalStateException("Managed Agent 未返回事件受理记录: " + accepted);
-        }
-        log.info("Managed Agent 事件已受理，sessionId={}，requestId={}，eventCount={}",
-                sessionId, text(accepted, "request_id"), events.size());
         int receivedEventCount = 0;
+        // SDK 创建事件流时会立即发起 SSE 请求，并在内部队列缓存后续事件。
         try (AgentStudioEventStream stream = client.sessions().events()
                 .stream(sessionId, TURN_TIMEOUT.toMillis())) {
+            JsonObject accepted = client.sessions().events()
+                    .send(sessionId, List.of(ClientEvents.userMessage(message)));
+            JsonArray events = accepted.getAsJsonArray("data");
+            if (events == null || events.isEmpty()) {
+                throw new IllegalStateException("Managed Agent 未返回事件受理记录: " + accepted);
+            }
+            log.info("Managed Agent 事件已受理，sessionId={}，requestId={}，eventCount={}",
+                    sessionId, text(accepted, "request_id"), events.size());
             for (Message event : stream) {
                 receivedEventCount++;
                 String error = runtimeError(event);
@@ -111,9 +109,6 @@ public class ManagedAgentSessionClient implements AutoCloseable {
                 }
                 collectResult(event, text, files);
                 if (isTurnFinished(event, turnStartedAt)) {
-                    if (files.isEmpty()) {
-                        collectHistory(sessionId, turnStartedAt, text, files);
-                    }
                     List<ManagedAgentTurn.ManagedAgentFile> resultFiles = distinctFiles(files);
                     log.info("Managed Agent 本轮执行完成，sessionId={}，receivedEventCount={}，fileCount={}",
                             sessionId, receivedEventCount, resultFiles.size());
@@ -123,27 +118,6 @@ public class ManagedAgentSessionClient implements AutoCloseable {
         }
         throw new IllegalStateException("Managed Agent 事件流在本轮完成前结束，sessionId="
                 + sessionId + "，receivedEventCount=" + receivedEventCount);
-    }
-
-    /** 实时流可能错过快速完成的工具事件，按本轮开始时间从事件历史补取产物。 */
-    private void collectHistory(String sessionId, Instant turnStartedAt, StringBuilder text,
-            List<ManagedAgentTurn.ManagedAgentFile> files) {
-        for (int attempt = 1; attempt <= HISTORY_RETRY_COUNT && files.isEmpty(); attempt++) {
-            SessionEventListParam param = SessionEventListParam.builder()
-                    .createdAtGte(turnStartedAt.toString())
-                    .order("asc")
-                    .limit(100)
-                    .build();
-            CursorPage<Message> page = client.sessions().events().list(sessionId, param);
-            while (page != null) {
-                page.getData().forEach(event -> collectResult(event, text, files));
-                if (!page.hasNext()) break;
-                page = page.getNext().join();
-            }
-            log.info("Managed Agent 历史事件补取完成，sessionId={}，attempt={}，fileCount={}",
-                    sessionId, attempt, files.size());
-            if (files.isEmpty() && attempt < HISTORY_RETRY_COUNT) waitOneSecond();
-        }
     }
 
     private static List<ManagedAgentTurn.ManagedAgentFile> distinctFiles(
