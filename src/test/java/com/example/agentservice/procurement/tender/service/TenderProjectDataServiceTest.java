@@ -89,6 +89,28 @@ class TenderProjectDataServiceTest {
     }
 
     @Test
+    void selectsComparisonTemplateRegardlessOfProjectType() {
+        TenderProjectEntity project = new TenderProjectEntity();
+        project.setZbProjectId("comparison-1");
+        project.setCollegeId("college-1");
+        project.setProjectType("1");
+        project.setClassifyCode("13");
+        project.setDelFlag("1");
+        when(mapper.selectById("comparison-1")).thenReturn(project);
+        when(mapper.selectTemplate("college-1", "39")).thenReturn(Map.of(
+                "templateId", "comparison-template", "templateHtml", "比选文件"));
+        when(mapper.selectProject("comparison-1")).thenReturn(Map.of(
+                "ZB_PROJECT_ID", "comparison-1", "CLASSIFY_CODE", "13"));
+
+        TenderProjectDataService.GenerationInput input = service.load("comparison-1");
+
+        assertEquals("comparison-template", input.templateId());
+        assertEquals("比选", input.projectData().path("documentFacts")
+                .path("procurementMethodName").asText());
+        verify(mapper).selectTemplate("college-1", "39");
+    }
+
+    @Test
     void unwrapsCommentedDirectivesAndKeepsBranchSemantics() {
         String html = "<td><!-- <#if zbItem.isCore?has_content && zbItem.isCore == '1'> -->是<!-- <#else> -->否<!-- </#if> --></td>";
 

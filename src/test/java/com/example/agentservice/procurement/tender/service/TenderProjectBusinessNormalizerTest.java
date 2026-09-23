@@ -63,4 +63,20 @@ class TenderProjectBusinessNormalizerTest {
     private Map<String, Object> comment(String type, String json) throws Exception {
         return Map.of("commentsType", type, "comments", objectMapper.readTree(json));
     }
+
+    @Test
+    void usesCurrentProcurementMethodNames() {
+        assertEquals("公开招标", normalizer.normalize(Map.of("classifyCode", "1"),
+                List.of(), List.of(), List.of(), List.of())
+                .path("procurementMethodName").asText());
+        assertEquals("快速采购", normalizer.normalize(Map.of("classifyCode", "11"),
+                List.of(), List.of(), List.of(), List.of())
+                .path("procurementMethodName").asText());
+        assertEquals("智能采购", normalizer.normalize(Map.of("classifyCode", "12"),
+                List.of(), List.of(), List.of(), List.of())
+                .path("procurementMethodName").asText());
+        assertEquals("比选", normalizer.normalize(Map.of("classifyCode", "13"),
+                List.of(), List.of(), List.of(), List.of())
+                .path("procurementMethodName").asText());
+    }
 }

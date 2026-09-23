@@ -93,6 +93,9 @@ public class TenderScoreRuleNormalizer {
         String componentType = text(scoreRule.get("componentType"));
         String rawRule = text(scoreRule.get("scoreRule"));
         try {
+            if ("textRule".equals(componentType)) {
+                return textRule(rawRule);
+            }
             if ("6".equals(text(scoreRule.get("scoreType")))
                     && !List.of("Y", "Z", "N").contains(componentType)) {
                 return technicalParameterRule(rawRule);
@@ -101,7 +104,6 @@ public class TenderScoreRuleNormalizer {
                 case "deviationRule" -> deviationRule(rawRule);
                 case "multiAccordRule" -> multiAccordRule(rawRule);
                 case "customRule" -> customRule(rawRule);
-                case "textRule" -> textRule(rawRule);
                 case "priceRule" -> priceRule(text(scoreRule.get("scoreTitle")), rawRule);
                 case "Y" -> "实质性参数不允许负偏离，负偏离时按无效响应处理";
                 case "Z" -> parameterRule("重要参数", rawRule);

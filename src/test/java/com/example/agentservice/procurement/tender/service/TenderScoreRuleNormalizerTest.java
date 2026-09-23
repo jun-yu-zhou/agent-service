@@ -85,6 +85,15 @@ class TenderScoreRuleNormalizerTest {
         assertEquals(1, facts.path("groups").get(0).path("itemCount").asInt());
     }
 
+    @Test
+    void keepsTechnicalTextRuleInsteadOfTreatingItAsParameterDeductions() {
+        String ruleText = "{\"child\":[{\"label\":\"技术方案完整\",\"value\":\"2\"}]}";
+        List<Map<String, Object>> result = normalizer.normalize(List.of(
+                rule("textRule", ruleText, "6", "技术方案", 10)));
+
+        assertEquals(ruleText, result.get(0).get("displayScoreRule"));
+    }
+
     private Map<String, Object> rule(String componentType, String scoreRule) {
         return Map.of("componentType", componentType, "scoreRule", scoreRule);
     }

@@ -17,5 +17,8 @@ public class TenderProjectEntity {
     /** 1 为货物、2 为工程、3 为服务。 */
     private String projectType;
 
+    /** 采购方式；比选项目使用独立的招标文件模板。 */
+    private String classifyCode;
+
     private String delFlag;
 }

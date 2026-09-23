@@ -30,9 +30,12 @@ public class TenderProjectBusinessNormalizer {
     private static final Map<String, String> PROJECT_TYPES =
             Map.of("1", "货物", "2", "工程", "3", "服务");
     // 采购方式编码到中文名称的映射。
-    private static final Map<String, String> PROCUREMENT_METHODS = Map.of(
-            "1", "校内招标", "2", "邀请招标", "3", "单一来源",
-            "4", "竞争性谈判", "5", "竞争性磋商", "6", "询价");
+    private static final Map<String, String> PROCUREMENT_METHODS = Map.ofEntries(
+            Map.entry("1", "公开招标"), Map.entry("2", "邀请招标"),
+            Map.entry("3", "单一来源"), Map.entry("4", "竞争性谈判"),
+            Map.entry("5", "竞争性磋商"), Map.entry("6", "询价"),
+            Map.entry("7", "智能招标"), Map.entry("11", "快速采购"),
+            Map.entry("12", "智能采购"), Map.entry("13", "比选"));
     // 补充资料类型编码到中文名称的映射。
     private static final Map<String, String> COMMENT_TYPES = Map.ofEntries(
             Map.entry("0", "基本信息"), Map.entry("1", "采购清单"),

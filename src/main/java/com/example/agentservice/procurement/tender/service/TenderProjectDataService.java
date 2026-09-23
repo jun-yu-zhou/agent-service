@@ -51,7 +51,8 @@ public class TenderProjectDataService {
         if (project == null || !"1".equals(project.getDelFlag())) {
             throw new IllegalArgumentException("招标项目不存在：" + projectId);
         }
-        String templateType = TEMPLATE_TYPES.get(project.getProjectType());
+        String templateType = "13".equals(project.getClassifyCode())
+                ? "39" : TEMPLATE_TYPES.get(project.getProjectType());
         if (templateType == null) {
             throw new IllegalArgumentException("不支持的招标项目类型：" + project.getProjectType());
         }
