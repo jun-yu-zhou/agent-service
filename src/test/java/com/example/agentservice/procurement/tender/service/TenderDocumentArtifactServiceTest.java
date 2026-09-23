@@ -25,13 +25,16 @@ class TenderDocumentArtifactServiceTest {
         entity.setFinalDocumentObjectKey("final.docx");
         when(store.findByTaskId(TASK_ID)).thenReturn(Optional.of(entity));
         when(storage.read("final.docx")).thenReturn(new byte[] {1});
+        TenderDocumentDocxFormatter formatter = mock(TenderDocumentDocxFormatter.class);
+        when(formatter.format(new byte[] {1})).thenReturn(new byte[] {3});
 
-        var document = new TenderDocumentArtifactService(store, storage)
+        var document = new TenderDocumentArtifactService(store, storage, formatter)
                 .exportDocument(TASK_ID, VERSION_ID).orElseThrow();
 
         assertEquals("招标文件.docx", document.filename());
-        assertArrayEquals(new byte[] {1}, document.content());
+        assertArrayEquals(new byte[] {3}, document.content());
         verify(storage).read("final.docx");
+        verify(formatter).format(new byte[] {1});
     }
 
     @Test
@@ -44,7 +47,8 @@ class TenderDocumentArtifactServiceTest {
         when(store.findByTaskId(TASK_ID)).thenReturn(Optional.of(entity));
         when(storage.read("review.docx")).thenReturn(new byte[] {2});
 
-        var document = new TenderDocumentArtifactService(store, storage)
+        var document = new TenderDocumentArtifactService(
+                store, storage, mock(TenderDocumentDocxFormatter.class))
                 .exportReview(TASK_ID, VERSION_ID).orElseThrow();
 
         assertEquals("招标文件审核报告.docx", document.filename());
@@ -57,7 +61,8 @@ class TenderDocumentArtifactServiceTest {
         when(store.findByTaskId(TASK_ID)).thenReturn(Optional.of(document(true)));
 
         assertThrows(IllegalStateException.class,
-                () -> new TenderDocumentArtifactService(store, mock(TenderArtifactStorage.class))
+                () -> new TenderDocumentArtifactService(store, mock(TenderArtifactStorage.class),
+                        mock(TenderDocumentDocxFormatter.class))
                         .exportDocument(TASK_ID, VERSION_ID));
     }
 

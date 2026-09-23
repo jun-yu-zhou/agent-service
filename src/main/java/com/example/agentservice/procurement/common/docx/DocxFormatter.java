@@ -193,15 +193,23 @@ public final class DocxFormatter {
         }
     }
 
-    /** 在第一个标题后加入目录标题，正文目录条目仍由 docx4j 生成。 */
+    /** 在封面标题与第一个正文大章之间加入目录，正文目录条目仍由 docx4j 生成。 */
     private void ensureTocHeading(List<Object> content) {
         if (directoryIndex(content) >= 0) return;
-        int afterTitle = 0;
+        int topLevel = content.stream().map(org.docx4j.XmlUtils::unwrap)
+                .filter(P.class::isInstance).map(P.class::cast)
+                .mapToInt(this::headingLevel).filter(level -> level > 0).min().orElse(0);
+        int insertionIndex = 0;
+        int topLevelCount = 0;
         for (int index = 0; index < content.size(); index++) {
             Object value = org.docx4j.XmlUtils.unwrap(content.get(index));
-            if (value instanceof P paragraph && headingLevel(paragraph) > 0) {
-                afterTitle = index + 1;
-                break;
+            if (value instanceof P paragraph && headingLevel(paragraph) == topLevel) {
+                topLevelCount++;
+                if (topLevelCount == 1) insertionIndex = index + 1;
+                if (topLevelCount == 2) {
+                    insertionIndex = index;
+                    break;
+                }
             }
         }
         P heading = FACTORY.createP();
@@ -211,7 +219,7 @@ public final class DocxFormatter {
         text.setValue("目录");
         run.getContent().add(text);
         heading.getContent().add(run);
-        content.add(afterTitle, heading);
+        content.add(insertionIndex, heading);
     }
 
     /** 根据标题层级判断叶子章节：下一个标题更深时，当前标题是父章节。 */

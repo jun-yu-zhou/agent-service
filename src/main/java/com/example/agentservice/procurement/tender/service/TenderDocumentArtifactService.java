@@ -15,11 +15,14 @@ public class TenderDocumentArtifactService {
 
     private final TenderDocumentStore documentStore;
     private final TenderArtifactStorage artifactStorage;
+    private final TenderDocumentDocxFormatter docxFormatter;
 
     public TenderDocumentArtifactService(
-            TenderDocumentStore documentStore, TenderArtifactStorage artifactStorage) {
+            TenderDocumentStore documentStore, TenderArtifactStorage artifactStorage,
+            TenderDocumentDocxFormatter docxFormatter) {
         this.documentStore = documentStore;
         this.artifactStorage = artifactStorage;
+        this.docxFormatter = docxFormatter;
     }
 
     /** 导出已经确认定稿的招标文件。 */
@@ -29,8 +32,10 @@ public class TenderDocumentArtifactService {
         if (!Boolean.TRUE.equals(document.get().getFinalized())) {
             throw new IllegalStateException("仅已确认定稿版本可导出产物");
         }
-        return Optional.of(read(
-                "招标文件.docx", document.get().getFinalDocumentObjectKey(), "招标文件定稿尚未生成完成"));
+        ExportedDocument artifact = read(
+                "招标文件.docx", document.get().getFinalDocumentObjectKey(), "招标文件定稿尚未生成完成");
+        return Optional.of(new ExportedDocument(
+                artifact.filename(), artifact.contentType(), docxFormatter.format(artifact.content())));
     }
 
     /** 导出已经生成完成的招标文件审核报告。 */
