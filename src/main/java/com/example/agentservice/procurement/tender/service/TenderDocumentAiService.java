@@ -46,7 +46,7 @@ public class TenderDocumentAiService {
     public String generateDraft(DraftSession session) {
         List<ManagedAgentArtifact> artifacts = managedAgentClient.sendMessage(session.sessionId(),
                 TenderDocumentPrompts.DRAFT_REQUEST.formatted(session.templatePath()));
-        return markdown(artifacts, null);
+        return markdown(artifacts);
     }
 
     /** 将用户上传的模板交由 Managed Agent 文件服务保存。 */
@@ -67,8 +67,7 @@ public class TenderDocumentAiService {
         ManagedAgentArtifact document = docx(artifacts, "定稿");
         ManagedAgentArtifact report = docx(artifacts, "审核报告");
         return new FinalizedArtifacts(
-                document.fileName(), managedAgentClient.downloadFile(document),
-                report.fileName(), managedAgentClient.downloadFile(report));
+                managedAgentClient.downloadFile(document), managedAgentClient.downloadFile(report));
     }
 
     private String uploadText(String content, String fileName, String contentType) {
@@ -82,13 +81,11 @@ public class TenderDocumentAiService {
     }
 
     /** 正文只读取 Agent 通过 mark_artifacts 明确交付的 Markdown 文件。 */
-    private String markdown(List<ManagedAgentArtifact> artifacts, String name) {
+    private String markdown(List<ManagedAgentArtifact> artifacts) {
         ManagedAgentArtifact file = artifacts.stream()
                 .filter(value -> value.fileName() != null && value.fileName().toLowerCase().endsWith(".md"))
-                .filter(value -> name == null || value.fileName().toLowerCase().contains(name))
                 .findFirst()
-                .orElseThrow(() -> new IllegalStateException("Managed Agent 未返回可下载的 Markdown "
-                        + (name == null ? "初稿" : name + " 文件")));
+                .orElseThrow(() -> new IllegalStateException("Managed Agent 未返回可下载的 Markdown 初稿"));
         String markdown = new String(managedAgentClient.downloadFile(file), StandardCharsets.UTF_8).trim();
         if (markdown.isBlank()) {
             throw new IllegalStateException("Managed Agent 返回的 Markdown 初稿为空");
@@ -112,9 +109,7 @@ public class TenderDocumentAiService {
 
     /** 人工定稿审核阶段交付的两个 Word 产物。 */
     public record FinalizedArtifacts(
-            String documentFileName,
             byte[] documentContent,
-            String reviewFileName,
             byte[] reviewContent) {
     }
 }

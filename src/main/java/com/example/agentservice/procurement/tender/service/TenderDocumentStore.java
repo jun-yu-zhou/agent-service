@@ -111,7 +111,6 @@ public class TenderDocumentStore {
                 .set(TenderDocumentEntity::getReviewRevision, null)
                 .set(TenderDocumentEntity::getReviewStatus, TenderReviewStatus.NOT_STARTED.name())
                 .set(TenderDocumentEntity::getReviewStage, null)
-                .set(TenderDocumentEntity::getReviewReport, null)
                 .set(TenderDocumentEntity::getFinalDocumentObjectKey, null)
                 .set(TenderDocumentEntity::getReviewReportObjectKey, null)
                 .set(TenderDocumentEntity::getReviewError, null)
@@ -131,7 +130,6 @@ public class TenderDocumentStore {
                 .set(TenderDocumentEntity::getReviewRevision, expectedRevision)
                 .set(TenderDocumentEntity::getReviewStatus, TenderReviewStatus.PENDING.name())
                 .set(TenderDocumentEntity::getReviewStage, "等待审核")
-                .set(TenderDocumentEntity::getReviewReport, null)
                 .set(TenderDocumentEntity::getFinalDocumentObjectKey, null)
                 .set(TenderDocumentEntity::getReviewReportObjectKey, null)
                 .set(TenderDocumentEntity::getReviewError, null)
@@ -166,7 +164,6 @@ public class TenderDocumentStore {
                 .eq(TenderDocumentEntity::getReviewStatus, TenderReviewStatus.REVIEWING.name())
                 .set(TenderDocumentEntity::getReviewStatus, TenderReviewStatus.FAILED.name())
                 .set(TenderDocumentEntity::getReviewStage, "审核失败")
-                .set(TenderDocumentEntity::getReviewReport, null)
                 .set(TenderDocumentEntity::getFinalDocumentObjectKey, null)
                 .set(TenderDocumentEntity::getReviewReportObjectKey, null)
                 .set(TenderDocumentEntity::getReviewError, error)) == 1;
@@ -184,7 +181,6 @@ public class TenderDocumentStore {
                 .eq(TenderDocumentEntity::getReviewStatus, TenderReviewStatus.REVIEWING.name())
                 .set(TenderDocumentEntity::getReviewStatus, TenderReviewStatus.FAILED.name())
                 .set(TenderDocumentEntity::getReviewStage, "审核任务已失效")
-                .set(TenderDocumentEntity::getReviewReport, null)
                 .set(TenderDocumentEntity::getFinalDocumentObjectKey, null)
                 .set(TenderDocumentEntity::getReviewReportObjectKey, null)
                 .set(TenderDocumentEntity::getReviewError, error)) == 1;

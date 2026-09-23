@@ -1,5 +1,6 @@
 package com.example.agentservice.procurement.tender.service;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -46,8 +47,8 @@ class TenderDocumentAiServiceTest {
         TenderDocumentAiService.FinalizedArtifacts result =
                 service.reviewFinalizedDocument("session-1", "# 人工定稿");
 
-        assertEquals("项目-招标文件定稿.docx", result.documentFileName());
-        assertEquals("项目-招标文件审核报告.docx", result.reviewFileName());
+        assertArrayEquals("document".getBytes(StandardCharsets.UTF_8), result.documentContent());
+        assertArrayEquals("report".getBytes(StandardCharsets.UTF_8), result.reviewContent());
         verify(client).uploadFile(any(byte[].class), eq("招标文件人工定稿.md"), eq("text/markdown"));
         verify(client).sendMessage(eq("session-1"), anyString(),
                 any(ManagedAgentClient.MessageFile.class));

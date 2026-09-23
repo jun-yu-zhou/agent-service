@@ -57,9 +57,6 @@ public class TenderDocumentEntity {
     /** 审核报告生成阶段说明。 */
     private String reviewStage;
 
-    /** 当前定稿对应的 Markdown 审核报告。 */
-    private String reviewReport;
-
     /** Managed Agent 生成的招标文件定稿在 OSS 中的对象路径。 */
     private String finalDocumentObjectKey;
 

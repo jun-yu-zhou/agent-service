@@ -104,6 +104,6 @@ class TenderReviewTaskServiceTest {
 
     private TenderDocumentAiService.FinalizedArtifacts artifacts() {
         return new TenderDocumentAiService.FinalizedArtifacts(
-                "定稿.docx", new byte[] {1}, "审核报告.docx", new byte[] {2});
+                new byte[] {1}, new byte[] {2});
     }
 }

@@ -117,14 +117,7 @@ public class TenderDocumentController {
     public ResponseEntity<byte[]> exportReview(
             @PathVariable String taskId, @PathVariable String versionId) throws Exception {
         return artifactService.exportReview(taskId, versionId)
-                .map(document -> ResponseEntity.ok()
-                        .contentType(MediaType.parseMediaType(document.contentType()))
-                        .contentLength(document.content().length)
-                        .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment()
-                                .filename(document.filename(), StandardCharsets.UTF_8).build().toString())
-                        .header(HttpHeaders.CACHE_CONTROL, "private, no-store")
-                        .header("X-Content-Type-Options", "nosniff")
-                        .body(document.content()))
+                .map(this::download)
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
@@ -134,15 +127,19 @@ public class TenderDocumentController {
     public ResponseEntity<byte[]> exportArtifacts(
             @PathVariable String taskId, @PathVariable String versionId) throws Exception {
         return artifactService.exportDocument(taskId, versionId)
-                .map(document -> ResponseEntity.ok()
-                        .contentType(MediaType.parseMediaType(document.contentType()))
-                        .contentLength(document.content().length)
-                        .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment()
-                                .filename(document.filename(), StandardCharsets.UTF_8).build().toString())
-                        .header(HttpHeaders.CACHE_CONTROL, "private, no-store")
-                        .header("X-Content-Type-Options", "nosniff")
-                        .body(document.content()))
+                .map(this::download)
                 .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    private ResponseEntity<byte[]> download(TenderDocumentArtifactService.ExportedDocument document) {
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(document.contentType()))
+                .contentLength(document.content().length)
+                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment()
+                        .filename(document.filename(), StandardCharsets.UTF_8).build().toString())
+                .header(HttpHeaders.CACHE_CONTROL, "private, no-store")
+                .header("X-Content-Type-Options", "nosniff")
+                .body(document.content());
     }
 
     /** 查询任务快照以及生成完成后的招标文件初稿。 */
