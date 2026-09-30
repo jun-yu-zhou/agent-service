@@ -1,0 +1,87 @@
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+# Maven 本地仓库固定在 G:\repository\repository，项目目录内不应出现 .m2。
+.m2/
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+### VS Code ###
+.vscode/
+
+# Local credentials and test URLs. Never commit this file.
+src/main/resources/application-local.yml
+.env
+
+# Local replay entry for rerunning only the paid report stage.
+src/test/java/com/example/agentservice/agile/ImmReportReplay.java
+
+# Local IMM integration test containing a signed OSS URL.
+src/test/java/com/example/agentservice/service/ImmServiceIntegrationTests.java
+src/test/java/com/example/agentservice/service/ImmImageSplicingIntegrationTests.java
+src/test/java/com/example/agentservice/service/ImmImageTextIntegrationTests.java
+src/main/java/com/example/agentservice/agile/ImmTestUrls.java
+
+# Local competition reference files may contain signed OSS URLs or third-party documents.
+src/main/resources/doc/**/*.doc
+src/main/resources/doc/**/*.docx
+src/main/resources/doc/**/*.docm
+src/main/resources/doc/**/*.lnk
+src/main/resources/doc/**/无人机巡检智能机巢.txt
+
+# ===== ↑ 以上同步自 .gitignore（「从 .gitignore 同步」只重写以上部分）=====
+.git/
+.hg/
+.svn/
+node_modules/
+bower_components/
+jspm_packages/
+__pycache__/
+site-packages/
+venv/
+coverage/
+htmlcov/
+lcov-report/
+cmakefiles/
+cmake-build-*/
+bazel-*/
+pods/
+deriveddata/
+storybook-static/
+playwright-report/
+test-results/
+allure-results/
+allure-report/
+cdk.out/
+*.egg-info/
+*.dist-info/
+eggs/
+pip-wheel-metadata/
+wheels/
+# ----- ↑ 以上为 ZCode 默认排除规则（自定义规则请写在本行下方，不会被同步/恢复改动）-----
+# 自定义规则写在下方（本行提示可删除）

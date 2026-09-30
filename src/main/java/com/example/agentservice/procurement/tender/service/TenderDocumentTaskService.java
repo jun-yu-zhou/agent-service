@@ -4,6 +4,7 @@ import com.example.agentservice.procurement.tender.domain.DocumentGenerationTask
 import com.example.agentservice.procurement.tender.domain.DocumentVersion;
 import com.example.agentservice.procurement.tender.domain.GenerationTaskStatus;
 import com.example.agentservice.procurement.tender.persistence.TenderDocumentEntity;
+import com.example.agentservice.procurement.tender.request.TenderExternalTaskRequest;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -43,6 +44,14 @@ public class TenderDocumentTaskService {
         TenderProjectDataService.GenerationInput input = projectDataService.load(projectId);
         String templateFileId = aiService.uploadTemplateHtml(input.templateHtml());
         return submit(projectId, input, templateFileId, "template.html");
+    }
+
+    /** 复用任务链路，但直接使用调用方提供的模板和项目数据。 */
+    public DocumentGenerationTask submitExternal(TenderExternalTaskRequest request) {
+        TenderProjectDataService.GenerationInput input = new TenderProjectDataService.GenerationInput(
+                request.templateId(), request.templateHtml(), request.projectData());
+        String templateFileId = aiService.uploadTemplateHtml(input.templateHtml());
+        return submit(request.projectId(), input, templateFileId, "template.html");
     }
 
     /** 使用用户上传的模板和同一项目资料创建初稿生成任务。 */

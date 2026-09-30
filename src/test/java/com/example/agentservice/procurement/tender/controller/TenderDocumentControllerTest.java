@@ -6,6 +6,8 @@ import com.example.agentservice.procurement.tender.domain.GenerationTaskStatus;
 import com.example.agentservice.procurement.tender.domain.TenderReviewSnapshot;
 import com.example.agentservice.procurement.tender.domain.TenderReviewStatus;
 import com.example.agentservice.procurement.tender.request.TenderProjectTaskRequest;
+import com.example.agentservice.procurement.tender.request.TenderExternalTaskRequest;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.example.agentservice.procurement.tender.service.TenderDocumentArtifactService;
 import com.example.agentservice.procurement.tender.service.TenderDocumentTaskService;
 import com.example.agentservice.procurement.tender.service.TenderReviewTaskService;
@@ -24,6 +26,22 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 class TenderDocumentControllerTest {
+
+    @Test
+    void shouldCreateTaskFromExternalInput() throws Exception {
+        TenderDocumentTaskService taskService = mock(TenderDocumentTaskService.class);
+        TenderExternalTaskRequest request = new TenderExternalTaskRequest(
+                "project-1", "template-1", "<h1>招标文件</h1>",
+                new ObjectMapper().readTree("{\"projectName\":\"测试项目\"}"));
+        DocumentGenerationTask task = new DocumentGenerationTask(
+                "task-1", GenerationTaskStatus.PENDING,
+                "等待生成", null, null, Instant.now(), Instant.now());
+        when(taskService.submitExternal(request)).thenReturn(task);
+        TenderDocumentController controller = new TenderDocumentController(
+                taskService, mock(TenderDocumentArtifactService.class), mock(TenderReviewTaskService.class));
+
+        assertEquals(task, controller.createTaskFromInput(request).getData());
+    }
 
     @Test
     void shouldCreateTaskByLegacyProjectId() {

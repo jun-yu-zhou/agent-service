@@ -5,12 +5,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.example.agentservice.procurement.tender.domain.DocumentGenerationTask;
 import com.example.agentservice.procurement.tender.domain.DocumentVersion;
 import com.example.agentservice.procurement.tender.domain.GenerationTaskStatus;
 import com.example.agentservice.procurement.tender.persistence.TenderDocumentEntity;
+import com.example.agentservice.procurement.tender.request.TenderExternalTaskRequest;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
@@ -21,6 +23,27 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
 class TenderDocumentTaskServiceTest {
+
+    @Test
+    void shouldCreateTaskFromExternalInputWithoutReadingBusinessDatabase() throws Exception {
+        TenderProjectDataService projectService = mock(TenderProjectDataService.class);
+        TenderDocumentStore documentStore = mock(TenderDocumentStore.class);
+        TenderDocumentAiService aiService = mock(TenderDocumentAiService.class);
+        ExecutorService executor = mock(ExecutorService.class);
+        JsonNode projectData = new ObjectMapper().readTree("{\"ZbProject\":{\"projectName\":\"测试项目\"}}");
+        TenderExternalTaskRequest request = new TenderExternalTaskRequest(
+                "project-1", "template-1", "<h1>招标文件</h1>", projectData);
+        when(aiService.uploadTemplateHtml(request.templateHtml())).thenReturn("file-1");
+        TenderDocumentTaskService service = new TenderDocumentTaskService(
+                aiService, projectService, documentStore, mock(TenderReviewTaskService.class), executor);
+
+        DocumentGenerationTask task = service.submitExternal(request);
+
+        verifyNoInteractions(projectService);
+        verify(documentStore).create(task.taskId(), "project-1", "template-1");
+        verify(executor).execute(any(Runnable.class));
+        assertEquals(GenerationTaskStatus.PENDING, task.status());
+    }
 
     @Test
     void shouldFinalizeCurrentDatabaseDocument() {
