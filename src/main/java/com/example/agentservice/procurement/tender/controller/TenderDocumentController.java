@@ -5,6 +5,7 @@ import com.example.agentservice.procurement.tender.domain.DocumentGenerationTask
 import com.example.agentservice.procurement.tender.domain.DocumentVersion;
 import com.example.agentservice.procurement.tender.domain.TenderReviewSnapshot;
 import com.example.agentservice.procurement.tender.request.TenderManualVersionRequest;
+import com.example.agentservice.procurement.tender.request.TenderExternalTaskRequest;
 import com.example.agentservice.procurement.tender.request.TenderProjectTaskRequest;
 import com.example.agentservice.procurement.tender.service.TenderDocumentArtifactService;
 import com.example.agentservice.procurement.tender.service.TenderDocumentTaskService;
@@ -51,6 +52,13 @@ public class TenderDocumentController {
     @Operation(summary = "根据项目创建招标初稿任务", description = "按业务项目 ID 读取项目资料和 HTML 模板，异步生成初稿。")
     public R<DocumentGenerationTask> createTask(@RequestBody TenderProjectTaskRequest request) {
         return R.success(taskService.submitProject(request.id()));
+    }
+
+    /** 使用旧业务系统已渲染的模板和项目数据创建任务，不再查询业务表。 */
+    @PostMapping("/tasks/from-input")
+    @Operation(summary = "使用外部项目数据生成招标初稿")
+    public R<DocumentGenerationTask> createTaskFromInput(@RequestBody TenderExternalTaskRequest request) {
+        return R.success(taskService.submitExternal(request));
     }
 
     /** 通过用户上传的模板文件创建异步招标文件生成任务。 */
