@@ -1,7 +1,7 @@
 package com.example.agentservice.procurement.tender.service;
 
-import com.example.agentservice.managedagent.ManagedAgentArtifact;
 import com.example.agentservice.managedagent.ManagedAgentClient;
+import com.example.agentservice.managedagent.ManagedAgentClient.ManagedAgentArtifact;
 import com.example.agentservice.procurement.tender.prompt.TenderDocumentPrompts;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.nio.charset.StandardCharsets;
@@ -11,6 +11,10 @@ import org.springframework.stereotype.Service;
 /** 通过百炼 Managed Agent 生成招标文件初稿并驱动定稿审核。 */
 @Service
 public class TenderDocumentAiService {
+
+    /** 兼容通道：招标 Agent 固定资源标识，未来改为数据库表配置。 */
+    private static final String TENDER_AGENT_ID = "agent_01M2YC57ED7NGFKSGVGC0KDKW6";
+    private static final String TENDER_ENVIRONMENT_ID = "env_NjIwNGU3YjVlYTZkNGY1Nj";
 
     private final ManagedAgentClient managedAgentClient;
 
@@ -35,6 +39,7 @@ public class TenderDocumentAiService {
         String templateName = safeFileName(templateFileName);
         String templatePath = "/uploads/template/" + templateName;
         String sessionId = managedAgentClient.createSession(
+                TENDER_AGENT_ID, TENDER_ENVIRONMENT_ID,
                 new ManagedAgentClient.SessionFile(
                         templateFileId, templatePath),
                 new ManagedAgentClient.SessionFile(

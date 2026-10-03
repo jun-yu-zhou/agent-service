@@ -19,15 +19,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
-import org.springframework.web.client.RestTemplate;
 
-/** 百炼 Managed Agent 的文件、会话和事件流调用入口。 */
+/** 百炼 Managed Agent 通用调用入口：文件、会话、事件流与产物下载。 */
 @Component
 @Slf4j
 public class ManagedAgentClient implements AutoCloseable {
@@ -35,31 +30,33 @@ public class ManagedAgentClient implements AutoCloseable {
     private static final Duration FILE_READY_TIMEOUT = Duration.ofMinutes(30);
     private static final Duration TURN_TIMEOUT = Duration.ofMinutes(30);
 
-    private final String apiKey = AgentServiceConfig.dashScopeApiKey();
-    private final AgentStudioClient client = AgentStudioClient.builder()
-            .apiKey(apiKey)
-            .workspace(ManagedAgentConstants.WORKSPACE_ID)
-            .region(ManagedAgentConstants.REGION)
-            .build();
-    private final RestTemplate restTemplate = new RestTemplate();
+    // ponytail: 单工作空间单地域；未来不同 workspace 的 Agent 需按 workspace 缓存 client。
+    private static final String WORKSPACE_ID = "llm-2c213fyvomyxzuc9";
+    private static final String REGION = "cn-beijing";
 
-    /** 等待输入文件可用后创建会话并完成挂载。 */
-    public String createSession(SessionFile... files) {
+    private final AgentStudioClient client = AgentStudioClient.builder()
+            .apiKey(AgentServiceConfig.dashScopeApiKey())
+            .workspace(WORKSPACE_ID)
+            .region(REGION)
+            .build();
+
+    /** 等待输入文件可用后，在指定 Agent 和运行环境上创建会话并完成挂载。 */
+    public String createSession(String agentId, String environmentId, SessionFile... files) {
         waitForAvailable(List.of(files).stream().map(SessionFile::fileId).toList());
         List<Map<String, Object>> resources = List.of(files).stream()
                 .map(file -> Map.<String, Object>of(
                         "type", "file", "file_id", file.fileId(), "mount_path", file.mountPath()))
                 .toList();
         Session session = client.sessions().create(SessionCreateParam.builder()
-                .agent(ManagedAgentConstants.TENDER_AGENT_ID)
-                .environmentId(ManagedAgentConstants.ENVIRONMENT_ID)
+                .agent(agentId)
+                .environmentId(environmentId)
                 .resources(resources)
                 .build());
         if (!StringUtils.hasText(session.getId())) {
             throw new IllegalStateException("Managed Agent 创建会话未返回会话标识");
         }
-        log.info("Managed Agent 会话已创建，sessionId={}，environmentId={}",
-                session.getId(), ManagedAgentConstants.ENVIRONMENT_ID);
+        log.info("Managed Agent 会话已创建，sessionId={}，agentId={}，environmentId={}",
+                session.getId(), agentId, environmentId);
         return session.getId();
     }
 
@@ -127,20 +124,18 @@ public class ManagedAgentClient implements AutoCloseable {
                 + sessionId + "，receivedEventCount=" + receivedEventCount);
     }
 
-    /** 官方 SDK 暂未提供文件正文接口，按文件标识下载产物。 */
+    /** 官方 SDK 自 2.23.1 提供文件正文接口，按文件标识下载产物。 */
     public byte[] downloadFile(ManagedAgentArtifact artifact) {
         if (!StringUtils.hasText(artifact.fileId())) {
             throw new IllegalStateException("Managed Agent 返回文件缺少文件标识: " + artifact.fileName());
         }
-        HttpHeaders headers = new HttpHeaders();
-        headers.setBearerAuth(apiKey);
-        ResponseEntity<byte[]> response = restTemplate.exchange(
-                client.getBaseUrl() + "/files/" + artifact.fileId() + "/content",
-                HttpMethod.GET, new HttpEntity<>(headers), byte[].class);
-        if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
-            throw new IllegalStateException("下载 Managed Agent 输出文件失败: " + artifact.fileName());
+        try {
+            return client.files().download(artifact.fileId()).getBytes();
         }
-        return response.getBody();
+        catch (RuntimeException exception) {
+            throw new IllegalStateException(
+                    "下载 Managed Agent 输出文件失败: " + artifact.fileName(), exception);
+        }
     }
 
     /** 所有输入文件共用一个截止时间，避免逐个等待叠加超时。 */
@@ -161,7 +156,15 @@ public class ManagedAgentClient implements AutoCloseable {
                             + "，status=" + metadata.getStatus());
                 }
             }
-            if (!pending.isEmpty()) waitOneSecond();
+            if (!pending.isEmpty()) {
+                try {
+                    Thread.sleep(1000);
+                }
+                catch (InterruptedException exception) {
+                    Thread.currentThread().interrupt();
+                    throw new IllegalStateException("等待 Managed Agent 文件审核被中断", exception);
+                }
+            }
         }
         if (!pending.isEmpty()) {
             throw new IllegalStateException("等待 Managed Agent 文件审核超时，fileIds=" + pending);
@@ -178,19 +181,13 @@ public class ManagedAgentClient implements AutoCloseable {
                 ? value.get(name).getAsString() : null;
     }
 
-    private static void waitOneSecond() {
-        try {
-            Thread.sleep(1000);
-        }
-        catch (InterruptedException exception) {
-            Thread.currentThread().interrupt();
-            throw new IllegalStateException("等待 Managed Agent 文件审核被中断", exception);
-        }
-    }
-
     @Override
     public void close() {
         client.close();
+    }
+
+    /** Managed Agent 通过 mark_artifacts 交付的文件。 */
+    public record ManagedAgentArtifact(String fileId, String fileName) {
     }
 
     /** 创建会话时挂载的输入文件，路径必须位于 uploads 目录。 */

@@ -33,7 +33,7 @@ class ManagedAgentEventParserTest {
 
         assertFalse(parser.accept(dataEvent("tool_call_output", data)));
 
-        assertEquals(List.of(new ManagedAgentArtifact("file-1", "招标文件初稿.md")), parser.artifacts());
+        assertEquals(List.of(new ManagedAgentClient.ManagedAgentArtifact("file-1", "招标文件初稿.md")), parser.artifacts());
     }
 
     @Test

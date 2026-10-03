@@ -15,7 +15,7 @@ import org.springframework.util.StringUtils;
 final class ManagedAgentEventParser {
 
     private final Instant turnStartedAt;
-    private final List<ManagedAgentArtifact> artifacts = new ArrayList<>();
+    private final List<ManagedAgentClient.ManagedAgentArtifact> artifacts = new ArrayList<>();
 
     ManagedAgentEventParser(Instant turnStartedAt) {
         this.turnStartedAt = turnStartedAt;
@@ -31,7 +31,7 @@ final class ManagedAgentEventParser {
         return isTurnFinished(event);
     }
 
-    List<ManagedAgentArtifact> artifacts() {
+    List<ManagedAgentClient.ManagedAgentArtifact> artifacts() {
         return List.copyOf(artifacts);
     }
 
@@ -48,7 +48,7 @@ final class ManagedAgentEventParser {
             if (marked == null) continue;
             for (var value : marked) {
                 JsonObject artifact = value.getAsJsonObject();
-                artifacts.add(new ManagedAgentArtifact(
+                artifacts.add(new ManagedAgentClient.ManagedAgentArtifact(
                         text(artifact, "file_id"), fileName(text(artifact, "path"))));
             }
         }
