@@ -42,11 +42,14 @@ public class ManagedAgentClient implements AutoCloseable {
 
     /** 等待输入文件可用后，在指定 Agent 和运行环境上创建会话并完成挂载。 */
     public String createSession(String agentId, String environmentId, SessionFile... files) {
+        // 文件处于 checking 时建会话会导致挂载失败或任务长时间无事件，必须先等审核通过。
         waitForAvailable(List.of(files).stream().map(SessionFile::fileId).toList());
+        // 会话资源声明：云端 file_id + 容器内挂载路径（限定 /uploads 目录）。
         List<Map<String, Object>> resources = List.of(files).stream()
                 .map(file -> Map.<String, Object>of(
                         "type", "file", "file_id", file.fileId(), "mount_path", file.mountPath()))
                 .toList();
+        // 会话一次性绑定 Agent、运行环境与挂载资源，后续轮次复用同一会话。
         Session session = client.sessions().create(SessionCreateParam.builder()
                 .agent(agentId)
                 .environmentId(environmentId)
@@ -62,6 +65,7 @@ public class ManagedAgentClient implements AutoCloseable {
 
     /** 上传文件，格式是否可用交由 Managed Agent 文件服务判断。 */
     public String uploadFile(byte[] content, String fileName, String contentType) {
+        // byte[] 包装为一次性流以 multipart 提交；返回 fileId 时文件仍处 checking，可用性由 waitForAvailable 保证。
         AgentStudioFile file = client.files().upload(
                 safeFileName(fileName), new ByteArrayInputStream(content), contentType);
         if (!StringUtils.hasText(file.getId())) {
@@ -81,6 +85,7 @@ public class ManagedAgentClient implements AutoCloseable {
     public List<ManagedAgentArtifact> sendMessage(
             String sessionId, String message, MessageFile... files) {
         waitForAvailable(List.of(files).stream().map(MessageFile::fileId).toList());
+        // 附件以文件内容块随本轮消息提交，文本块只保留任务说明。
         List<JsonObject> content = new ArrayList<>();
         JsonObject text = new JsonObject();
         text.addProperty("type", "text");
@@ -99,8 +104,10 @@ public class ManagedAgentClient implements AutoCloseable {
     private List<ManagedAgentArtifact> sendMessage(String sessionId, JsonObject userMessage) {
         ManagedAgentEventParser parser = new ManagedAgentEventParser(Instant.now().minusSeconds(5));
         int receivedEventCount = 0;
+        // 先订阅 SSE 再发送消息：避免短任务在订阅建立前执行完毕导致事件遗漏。
         try (AgentStudioEventStream stream = client.sessions().events()
                 .stream(sessionId, TURN_TIMEOUT.toMillis())) {
+            // 受理回执仅代表服务端收件，不代表 Agent 已开始执行；request_id 与用户事件 ID 供事件历史对账。
             JsonObject accepted = client.sessions().events()
                     .send(sessionId, List.of(userMessage));
             JsonArray events = accepted.getAsJsonArray("data");
@@ -110,6 +117,7 @@ public class ManagedAgentClient implements AutoCloseable {
             log.info("Managed Agent 事件已受理，sessionId={}，requestId={}，userEventId={}，eventCount={}",
                     sessionId, text(accepted, "request_id"),
                     text(events.get(0).getAsJsonObject(), "id"), events.size());
+            // 逐事件消费：产物收集、错误终止与轮次结束判定都在 parser 内完成。
             for (Message event : stream) {
                 receivedEventCount++;
                 if (parser.accept(event)) {
@@ -120,6 +128,7 @@ public class ManagedAgentClient implements AutoCloseable {
                 }
             }
         }
+        // 事件流先于轮次结束断开属异常；带上已接收事件数便于定位断流位置。
         throw new IllegalStateException("Managed Agent 事件流在本轮完成前结束，sessionId="
                 + sessionId + "，receivedEventCount=" + receivedEventCount);
     }
@@ -130,6 +139,7 @@ public class ManagedAgentClient implements AutoCloseable {
             throw new IllegalStateException("Managed Agent 返回文件缺少文件标识: " + artifact.fileName());
         }
         try {
+            // 仅 downloadable 文件可下载，否则服务端返回 403。
             return client.files().download(artifact.fileId()).getBytes();
         }
         catch (RuntimeException exception) {
@@ -146,6 +156,7 @@ public class ManagedAgentClient implements AutoCloseable {
             for (String fileId : fileIds) {
                 if (!pending.contains(fileId)) continue;
                 AgentStudioFile metadata = client.files().retrieve(fileId);
+                // available 即完成；rejected/type_rejected 直接失败；checking 继续轮询。
                 if ("available".equals(metadata.getStatus())) {
                     pending.remove(fileId);
                 }
@@ -181,6 +192,7 @@ public class ManagedAgentClient implements AutoCloseable {
                 ? value.get(name).getAsString() : null;
     }
 
+    /** 释放 SDK 的 OkHttp 线程池与连接池，由 Spring 在停机时调用。 */
     @Override
     public void close() {
         client.close();

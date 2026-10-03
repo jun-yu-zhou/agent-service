@@ -29,7 +29,17 @@ import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-/** 根据上传 HTML 模板和结构化项目数据生成招标文件初稿并管理人工编辑版本。 */
+/**
+ * 招标文件全链路入口。完整流转：
+ * <ol>
+ * <li>创建任务（三种入口：按项目 ID 查库 / 外部请求体直传 / 上传模板文件），
+ *     同步上传模板换取 fileId 后即返回任务号；</li>
+ * <li>后台将模板与项目数据上传为云端 .html/.json 文件并挂载进 Managed Agent 会话生成初稿；</li>
+ * <li>前端轮询任务状态与初稿正文，人工编辑、确认定稿；</li>
+ * <li>定稿后在原会话异步发起审核，产物（定稿/审核报告 docx）下载后转存 OSS；</li>
+ * <li>export 端点从 OSS 读取产物并以下载流返回。</li>
+ * </ol>
+ */
 @RestController
 @RequestMapping("/api/procurement/tender-drafts")
 @Tag(name = "招标文件", description = "招标文件初稿生成与人工定稿")
@@ -139,6 +149,7 @@ public class TenderDocumentController {
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
+    /** 将 OSS 读取的产物包装为附件下载响应；no-store 与 nosniff 防止浏览器内联渲染。 */
     private ResponseEntity<byte[]> download(TenderDocumentArtifactService.ExportedDocument document) {
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(document.contentType()))

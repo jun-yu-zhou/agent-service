@@ -59,6 +59,7 @@ public class TenderDocumentArtifactService {
     private ExportedDocument read(String filename, String objectKey, String missingMessage)
             throws IOException {
         if (objectKey == null || objectKey.isBlank()) {
+            // ObjectKey 缺失表示产物阶段尚未完成，按业务错误抛出而非静默 404。
             throw new IllegalStateException(missingMessage);
         }
         return new ExportedDocument(filename, DOCX_CONTENT_TYPE, artifactStorage.read(objectKey));

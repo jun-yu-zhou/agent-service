@@ -51,11 +51,13 @@ public class TenderProjectDataService {
         if (project == null || !"1".equals(project.getDelFlag())) {
             throw new IllegalArgumentException("招标项目不存在：" + projectId);
         }
+        // 分类代码 13 的项目使用专用模板，其余按项目类型映射到通用模板类型。
         String templateType = "13".equals(project.getClassifyCode())
                 ? "39" : TEMPLATE_TYPES.get(project.getProjectType());
         if (templateType == null) {
             throw new IllegalArgumentException("不支持的招标项目类型：" + project.getProjectType());
         }
+        // 模板按学院 + 模板类型唯一定位，HTML 正文存于 zb_project_template 的 COMMENTS 列。
         Map<String, Object> template = mapper.selectTemplate(project.getCollegeId(), templateType);
         if (template == null || template.get("templateId") == null
                 || template.get("templateHtml") == null

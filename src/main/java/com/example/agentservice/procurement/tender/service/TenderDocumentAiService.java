@@ -33,10 +33,12 @@ public class TenderDocumentAiService {
     /** 上传项目资料，并与用户模板一起挂载到会话。 */
     public DraftSession createDraftSession(
             String templateFileId, String templateFileName, JsonNode projectData) {
+        // 项目数据整体序列化为 JSON 字符串上传，完整正文不进事件消息。
         String projectDataFileId = uploadText(
                 projectData == null ? "null" : projectData.toString(),
                 "project-data.json", "application/json");
         String templateName = safeFileName(templateFileName);
+        // 挂载路径即 Agent 容器内 /mnt/session/uploads/... 读取路径的约定来源。
         String templatePath = "/uploads/template/" + templateName;
         String sessionId = managedAgentClient.createSession(
                 TENDER_AGENT_ID, TENDER_ENVIRONMENT_ID,
@@ -66,9 +68,12 @@ public class TenderDocumentAiService {
         }
         String fileName = "招标文件人工定稿.md";
         String fileId = uploadText(finalizedMarkdown, fileName, "text/markdown");
+        // 定稿正文较长，编码为 .md 附件随消息提交，文本块只保留任务指令。
         List<ManagedAgentArtifact> artifacts = managedAgentClient.sendMessage(
                 sessionId, TenderDocumentPrompts.FINALIZE_REQUEST,
                 new ManagedAgentClient.MessageFile(fileId, fileName));
+        // 复用初稿会话：Agent 仍保留模板与项目资料上下文。
+        // 按文件名关键词挑出两个 docx 并立即下载（云端文件有保留期），字节交由调用方转存 OSS。
         ManagedAgentArtifact document = docx(artifacts, "定稿");
         ManagedAgentArtifact report = docx(artifacts, "审核报告");
         return new FinalizedArtifacts(
@@ -76,6 +81,7 @@ public class TenderDocumentAiService {
     }
 
     private String uploadText(String content, String fileName, String contentType) {
+        // String → 云端文件的唯一转换点：UTF-8 编码为字节，扩展名与 contentType 交由文件服务识别。
         return managedAgentClient.uploadFile(
                 content.getBytes(StandardCharsets.UTF_8), fileName, contentType);
     }
@@ -87,6 +93,7 @@ public class TenderDocumentAiService {
 
     /** 正文只读取 Agent 通过 mark_artifacts 明确交付的 Markdown 文件。 */
     private String markdown(List<ManagedAgentArtifact> artifacts) {
+        // 初稿只交付一份 Markdown：按扩展名挑出并立即下载为字符串，不再依赖云端文件。
         ManagedAgentArtifact file = artifacts.stream()
                 .filter(value -> value.fileName() != null && value.fileName().toLowerCase().endsWith(".md"))
                 .findFirst()
