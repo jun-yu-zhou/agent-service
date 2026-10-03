@@ -16,7 +16,7 @@
 <dependency>
     <groupId>com.alibaba</groupId>
     <artifactId>dashscope-sdk-java</artifactId>
-    <version>2.22.24</version>
+    <version>2.23.1</version>
 </dependency>
 ```
 
@@ -33,7 +33,7 @@ Managed Agent Java API 要求 SDK 不低于 `2.22.24`。
 5. 发送简短用户指令，让 Agent 从挂载路径读取文件。
 6. 持续消费 SSE，收集 `mark_artifacts` 产物。
 7. 收到 `idle + end_turn` 后结束本轮。
-8. 使用产物 `file_id` 下载文件。
+8. 使用产物 `file_id` 下载文件（SDK ≥ 2.23.1 用 `client.files().download(fileId).getBytes()`）。
 
 ### 2.2 同一 Session 的后续任务
 
