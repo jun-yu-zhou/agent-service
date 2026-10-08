@@ -53,3 +53,6 @@ src/main/resources/doc/**/*.docx
 src/main/resources/doc/**/*.docm
 src/main/resources/doc/**/*.lnk
 src/main/resources/doc/**/无人机巡检智能机巢.txt
+
+# ZCode 会话计划为本地工作产物，不入库。
+.zcode/plans/

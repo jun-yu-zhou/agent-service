@@ -45,6 +45,7 @@ public class TenderReviewTaskService {
             return Optional.of(snapshot(document));
         }
         int revision = currentRevision(document);
+        // 条件更新防重复提交，占位成功才投递异步审核；线程池拒绝时回写失败状态，任务不悬挂。
         if (documentStore.beginReview(taskId, revision, TenderReviewStatus.PENDING)) {
             try {
                 executor.execute(() -> review(taskId, revision));
@@ -80,8 +81,10 @@ public class TenderReviewTaskService {
             }
             log.info("准备向 Managed Agent 原会话发送定稿审核请求，taskId={}，revision={}，sessionId={}",
                     taskId, revision, document.getSessionId());
+            // 复用初稿会话发起审核，拿到定稿与审核报告两个 docx 的字节。
             TenderDocumentAiService.FinalizedArtifacts artifacts = aiService.reviewFinalizedDocument(
                     document.getSessionId(), document.getDocumentMarkdown());
+            // 百炼 file_id 有保留期，产物必须立即转存 OSS，数据库只保存 ObjectKey。
             TenderArtifactStorage.StoredArtifacts stored =
                     artifactStorage.store(taskId, revision, artifacts);
             documentStore.completeReview(

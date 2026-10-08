@@ -20,9 +20,11 @@ public class TenderArtifactStorage {
     /** 将同一正文版本的定稿和审核报告写入固定对象路径。 */
     public StoredArtifacts store(
             String taskId, int revision, TenderDocumentAiService.FinalizedArtifacts artifacts) {
+        // 对象路径固定为 ai-tender/artifacts/{taskId}/{revision}/，同版本重跑直接覆盖。
         String directory = PREFIX + "/" + taskId + "/" + revision + "/";
         String documentKey = directory + "tender-document.docx";
         String reviewKey = directory + "review-report.docx";
+        // 两个产物必须全部成功：任一失败异常上抛，审核任务保持失败，不落任何 ObjectKey。
         OSS client = createClient();
         try {
             put(client, documentKey, artifacts.documentContent());
@@ -59,6 +61,7 @@ public class TenderArtifactStorage {
             // 自定义域名已经绑定 bucket，不能再由 SDK 拼接 bucket 子域名。
             configuration.setSupportCname(true);
         }
+        // 按次创建、用后即毁：转存与导出均为低频操作，无需常驻客户端。
         return OSSClientBuilder.create()
                 .endpoint(AgentServiceConfig.ossEndpoint())
                 .region(AgentServiceConfig.ossRegion())

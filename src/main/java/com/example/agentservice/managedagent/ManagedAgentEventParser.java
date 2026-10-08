@@ -15,7 +15,7 @@ import org.springframework.util.StringUtils;
 final class ManagedAgentEventParser {
 
     private final Instant turnStartedAt;
-    private final List<ManagedAgentArtifact> artifacts = new ArrayList<>();
+    private final List<ManagedAgentClient.ManagedAgentArtifact> artifacts = new ArrayList<>();
 
     ManagedAgentEventParser(Instant turnStartedAt) {
         this.turnStartedAt = turnStartedAt;
@@ -31,13 +31,14 @@ final class ManagedAgentEventParser {
         return isTurnFinished(event);
     }
 
-    List<ManagedAgentArtifact> artifacts() {
+    List<ManagedAgentClient.ManagedAgentArtifact> artifacts() {
         return List.copyOf(artifacts);
     }
 
     /** 系统提示词约定所有交付文件都通过 mark_artifacts 返回。 */
     private void collectArtifacts(Message event) {
         if (!"tool_call_output".equals(event.getType()) || event.getContent() == null) return;
+        // mark_artifacts 的输出是 JSON 字符串，需要二次解析内层 marked[] 数组。
         for (ContentBlock block : event.getContent()) {
             if (!(block instanceof ContentBlock.DataContent content)) continue;
             JsonObject data = content.getData();
@@ -48,7 +49,7 @@ final class ManagedAgentEventParser {
             if (marked == null) continue;
             for (var value : marked) {
                 JsonObject artifact = value.getAsJsonObject();
-                artifacts.add(new ManagedAgentArtifact(
+                artifacts.add(new ManagedAgentClient.ManagedAgentArtifact(
                         text(artifact, "file_id"), fileName(text(artifact, "path"))));
             }
         }
@@ -57,6 +58,7 @@ final class ManagedAgentEventParser {
     /** 只接受本轮产生的 idle 状态，避免复用会话时读到上一轮结束事件。 */
     private boolean isTurnFinished(Message event) {
         if (!"session_status".equals(event.getType()) || !belongsToTurn(event)) return false;
+        // 状态机：只有 idle + end_turn 算本轮正常结束，终止/审批/重试耗尽均视为失败。
         String status = sessionStatus(event);
         if ("terminated".equals(status)) {
             throw new IllegalStateException("Managed Agent 会话已终止");
@@ -77,6 +79,7 @@ final class ManagedAgentEventParser {
         if (!StringUtils.hasText(event.getCreatedAt())) return true;
         try {
             String createdAt = event.getCreatedAt();
+            // createdAt 存在毫秒时间戳与 ISO 两种格式；解析失败宁可放行，避免误杀真实结束事件。
             Instant eventTime = createdAt.chars().allMatch(Character::isDigit)
                     ? Instant.ofEpochMilli(Long.parseLong(createdAt)) : Instant.parse(createdAt);
             return !eventTime.isBefore(turnStartedAt);

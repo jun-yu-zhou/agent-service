@@ -9,8 +9,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.example.agentservice.managedagent.ManagedAgentArtifact;
 import com.example.agentservice.managedagent.ManagedAgentClient;
+import com.example.agentservice.managedagent.ManagedAgentClient.ManagedAgentArtifact;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import org.junit.jupiter.api.Test;

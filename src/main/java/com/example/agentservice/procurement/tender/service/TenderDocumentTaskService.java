@@ -123,11 +123,13 @@ public class TenderDocumentTaskService {
     private DocumentGenerationTask submit(
             String projectId, TenderProjectDataService.GenerationInput input,
             String templateFileId, String templateFileName) {
+        // 同步段止于模板上传。任务先以 PENDING 落库，前端拿到 taskId 即可开始轮询。
         String taskId = UUID.randomUUID().toString();
         Instant now = Instant.now();
         DocumentGenerationTask task = snapshot(
                 taskId, GenerationTaskStatus.PENDING, "等待生成", null, now, now);
         documentStore.create(taskId, projectId, input.templateId());
+        // 异步段从建会话开始：项目数据的上传与挂载都在后台线程完成。
         executor.execute(() -> generate(taskId, templateFileId, templateFileName, input.projectData()));
         return task;
     }
@@ -135,14 +137,20 @@ public class TenderDocumentTaskService {
     /** 后台创建会话并读取 Managed Agent 返回的初稿文件。 */
     private void generate(
             String taskId, String templateFileId, String templateFileName, JsonNode projectData) {
+        // 抢占式状态迁移：只有 PENDING 能进入 GENERATING，并发或重复调度在此挡掉。
         if (!documentStore.markGenerating(taskId)) return;
         try {
+            // 新建独立会话：项目数据在此上传为 project-data.json，与模板一起挂载进会话。
             TenderDocumentAiService.DraftSession session =
                     aiService.createDraftSession(templateFileId, templateFileName, projectData);
+            // sessionId 先落库，定稿审核轮次与故障排查都依赖它。
             if (!documentStore.saveGenerationSession(taskId, session.sessionId())) return;
+            // 发送生成指令并等待本轮结束，产物为 mark_artifacts 交付的 Markdown。
             String markdown = aiService.generateDraft(session);
+            // 初稿正文落库，前端轮询 /tasks/{taskId}/result 即可读取。
             documentStore.completeGeneration(taskId, session.sessionId(), markdown);
         } catch (Exception exception) {
+            // 任何一步失败都将任务标为失败，错误信息进库供前端展示。
             documentStore.failGeneration(taskId, GenerationTaskStatus.GENERATING, exception.getMessage());
         }
     }

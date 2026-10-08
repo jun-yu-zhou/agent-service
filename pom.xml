@@ -20,8 +20,8 @@
         <dependency>
             <groupId>com.alibaba</groupId>
             <artifactId>dashscope-sdk-java</artifactId>
-            <!-- 2.22.24 起提供官方 AgentStudio Managed Agent API。 -->
-            <version>2.22.24</version>
+            <!-- 2.22.24 起提供官方 AgentStudio Managed Agent API，2.23.1 起提供官方文件下载。 -->
+            <version>2.23.1</version>
             <exclusions>
                 <exclusion>
                     <groupId>org.slf4j</groupId>
