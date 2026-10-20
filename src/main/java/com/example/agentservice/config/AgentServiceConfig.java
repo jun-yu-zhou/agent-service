@@ -8,12 +8,14 @@ import org.springframework.core.io.Resource;
 import java.util.Properties;
 
 /**
- * Loads local development settings without putting secrets in source control.
- * API credentials are read from JVM properties, environment variables, or application-local.yml.
+ * Loads application settings from application.yml, with optional local overrides in
+ * application-local.yml. API credentials are read from JVM properties, environment
+ * variables, or the YAML files, in that order.
  */
 public final class AgentServiceConfig {
 
-    private static final Properties LOCAL_PROPERTIES = loadLocalProperties();
+    private static final Properties BASE_PROPERTIES = loadProperties("application.yml");
+    private static final Properties LOCAL_PROPERTIES = loadProperties("application-local.yml");
 
     private AgentServiceConfig() {
     }
@@ -29,6 +31,15 @@ public final class AgentServiceConfig {
     public static String dashScopeBaseUrl() {
         return value("app.dashscope.base-url", "DASHSCOPE_BASE_URL",
                 "https://dashscope.aliyuncs.com");
+    }
+
+    public static String tikaOcrBaseUrl() {
+        return value("app.dashscope.ocr-base-url", "DASHSCOPE_OCR_BASE_URL",
+                "https://dashscope.aliyuncs.com/compatible-mode");
+    }
+
+    public static String tikaOcrModel() {
+        return value("app.dashscope.ocr-model", "DASHSCOPE_OCR_MODEL", "qwen3.5-ocr");
     }
 
     public static String ossEndpoint() {
@@ -102,6 +113,10 @@ public final class AgentServiceConfig {
         if (!localValue.isBlank()) {
             return localValue;
         }
+        String baseValue = resolvePlaceholder(BASE_PROPERTIES.getProperty(propertyName));
+        if (!baseValue.isBlank()) {
+            return baseValue;
+        }
         return defaultValue;
     }
 
@@ -121,10 +136,10 @@ public final class AgentServiceConfig {
         return environmentValue == null || environmentValue.isBlank() ? fallback : environmentValue;
     }
 
-    private static Properties loadLocalProperties() {
-        Resource resource = new ClassPathResource("application-local.yml");
+    private static Properties loadProperties(String fileName) {
+        Resource resource = new ClassPathResource(fileName);
         if (!resource.exists()) {
-            resource = new FileSystemResource("src/main/resources/application-local.yml");
+            resource = new FileSystemResource("src/main/resources/" + fileName);
         }
         if (!resource.exists()) {
             return new Properties();

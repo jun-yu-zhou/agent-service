@@ -14,6 +14,9 @@
         <spring-boot.version>3.0.2</spring-boot.version>
         <spring-cloud.version>2022.0.1</spring-cloud.version>
         <mybatis-plus.version>3.5.11</mybatis-plus.version>
+        <tika.version>4.0.0</tika.version>
+        <poi.version>5.5.1</poi.version>
+        <commonmark.version>0.30.0</commonmark.version>
     </properties>
     <dependencies>
 
@@ -67,28 +70,39 @@
             <version>4.15.0</version>
         </dependency>
 
-        <!-- Tika 4：PDF 文本提取；tika-vlm 通过 OpenAI 兼容协议调用百炼视觉模型。 -->
+        <!-- Tika 4：PDF 文本提取；tika-vlm 通过 OpenAI 兼容协议调用百炼 OCR 模型。
+             Tika 各模块版本由 tika-bom 统一管理。 -->
+        <!-- Tika 各模块把 tika-core 声明为 provided，不会传递到本项目，需显式引入。 -->
+        <dependency>
+            <groupId>org.apache.tika</groupId>
+            <artifactId>tika-core</artifactId>
+        </dependency>
         <dependency>
             <groupId>org.apache.tika</groupId>
             <artifactId>tika-parsers-standard-package</artifactId>
-            <version>4.0.0</version>
             <type>pom</type>
+        </dependency>
+        <!-- Tika 4.0.0 的 microsoft 解析模块排除了 poi-ooxml-lite 且未传递 poi-ooxml-full，
+             导致 CTDocument1 等 OOXML schema 类缺失；显式补充，版本与 Tika 4.0.0 的 poi.version 对齐。 -->
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi-ooxml-full</artifactId>
+            <version>${poi.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.tika</groupId>
             <artifactId>tika-vlm</artifactId>
-            <version>4.0.0</version>
         </dependency>
         <dependency>
             <groupId>org.apache.tika</groupId>
             <artifactId>tika-serialization</artifactId>
-            <version>4.0.0</version>
         </dependency>
-        <!-- commons-compress 1.28.0 需要 3.18.0；避免被 docx4j 传递的 3.12.0 覆盖。 -->
+        <!-- Spring Boot 3.0.2 BOM 管理 commons-lang3 3.12.0；Tika 4.0.0 与 docx4j 17.1.0
+             均基于 3.20.0，显式覆盖，避免被旧版本覆盖。 -->
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-lang3</artifactId>
-            <version>3.18.0</version>
+            <version>3.20.0</version>
         </dependency>
 
         <dependency>
@@ -124,20 +138,22 @@
             <artifactId>docx4j-export-fo</artifactId>
             <version>17.1.0</version>
         </dependency>
+        <!-- Tika 4.0.0 与 docx4j 17.1.0 的 Markdown 组件均基于 CommonMark 0.30.0；
+             统一版本后 Tika 的 MarkdownParser 可正常加载，docx4j 也不会被降级。 -->
         <dependency>
             <groupId>org.commonmark</groupId>
             <artifactId>commonmark</artifactId>
-            <version>0.22.0</version>
+            <version>${commonmark.version}</version>
         </dependency>
         <dependency>
             <groupId>org.commonmark</groupId>
             <artifactId>commonmark-ext-gfm-tables</artifactId>
-            <version>0.22.0</version>
+            <version>${commonmark.version}</version>
         </dependency>
         <dependency>
             <groupId>org.commonmark</groupId>
             <artifactId>commonmark-ext-gfm-strikethrough</artifactId>
-            <version>0.22.0</version>
+            <version>${commonmark.version}</version>
         </dependency>
         <!-- Legacy tender-template databases. -->
         <dependency>
@@ -196,6 +212,13 @@
                 <groupId>org.springframework.cloud</groupId>
                 <artifactId>spring-cloud-dependencies</artifactId>
                 <version>${spring-cloud.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.tika</groupId>
+                <artifactId>tika-bom</artifactId>
+                <version>${tika.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
