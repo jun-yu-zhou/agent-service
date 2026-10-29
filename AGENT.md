@@ -9,7 +9,7 @@
 - `PDFReview`、`LongExtractBeforeReview`：PDF 上传、长文档事实抽取和报告汇总实验。
 - `ImmBeforeReview`：使用 OSS/IMM 将 PDF 转成图片，再调用多模态模型审查。
 - `ImmService` / `ImmServiceImpl`：负责提交 OSS/IMM PDF 转图片任务并轮询获取任务结果，业务流程通过构造器注入使用。
-- `BidControlReview`：使用 `qwen-doc-turbo` 审查招标文件控标风险，再使用 `qwen3.7-plus` 汇总为 Markdown 表格。
+- `BidControlReview`：IMM `ExtractDocumentText` 提取招标文件全文，挂载百炼法律知识库（`BailianKnowledge` + `RAGMode.GENERIC` 自动检索注入），`qwen3.7-plus` 经 AgentScope 结构化输出（schema 带 `required` + `minLength` 硬约束）返回 `List<BidControlRiskRow>`，由 `MarkdownTables` 渲染为固定 6 列 Markdown 表格。
 
 ## 凭证配置
 

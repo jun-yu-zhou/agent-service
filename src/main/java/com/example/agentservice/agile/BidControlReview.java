@@ -1,29 +1,83 @@
 package com.example.agentservice.agile;
 
-import com.example.agentservice.config.AgentServiceConfig;
+import com.example.agentservice.AgentServiceApplication;
 import com.example.agentservice.config.ModelConfig;
-
-import com.example.agentservice.formatter.QwenDocDashScopeChatFormatter;
+import com.example.agentservice.entity.BidControlRiskTable;
+import com.example.agentservice.service.ImmService;
+import com.example.agentservice.utils.MarkdownTables;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.agentscope.core.ReActAgent;
 import io.agentscope.core.message.Msg;
 import io.agentscope.core.message.MsgRole;
-import io.agentscope.core.model.*;
+import io.agentscope.core.rag.integration.bailian.BailianKnowledge;
+import io.agentscope.core.rag.model.Document;
+import io.agentscope.core.rag.model.RetrieveConfig;
+import io.agentscope.core.util.JsonSchemaUtils;
+import io.agentscope.extensions.model.openai.OpenAIChatModel;
+import org.springframework.boot.WebApplicationType;
+import org.springframework.boot.builder.SpringApplicationBuilder;
+import org.springframework.context.ConfigurableApplicationContext;
 
-import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 /**
- * 招标文件控标风险审查：qwen-doc阅读文件，qwen3.7-plus整理最终报告。
+ * 招标文件控标风险审查（MVP）：IMM 提取全文，qwen3.7-plus 一步完成审查并结构化输出，
+ * 最终渲染成固定 6 列的 Markdown 表格。
+ *
+ * <p>解决的问题是"控标"——招标文件里那些看起来合理、实际把竞争范围缩到特定供应商的
+ * 条款（参数精确指向、业绩定向、授权唯一、主观分过高等）。这类审查需要既通读全文找条款，
+ * 又要核实法律依据，单靠提示词让模型"自己画表格"格式还不受控。
+ *
+ * <p>链路只有一条直线，相比旧版（qwen-doc-turbo 读文档出草稿 → qwen3.7-plus 汇总）
+ * 砍掉了 qwen-doc 一步、砍掉了自由文本汇总：
+ * <ol>
+ *   <li>IMM {@code ExtractDocumentText} 把 OSS 上的 doc/docx/pdf 等 8 种文档同步提取为全文文本
+ *       （见 {@code ImmService.extractDocumentText}，秒级返回，无需提交任务轮询）；</li>
+ *   <li>全文文本交给 qwen3.7-plus（OpenAI 兼容模式，强制联网搜索核验法律依据），通过
+ *       AgentScope 结构化输出 API 返回 {@code risks} 数组——模型到 JSON 之间没有任何
+ *       二次模型调用，JSON → {@code List<BidControlRiskRow>} 的反序列化就是一次 Jackson
+ *       {@code readValue}，表格由 {@code MarkdownTables} 一个循环拼完；</li>
+ *   <li>"字段必填"压在 schema 层而不是提示词：AgentScope 的 schema 生成器会读
+ *       {@code @JsonProperty(required = true)} 生成 {@code required}，{@link #hardenSchema}
+ *       再对所有字符串字段补 {@code minLength: 1}，然后用 {@code agent.call(msg, JsonNode)}
+ *       提交硬化后的 schema——空字段在 schema 层就不合法，模型想偷懒都难；</li>
+ *   <li>法律依据检索接入百炼法律文件知识库：手动以聚焦检索词调 {@code Knowledge.retrieve}
+ *       （top 5），命中片段拼进用户消息。不用 AgentScope 的 {@code RAGMode.GENERIC} 自动
+ *       检索——它拿整份文档全文当检索词会撑爆请求 URI（414）；也不用 {@code AGENTIC}——
+ *       检索工具会与结构化输出的强制工具调用抢 tool-choice。</li>
+ * </ol>
+ *
+ * <p>相对的还有旧版"模型直接输出 Markdown 表格"的做法，两者二选一即可：旧版少一次
+ * 结构化解析但格式不可控；本项目选结构化输出 + 代码渲染，格式 100% 确定。
+ * 若后续想恢复"切图 + 多模态逐页审"的路线，IMM 按页切图能力
+ * （{@code ImmService.convertDocumentToImages}）已就绪，可直接叠加。
  */
 public class BidControlReview {
 
-    private static final String DASH_SCOPE_BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1";
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final ModelConfig MODEL_CONFIG = ModelConfig.standalone();
-    private static final String TEST_URL = "https://javawebemp.oss-cn-beijing.aliyuncs.com/%E4%B8%89%E5%B3%A1%E5%A4%A7%E5%AD%A6%E6%96%B0%E5%BB%BA%E5%AD%A6%E7%94%9F%E5%85%AC%E5%AF%93%E9%A1%B9%E7%9B%AE%E5%A4%9A%E6%B5%8B%E5%90%88%E4%B8%80%E7%AB%9E%E4%BA%89%E6%80%A7%E7%A3%8B%E5%95%86%E6%96%87%E4%BB%B69.17%E5%AE%9A%E7%A8%BF.doc";
+    // 默认审查扬州工业职业技术学院图书馆风冷热泵机组采购项目（用户上传的定稿 .doc）。
+    private static final String TEST_URL =
+            "http://oss1.easyjcx.com/co-order/2026/10/30/b57c2649b674480096adc615dadde63e2815252867861337994.doc";
 
-    private static final String DOC_REVIEW_PROMPT = """
-            你是招标文件控标风险审查专家。请完整阅读用户提供的招标文件，只审查招标文件本身是否存在可能限制竞争、定向设置或不合理设置的条款。
+    /** 本审查专用的百炼法律文件知识库标识（bean 见 BidControlReviewConfig，不做全局配置）。 */
+    public static final String BAILIAN_WORKSPACE_ID = "llm-2c213fyvomyxzuc9";
+    public static final String BAILIAN_KNOWLEDGE_BASE_ID = "94kvimrfoy";
+
+    /** 知识库检索词：聚焦"控标审查会用到的法律依据"，绝不能把整份文档全文当检索词（URI 会超限）。 */
+    private static final String LEGAL_QUERY = "招标文件控标风险审查法律依据：政府采购法及实施条例、87号令；"
+            + "技术参数指向特定产品、资格业绩要求设置、评分标准与主观分、质保年限加分、"
+            + "合同违约责任不对等、投标截止时间与准备期限的法定最低要求";
+
+    /** 免责声明固定跟在表格后输出，属于报告的一部分，不是审查结果。 */
+    private static final String DISCLAIMER = "免责声明：本报告仅基于提供的招标文件作风险提示，不构成对招标文件违法违规或控标行为的最终认定，最终结论应结合采购需求、市场调查、编制说明及相关澄清材料综合判断。";
+
+    private static final String REVIEW_PROMPT = """
+            你是招标文件控标风险审查专家。用户消息给出的是一份招标文件的全文文本（已经过IMM全文提取），并附有从法律文件知识库检索到的参考片段。请只审查招标文件本身是否存在可能限制竞争、定向设置或不合理设置的条款，并通过结构化输出直接返回审查结果。
 
             审查原则：
             1. 必须以文件原文为依据，不得补充、猜测文件中不存在的限制条件。
@@ -47,68 +101,145 @@ public class BidControlReview {
             12. 时间节点不合理：公告、答疑、报名、投标、评审、履约等时间安排是否相互矛盾或明显压缩正常准备时间。
             13. 信息不透明：需求、评审、验收、报价、合同或资格条件是否存在关键内容缺失、歧义或无法核验。若已明确引用国家、行业或地方标准，不得直接认定为“标准缺失”，可判断其引用是否清晰、是否易于获取。
 
-            只输出审查事实草稿，不输出最终Markdown表格。
-            每一项风险必须包含：风险类型、风险程度、原文位置、原文摘录、风险事实、初步分析、可能适用的法律文件或规范名称、建议、置信度。
-            初步分析中应明确区分“文件明确事实”和“审查推断”，并说明该条款具体可能如何影响竞争。
-            没有直接证据的维度不要编造，标记为“未发现明确风险”。
-            金额、日期、比例、分值、页码和条款编号必须以文件原文为准。
-            你不负责联网核验法律条文；无法确认具体条款时只提供候选法律文件名称，不得编造条款号或法律原文。
-            审查目标是减少误报，同时识别真正具有竞争限制效果的异常条款，而不是尽可能多地发现风险。
-            """;
+            输出结构（必须通过结构化输出返回，不得输出Markdown表格、代码块或其他自由文本）：
+            {"risks": [每个风险一个对象]}，每个对象包含且仅包含以下字段：
+            - riskType：风险类型，用简短名词概括（如“参数精确”“业绩定向”）。
+            - riskLevel：风险程度，只能填“高”“中”“低”。
+            - riskContent：风险内容，写明招标文件中的具体设置和原文位置。
+            - riskAnalysis：风险分析，采用“风险逻辑：……；法律依据：《法律文件》第X条，条文要点：……；适用分析：……”的紧凑格式。法律依据优先引用知识库检索到的法律文件原文；缺少法律依据摘要的风险行不得输出。
+            - suggestion：修改建议，必须可执行，例如删除指向性条件、改为性能参数、增加等效证明、细化评分标准、延长准备期限或补充公开说明。
+            - confidence：置信度，只能填“高”“中”“低”。
 
-    private static final String REPORT_PROMPT = """
-            你是招标文件控标风险审查报告汇总专家。输入是qwen-doc对一份招标文件的审查草稿。招标文件事实、金额、页码和条款只能来自审查草稿；法律依据必须通过联网检索政府、立法机关或司法机关的权威网站核验后使用。
-
-            最终输出必须严格为：一张Markdown表格，加表格后唯一的一句免责声明。不得输出标题、前言、分析过程、JSON、代码块或其他表格。
-
-            表头必须逐字保持如下顺序，不得增删或改名：
-            | 风险类型 | 风险程度 | 风险内容 | 风险分析 | 修改建议 | 置信度 |
-
-            规则：
-            1. “风险程度”和“置信度”只能填写“高”“中”“低”，禁止填写未识别、未知、HIGH、MEDIUM、LOW、百分比或其他内容。
-            2. 风险程度按证据和影响综合判断：有明确原文且可能实质限制竞争可为高；有疑点但需要进一步核验为中；轻微或证据不足为低。
-            3. 每个明确风险单独一行；相同风险合并，保留最直接的原文位置和摘录。
-            4. 风险内容写明招标文件中的具体设置和原文位置。风险分析必须同时包含三部分：风险逻辑；法律文件名称、具体条款及条文要点摘要；该法律要求与本项招标设置的适用关系。缺少法律依据摘要的风险行不得输出。
-            5. 修改建议必须可执行，例如删除指向性条件、改为性能参数、增加等效证明、细化评分标准、延长准备期限或补充公开说明。
-            6. 没有明确风险时仍输出一行：风险类型填“未发现明确风险”，风险程度填“低”，风险内容、风险分析和修改建议如实说明未发现明确异常，置信度填“低”。
-            7. 法律依据优先检索并核验全国人大、国务院、财政部、国家发展改革委、国家市场监督管理总局及其他政府官网。不得把搜索摘要、媒体文章或非官方解读当作法律原文；不得编造法律文件、条款号或条文内容。若只能确认法律原则而无法核验具体条款，应在风险分析中写“具体条款待人工核验”，并将置信度降为“低”。
-            8. 风险分析采用“风险逻辑：……；法律依据：《法律文件》第X条，条文要点：……；适用分析：……”的紧凑格式。
-            9. 表格单元格内不得出现未转义的竖线；原文摘录过长时压缩但不得改变原意。
-
-            表格之后只输出这一句：
-            免责声明：本报告仅基于提供的招标文件作风险提示，不构成对招标文件违法违规或控标行为的最终认定，最终结论应结合采购需求、市场调查、编制说明及相关澄清材料综合判断。
+            结果规则：
+            1. 每个风险对象的 6 个字段都必须填写完整具体内容，任何字段不得为空、null 或省略；填不出实质内容的行宁可不输出。
+            2. 法律依据优先引用知识库检索片段中的政府权威法律文件原文；不足时联网检索全国人大、国务院、财政部、国家发展改革委、国家市场监督管理总局及其他政府官网核验。不得把搜索摘要、媒体文章或非官方解读当作法律原文；不得编造法律文件、条款号或条文内容。若只能确认法律原则而无法核验具体条款，应在风险分析中写“具体条款待人工核验”，并将置信度降为“低”。
+            3. 风险程度按证据和影响综合判断：有明确原文且可能实质限制竞争为高；有疑点但需进一步核验为中；轻微或证据不足为低。
+            4. 每个明确风险单独一行；相同风险合并，保留最直接的原文位置和摘录。发现的每个维度问题都要输出对应风险行，不要只报告一个。
+            5. 没有明确风险时 risks 仍输出一行：riskType 填“未发现明确风险”，riskLevel 填“低”，riskContent、riskAnalysis、suggestion 如实说明未发现明确异常，confidence 填“低”。
+            6. 金额、日期、比例、分值、页码和条款编号必须以文件原文为准；内容过长时压缩但不得改变原意；文本中不要使用竖线字符。
+            7. 审查目标是减少误报，同时识别真正具有竞争限制效果的异常条款，而不是尽可能多地发现风险。
             """;
 
     public static void main(String[] args) {
-        System.err.println("开始执行招标文件控标审查：qwen-doc...");
-        String docReview = reviewDocument(TEST_URL);
-        System.err.println("qwen-doc审查完成，开始由qwen3.7-plus联网核验法律依据并汇总...");
-        String report = summarize(docReview);
-        System.out.println(report);
-        System.err.println("qwen3.7-plus汇总完成。");
-    }
-
-    private static String reviewDocument(String documentUrl) {
-        DashScopeChatModel model = MODEL_CONFIG.qwenDocTurboBidControlModel();
-
-        ReActAgent agent = ReActAgent.builder().name("bid-control-doc-review").sysPrompt(DOC_REVIEW_PROMPT).model(model).build();
-        Msg request = Msg.builder().role(MsgRole.USER).textContent("请完整阅读这份招标文件并执行控标风险审查。").metadata(Map.of(QwenDocDashScopeChatFormatter.DOC_URLS_METADATA_KEY, List.of(documentUrl), QwenDocDashScopeChatFormatter.FILE_PARSING_STRATEGY_METADATA_KEY, "auto")).build();
-        Msg response = agent.call(request).block();
-        if (response == null || response.getTextContent() == null || response.getTextContent().isBlank()) {
-            throw new IllegalStateException("qwen-doc未返回审查内容");
+        SpringApplicationBuilder application = new SpringApplicationBuilder(AgentServiceApplication.class)
+                .web(WebApplicationType.NONE);
+        try (ConfigurableApplicationContext context = application.run()) {
+            ImmService immService = context.getBean(ImmService.class);
+            BailianKnowledge legalKnowledge = context.getBean(BailianKnowledge.class);
+            System.err.println("开始执行招标文件控标审查：IMM全文提取 -> qwen3.7-plus结构化输出...");
+            String report = review(args.length > 0 ? args[0] : TEST_URL, immService, legalKnowledge);
+            System.out.println(report);
+            System.err.println("控标审查完成。");
+        } catch (Exception exception) {
+            throw new IllegalStateException("招标文件控标审查流程执行失败", exception);
         }
-        return response.getTextContent();
     }
 
-    private static String summarize(String docReview) {
+    /**
+     * 对一份招标文件执行控标风险审查，返回固定 6 列的 Markdown 表格加免责声明。
+     *
+     * <p>输入是 OSS 文件的 http/https URL（后缀须在 IMM 白名单 doc/docx/ppt/pptx/xls/xlsx/pdf/txt 内）；
+     * IMM 提取失败、模型未返回内容或结构化 JSON 解析失败时抛 {@link IllegalStateException}，
+     * 不做静默降级——审查报告宁可失败也不能输出残缺结论。
+     *
+     * @param documentUrl 招标文件在 OSS 上的 http/https 地址
+     * @param immService  IMM 文档正文提取服务（Spring 容器中的 bean）
+     * @param knowledge   百炼法律文件知识库（bidControlLegalKnowledge bean，手动检索注入）
+     * @return Markdown 表格文本，表头固定为：风险类型 | 风险程度 | 风险内容 | 风险分析 | 修改建议 | 置信度
+     */
+    @SuppressWarnings("deprecation")
+    public static String review(String documentUrl, ImmService immService, BailianKnowledge knowledge) throws Exception {
+        String documentText = immService.extractDocumentText(documentUrl);
+        System.err.println("IMM全文提取完成，字符数: " + documentText.length());
+
         OpenAIChatModel model = MODEL_CONFIG.qwen37PlusBidControlReportModel();
-
-        ReActAgent agent = ReActAgent.builder().name("bid-control-report").sysPrompt(REPORT_PROMPT).model(model).build();
-        Msg request = Msg.builder().role(MsgRole.USER).textContent("以下是qwen-doc完成的审查草稿，请按系统要求生成最终报告：\n\n" + docReview).build();
-        Msg response = agent.call(request).block();
+        ReActAgent agent = ReActAgent.builder()
+                .name("bid-control-review")
+                .sysPrompt(REVIEW_PROMPT)
+                .model(model)
+                .build();
+        Msg request = Msg.builder()
+                .role(MsgRole.USER)
+                .textContent("请审查以下招标文件全文并按系统要求返回结构化结果。\n\n"
+                        + "===== 法律文件知识库检索片段 =====\n" + retrieveLegalContext(knowledge)
+                        + "\n\n===== 招标文件全文 =====\n" + documentText)
+                .build();
+        Msg response = agent.call(request, hardenSchema(
+                JsonSchemaUtils.generateSchemaFromClass(BidControlRiskTable.class))).block();
         if (response == null || response.getTextContent() == null || response.getTextContent().isBlank()) {
-            throw new IllegalStateException("qwen3.7-plus未返回汇总报告");
+            throw new IllegalStateException("qwen3.7-plus未返回结构化审查结果");
         }
-        return response.getTextContent().trim();
+        System.err.println("RAW_STRUCTURED_JSON<<< " + response.getTextContent());
+        BidControlRiskTable table = OBJECT_MAPPER.readValue(response.getTextContent(), BidControlRiskTable.class);
+        System.err.println("结构化结果解析完成，风险行数: " + table.risks().size());
+        return MarkdownTables.render(table.risks()) + "\n\n" + DISCLAIMER;
+    }
+
+    /**
+     * 用聚焦的检索词查询法律文件知识库，把命中片段格式化为可注入提示词的文本。
+     *
+     * <p>为什么不走 {@code RAGMode.GENERIC} 的自动检索：GenericRAGHook 直接拿用户消息
+     * 当检索词，而这里用户消息是整份文档全文（数万字符），百炼 SDK 会把它塞进请求 URI，
+     * 网关直接回 414 Request-URI Too Large，检索静默失败。手动检索用一个短而聚焦的
+     * 法律依据查询词，命中片段显式拼进用户消息，长度可控、失败可见。
+     *
+     * @return 逐行编号的知识库片段文本；知识库不可用或无命中时返回占位说明，不中断审查
+     */
+    @SuppressWarnings("deprecation")
+    private static String retrieveLegalContext(BailianKnowledge knowledge) {
+        if (knowledge == null) {
+            return "（法律知识库不可用，法律依据请联网核验）";
+        }
+        List<Document> documents = knowledge.retrieve(
+                LEGAL_QUERY, RetrieveConfig.builder().limit(5).build()).block();
+        if (documents == null || documents.isEmpty()) {
+            return "（知识库未检索到相关法律片段，法律依据请联网核验）";
+        }
+        StringBuilder context = new StringBuilder();
+        for (int index = 0; index < documents.size(); index++) {
+            String content = documents.get(index).getMetadata().getContentText();
+            context.append("[片段").append(index + 1).append("] ")
+                    .append(content == null ? "" : content.strip())
+                    .append("\n");
+        }
+        return context.toString();
+    }
+
+    /**
+     * 硬化结构化输出 schema：所有对象字段加入 {@code required}，字符串字段加 {@code minLength: 1}。
+     *
+     * <p>AgentScope 的 {@code generateSchemaFromClass} 只把 {@code @JsonProperty(required = true)}
+     * 转成 required，管不住"字段存在但值是空串"；本方法递归补上长度约束后，空字段在
+     * schema 层即不合法，配合 {@code agent.call(msg, JsonNode)} 提交（与 Class 重载走同一条
+     * 结构化输出链路），彻底不依赖提示词自觉。
+     */
+    private static JsonNode hardenSchema(Map<String, Object> schema) {
+        JsonNode root = OBJECT_MAPPER.valueToTree(schema);
+        if (root instanceof ObjectNode rootNode) {
+            hardenObjectNode(rootNode);
+        }
+        return root;
+    }
+
+    private static void hardenObjectNode(ObjectNode node) {
+        JsonNode properties = node.get("properties");
+        if (!(properties instanceof ObjectNode props)) {
+            return;
+        }
+        List<String> names = new ArrayList<>();
+        props.fieldNames().forEachRemaining(names::add);
+        node.set("required", OBJECT_MAPPER.valueToTree(names));
+        props.fields().forEachRemaining(entry -> {
+            JsonNode child = entry.getValue();
+            if (child instanceof ObjectNode childObject) {
+                if ("string".equals(childObject.path("type").asText())) {
+                    childObject.put("minLength", 1);
+                }
+                hardenObjectNode(childObject);
+                if (childObject.get("items") instanceof ObjectNode items) {
+                    hardenObjectNode(items);
+                }
+            }
+        });
     }
 }
