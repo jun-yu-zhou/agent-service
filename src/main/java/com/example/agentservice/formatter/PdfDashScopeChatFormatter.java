@@ -1,7 +1,7 @@
 package com.example.agentservice.formatter;
 
-import io.agentscope.core.formatter.dashscope.DashScopeChatFormatter;
-import io.agentscope.core.formatter.dashscope.dto.DashScopeMessage;
+import io.agentscope.extensions.model.dashscope.formatter.DashScopeChatFormatter;
+import io.agentscope.extensions.model.dashscope.dto.DashScopeMessage;
 import io.agentscope.core.message.Msg;
 import io.agentscope.core.message.TextBlock;
 

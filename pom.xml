@@ -54,7 +54,9 @@
         <dependency>
             <groupId>io.agentscope</groupId>
             <artifactId>agentscope</artifactId>
-            <version>1.0.12</version>
+            <!-- 2.0.4：模型实现搬家到 io.agentscope.extensions.model.*，其余 API 与 1.x 兼容；
+                 项目仅做 import 迁移，深度 API 升级（middleware/nativeStructuredOutput 等）后续再做。 -->
+            <version>2.0.4</version>
         </dependency>
 
         <!-- AgentScope 的 BailianKnowledge 使用该 SDK，agentscope all-in-one 不会传递引入可选 RAG 依赖。 -->
@@ -196,6 +198,12 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- IDEA 直接运行 JUnit 5 测试需要 launcher；Maven surefire 自带，版本由 junit-bom 管理。 -->
+        <dependency>
+            <groupId>org.junit.platform</groupId>
+            <artifactId>junit-platform-launcher</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>

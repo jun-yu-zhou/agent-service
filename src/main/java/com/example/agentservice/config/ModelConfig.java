@@ -4,15 +4,13 @@ import com.alibaba.dashscope.aigc.multimodalconversation.MultiModalConversation;
 import com.alibaba.dashscope.protocol.ConnectionOptions;
 import com.example.agentservice.formatter.QwenDocDashScopeChatFormatter;
 import com.example.agentservice.formatter.QwenLongChatFormatter;
-import io.agentscope.core.model.DashScopeChatModel;
-import io.agentscope.core.model.EndpointType;
+import io.agentscope.extensions.model.dashscope.DashScopeChatModel;
+import io.agentscope.extensions.model.dashscope.EndpointType;
 import io.agentscope.core.model.ExecutionConfig;
 import io.agentscope.core.model.GenerateOptions;
-import io.agentscope.core.model.OpenAIChatModel;
+import io.agentscope.extensions.model.openai.OpenAIChatModel;
 import io.agentscope.core.model.transport.HttpTransportConfig;
 import io.agentscope.core.model.transport.JdkHttpTransport;
-import io.agentscope.core.rag.integration.bailian.BailianConfig;
-import io.agentscope.core.rag.integration.bailian.BailianKnowledge;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.Bean;
@@ -397,23 +395,6 @@ public class ModelConfig {
                         .writeTimeout(Duration.ofMinutes(5))
                         .readTimeout(Duration.ofMinutes(30))
                         .build());
-    }
-
-    @Bean
-    @Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)
-    public BailianKnowledge bailianLegalKnowledge() throws Exception {
-        return BailianKnowledge.builder()
-                .config(BailianConfig.builder()
-                        .accessKeyId(AgentServiceConfig.ossAccessKeyId())
-                        .accessKeySecret(AgentServiceConfig.ossAccessKeySecret())
-                        .workspaceId(AgentServiceConfig.bailianWorkspaceId())
-                        .indexId(AgentServiceConfig.bailianKnowledgeBaseId())
-                        .endpoint("bailian.cn-beijing.aliyuncs.com")
-                        .denseSimilarityTopK(8)
-                        .sparseSimilarityTopK(8)
-                        .enableReranking(true)
-                        .build())
-                .build();
     }
 
     private JdkHttpTransport newHttpTransport() {
