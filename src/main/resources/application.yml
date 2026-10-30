@@ -34,7 +34,7 @@ app:
     supplier-lookup-enabled: false
   dashscope:
     api-key: ""
-    # Tika PDF 视觉 OCR：百炼 OpenAI 兼容端点与模型，可用 application-local.yml 或环境变量覆盖。
+    # 文档视觉 OCR（docextract）：百炼 OpenAI 兼容端点与模型，可用 application-local.yml 或环境变量覆盖。
     ocr-base-url: ${DASHSCOPE_OCR_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode}
     ocr-model: ${DASHSCOPE_OCR_MODEL:qwen3.5-ocr}
   oss:
