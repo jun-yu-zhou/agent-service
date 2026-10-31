@@ -1,0 +1,63 @@
+server:
+  port: 8080
+
+logging:
+  level:
+    root: INFO
+    io.agentscope: INFO
+    org.docx4j: ERROR
+    org.apache.fop: ERROR
+spring:
+  config:
+    import: optional:classpath:application-local.yml
+  application:
+    name: agent-service
+  servlet:
+    multipart:
+      max-file-size: 200MB
+      max-request-size: 200MB
+
+# 关闭向 Eureka 的注册与服务发现；如需开启，将 enabled 改为 true。
+eureka:
+  client:
+    enabled: false
+    register-with-eureka: false
+    fetch-registry: false
+    service-url:
+      defaultZone: ${EUREKA_DEFAULT_ZONE:http://localhost:8761/eureka/}
+  instance:
+    prefer-ip-address: true
+
+# Do not put real credentials here. Use application-local.yml for local-only values.
+
+# docextract-sdk 必要条件：视觉 OCR 端点/模型/密钥。
+# api-key 复用 app.dashscope.api-key（密钥在 application-local.yml 只配一处），也可用 DASHSCOPE_API_KEY 覆盖。
+docextract:
+  ocr:
+    base-url: ${DASHSCOPE_OCR_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode}
+    api-key: ${DASHSCOPE_API_KEY:${app.dashscope.api-key:}}
+    model: ${DASHSCOPE_OCR_MODEL:qwen3.5-ocr}
+
+app:
+  bid:
+    supplier-lookup-enabled: false
+  dashscope:
+    api-key: ""
+  oss:
+    endpoint: ${ALIYUN_OSS_ENDPOINT:https://oss-cn-beijing.aliyuncs.com}
+    region: ${ALIYUN_OSS_REGION:cn-beijing}
+    bucket: ${ALIYUN_OSS_BUCKET:}
+    access-key-id: ${ALIYUN_OSS_ACCESS_KEY_ID:}
+    access-key-secret: ${ALIYUN_OSS_ACCESS_KEY_SECRET:}
+  imm:
+    endpoint: ${ALIYUN_IMM_ENDPOINT:imm.cn-beijing.aliyuncs.com}
+    project-name: ${ALIYUN_IMM_PROJECT:pdfReview}
+  bailian:
+    knowledge-enabled: ${ALIYUN_BAILIAN_KNOWLEDGE_ENABLED:false}
+    workspace-id: ${ALIYUN_BAILIAN_WORKSPACE_ID:}
+    knowledge-base-id: ${ALIYUN_BAILIAN_KNOWLEDGE_BASE_ID:}
+  procurement-document:
+    generation-model: ${PROCUREMENT_GENERATION_MODEL:qwen3.7-plus}
+    max-concurrency: ${PROCUREMENT_MAX_CONCURRENCY:4}
+    review-concurrency: ${PROCUREMENT_REVIEW_CONCURRENCY:2}
+    review-queue-capacity: ${PROCUREMENT_REVIEW_QUEUE_CAPACITY:20}

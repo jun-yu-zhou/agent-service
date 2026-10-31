@@ -5,6 +5,7 @@ target/
 
 # Maven 本地仓库固定在 G:\repository\repository，项目目录内不应出现 .m2。
 .m2/
+.mvn/maven.config
 
 ### STS ###
 .apt_generated
@@ -35,7 +36,8 @@ build/
 .vscode/
 
 # Local credentials and test URLs. Never commit this file.
-src/main/resources/application-local.yml
+application-local.yml
+*.stackdump
 .env
 
 # Local replay entry for rerunning only the paid report stage.

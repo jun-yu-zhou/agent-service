@@ -1,0 +1,667 @@
+{
+    "projectName": "无人机巡检智能机巢",
+    "zbProjectCode": "ZB105902024000122",
+    "purchaseMoney": "392000.00",
+    "zbItems": [
+        {
+            "itemId": "4597f9944d974f47a79e08e28ce0b2c7",
+            "itemName": "无人机巡检智能机巢",
+            "orderNum": 1,
+            "unit": "台",
+            "detailBudget": "392000.00",
+            "detailAmount": "392000.00",
+            "warrantyPeriod": 1,
+            "zbItemParams": [
+                {
+                    "showOrder": 1,
+                    "orderParamContent": "IP防护等级：≥IP54",
+                    "isImportant": "Y"
+                },
+                {
+                    "showOrder": 2,
+                    "orderParamContent": "产品重量：≤950kg",
+                    "isImportant": "N"
+                },
+                {
+                    "showOrder": 3,
+                    "orderParamContent": "无人机收纳数量：≥1架",
+                    "isImportant": "N"
+                },
+                {
+                    "showOrder": 4,
+                    "orderParamContent": "安全保护：支持欠压、过载、断电保护。",
+                    "isImportant": "Y"
+                },
+                {
+                    "showOrder": 5,
+                    "orderParamContent": "工作环境温度：0℃～55℃",
+                    "isImportant": "N"
+                },
+                {
+                    "showOrder": 6,
+                    "orderParamContent": "运行功率(峰值)：≤3000W",
+                    "isImportant": "N"
+                },
+                {
+                    "showOrder": 7,
+                    "orderParamContent": "供电要求：AC 200V～240V",
+                    "isImportant": "N"
+                },
+                {
+                    "showOrder": 8,
+                    "orderParamContent": "无人机电池更换方式：支持自动更换电池",
+                    "isImportant": "Y"
+                },
+                {
+                    "showOrder": 9,
+                    "orderParamContent": "自动换电时间：≤10s",
+                    "isImportant": "Z"
+                },
+                {
+                    "showOrder": 10,
+                    "orderParamContent": "作业方式：全自动",
+                    "isImportant": "N"
+                },
+                {
+                    "showOrder": 11,
+                    "orderParamContent": "无人机出舱时间：≤10s",
+                    "isImportant": "Z"
+                },
+                {
+                    "showOrder": 12,
+                    "orderParamContent": "作业间隔周期：降落后再次起飞时间≤2分钟",
+                    "isImportant": "Z"
+                },
+                {
+                    "showOrder": 13,
+                    "orderParamContent": "可容纳电池数量：≥4块",
+                    "isImportant": "N"
+                },
+                {
+                    "showOrder": 14,
+                    "orderParamContent": "机型匹配：支持大疆M30\\M350等型号无人机匹配，支持自主研发无人机匹配",
+                    "isImportant": "Y"
+                },
+                {
+                    "showOrder": 15,
+                    "orderParamContent": "可视化三维仿真海陆地图：实现三维仿真呈现舱门开关、平台升降、无人机位置、飞行姿态和飞行轨迹等信息。",
+                    "isImportant": "Y"
+                },
+                {
+                    "showOrder": 16,
+                    "orderParamContent": "全自动飞行：支持按提前预设好的航线全自动飞行。",
+                    "isImportant": "N"
+                },
+                {
+                    "showOrder": 17,
+                    "orderParamContent": "无人机自动起降：支持远程调度无人机一键起飞和一键返航降落。",
+                    "isImportant": "N"
+                },
+                {
+                    "showOrder": 18,
+                    "orderParamContent": "无人机自动避障：支持无人机基于机载高精三维地图和后端三维倾斜模型路径规划、自动避障。",
+                    "isImportant": "Z"
+                },
+                {
+                    "showOrder": 19,
+                    "orderParamContent": "与现有平台对接：支持通过API接口对接现有平台。",
+                    "isImportant": "N"
+                },
+                {
+                    "showOrder": 20,
+                    "orderParamContent": "指点飞行：支持中断自动飞行任务，通过平台进行鼠标指点调度无人机飞巡。",
+                    "isImportant": "Z"
+                },
+                {
+                    "showOrder": 21,
+                    "orderParamContent": "多机协同调度：支持多台无人机同时调度，一键起飞，同时执行巡查任务，无人机实时视频多端同步，协同工作。",
+                    "isImportant": "Y"
+                },
+                {
+                    "showOrder": 22,
+                    "orderParamContent": "视频AR融合：支持将无人机回传的实时画面AR投影至实景模型/卫星底图上，实时掌握现场情况，并直观反应事件位置和周边环境、路况等条件信息。",
+                    "isImportant": "Z"
+                },
+                {
+                    "showOrder": 23,
+                    "orderParamContent": "AI识别：支持定制化植入算法模型，对不同应用场景进场AI识别。",
+                    "isImportant": "Y"
+                }
+            ]
+        }
+    ],
+    "zbScoreRules": [
+        {
+            "zbScoreRuleId": "79fafdc1353b467ebe4d25d123810fec",
+            "zbProjectId": "f07cd47cd8d14d8ea0e674f90e25f0dd",
+            "showOrder": 0,
+            "collegeId": "SZU53",
+            "scoreType": "6",
+            "scoreName": "技术参数",
+            "scoreNum": null,
+            "scoreTitle": "所有货物",
+            "scoreValue": 0,
+            "scoreRule": "{\"value\":0,\"label\":\"\",\"child\":[{\"value\":\"0\",\"mode\":\"2\",\"label\":\"正偏离\"},{\"value\":\"0\",\"mode\":\"1\",\"label\":\"无偏离\"},{\"value\":0,\"mode\":\"0\",\"label\":\"负偏离\"}],\"important\":\"Y\"}",
+            "isEditable": null,
+            "splitTotalScore": null,
+            "totalScore": 53,
+            "remark": null,
+            "priceRandomMax": 0,
+            "componentType": "deviationRule",
+            "scoreTotal": null
+        },
+        {
+            "zbScoreRuleId": "635915b6af084d47952cea6bdab331ed",
+            "zbProjectId": "f07cd47cd8d14d8ea0e674f90e25f0dd",
+            "showOrder": 1,
+            "collegeId": "SZU53",
+            "scoreType": "6",
+            "scoreName": "技术参数",
+            "scoreNum": null,
+            "scoreTitle": "所有货物",
+            "scoreValue": 0,
+            "scoreRule": "{\"value\":0,\"label\":\"\",\"child\":[{\"value\":\"0\",\"mode\":\"2\",\"label\":\"正偏离\"},{\"value\":\"0\",\"mode\":\"1\",\"label\":\"无偏离\"},{\"value\":\"-11.25\",\"mode\":\"0\",\"label\":\"负偏离\"}],\"important\":\"Z\"}",
+            "isEditable": null,
+            "splitTotalScore": null,
+            "totalScore": 53,
+            "remark": null,
+            "priceRandomMax": 0,
+            "componentType": "deviationRule",
+            "scoreTotal": null
+        },
+        {
+            "zbScoreRuleId": "86393c3048234b45a4dc13bf7f0dd4c0",
+            "zbProjectId": "f07cd47cd8d14d8ea0e674f90e25f0dd",
+            "showOrder": 2,
+            "collegeId": "SZU53",
+            "scoreType": "6",
+            "scoreName": "技术参数",
+            "scoreNum": null,
+            "scoreTitle": "所有货物",
+            "scoreValue": 0,
+            "scoreRule": "{\"value\":0,\"label\":\"\",\"child\":[{\"value\":\"0\",\"mode\":\"2\",\"label\":\"正偏离\"},{\"value\":\"0\",\"mode\":\"1\",\"label\":\"无偏离\"},{\"value\":\"-2.5\",\"mode\":\"0\",\"label\":\"负偏离\"}],\"important\":\"N\"}",
+            "isEditable": null,
+            "splitTotalScore": null,
+            "totalScore": 53,
+            "remark": null,
+            "priceRandomMax": 0,
+            "componentType": "deviationRule",
+            "scoreTotal": null
+        },
+        {
+            "zbScoreRuleId": "acaff7423ce246f1917cfda29c062dad",
+            "zbProjectId": "f07cd47cd8d14d8ea0e674f90e25f0dd",
+            "showOrder": 3,
+            "collegeId": "SZU53",
+            "scoreType": "1",
+            "scoreName": "价格",
+            "scoreNum": null,
+            "scoreTitle": "6",
+            "scoreValue": 10,
+            "scoreRule": "{\"mode\":\"0\",\"child\":[{\"value\":\"115\",\"mode\":\"2\",\"min\":\"11\",\"max\":null,\"score\":\"6\"},{\"value\":1,\"mode\":\"1\",\"min\":\"90\",\"max\":\"115\",\"score\":\"10\"},{\"value\":\"90\",\"mode\":\"0\",\"min\":null,\"score\":\"5\"}]}",
+            "isEditable": null,
+            "splitTotalScore": null,
+            "totalScore": 30,
+            "remark": null,
+            "priceRandomMax": 5,
+            "componentType": "priceRule",
+            "scoreTotal": null
+        },
+        {
+            "zbScoreRuleId": "61baa244337b4dcca62edcff72ea23eb",
+            "zbProjectId": "f07cd47cd8d14d8ea0e674f90e25f0dd",
+            "showOrder": 4,
+            "collegeId": "SZU53",
+            "zbRequirementId": "7804eacf1407448db4f802f811329548",
+            "scoreType": "13",
+            "scoreName": "商务条款",
+            "scoreNum": null,
+            "scoreTitle": "免费保修期内售后服务条款偏离情况",
+            "scoreValue": 0,
+            "scoreRule": "{\"value\":0,\"label\":\"\",\"child\":[{\"hint\":\"参数为不可负偏离项，若负偏离则初审不通过。\",\"isImportant\":\"Y\",\"label\":\"不可负偏离条款\"},{\"value\":0,\"isImportant\":\"Z\",\"label\":\"重要条款\"},{\"value\":\"33.5\",\"isImportant\":\"N\",\"label\":\"普通条款\"}]}",
+            "isEditable": "1",
+            "splitTotalScore": null,
+            "totalScore": 7,
+            "remark": null,
+            "priceRandomMax": 0,
+            "componentType": "clauseRule",
+            "scoreTotal": null
+        },
+        {
+            "zbScoreRuleId": "10d3894b9b89430793427c9a79867a79",
+            "zbProjectId": "f07cd47cd8d14d8ea0e674f90e25f0dd",
+            "showOrder": 5,
+            "collegeId": "SZU53",
+            "zbRequirementId": "b9901dbb9f724a91b0042a478694eab0",
+            "scoreType": "13",
+            "scoreName": "商务条款",
+            "scoreNum": null,
+            "scoreTitle": "免费保修期外售后服务条款偏离情况",
+            "scoreValue": 0,
+            "scoreRule": "{\"value\":0,\"label\":\"\",\"child\":[{\"hint\":\"参数为不可负偏离项，若负偏离则初审不通过。\",\"isImportant\":\"Y\",\"label\":\"不可负偏离条款\"},{\"value\":0,\"isImportant\":\"Z\",\"label\":\"重要条款\"},{\"value\":\"100\",\"isImportant\":\"N\",\"label\":\"普通条款\"}]}",
+            "isEditable": "1",
+            "splitTotalScore": null,
+            "totalScore": 2,
+            "remark": null,
+            "priceRandomMax": 0,
+            "componentType": "clauseRule",
+            "scoreTotal": null
+        },
+        {
+            "zbScoreRuleId": "c5f58750f8cc428ea89a591503226baf",
+            "zbProjectId": "f07cd47cd8d14d8ea0e674f90e25f0dd",
+            "showOrder": 6,
+            "collegeId": "SZU53",
+            "zbRequirementId": "aefaaa3a0f554753be5cc77cf5e553ab",
+            "scoreType": "13",
+            "scoreName": "其他商务条款偏离情况",
+            "scoreNum": null,
+            "scoreTitle": "其他商务条款偏离情况",
+            "scoreValue": 0,
+            "scoreRule": "{\"value\":0,\"label\":\"\",\"child\":[{\"hint\":\"参数为不可负偏离项，若负偏离则初审不通过。\",\"isImportant\":\"Y\",\"label\":\"不可负偏离条款\"},{\"value\":0,\"isImportant\":\"Z\",\"label\":\"重要条款\"},{\"value\":\"12.5\",\"isImportant\":\"N\",\"label\":\"普通条款\"}]}",
+            "isEditable": "1",
+            "splitTotalScore": null,
+            "totalScore": 3,
+            "remark": null,
+            "priceRandomMax": 0,
+            "componentType": "clauseRule",
+            "scoreTotal": null
+        },
+        {
+            "zbScoreRuleId": "6a2a72b736f4460db202e4ed9f3151cd",
+            "zbProjectId": "f07cd47cd8d14d8ea0e674f90e25f0dd",
+            "showOrder": 7,
+            "collegeId": "SZU53",
+            "scoreType": "14",
+            "scoreName": "诚信",
+            "scoreNum": null,
+            "scoreTitle": "供应商等级",
+            "scoreValue": 100,
+            "scoreRule": "{\"label\":\"竞价网供应商等级\",\"child\":[{\"mode\":\"1\",\"score\":\"100\"},{\"mode\":\"2\",\"score\":\"60\"},{\"mode\":\"3\",\"score\":\"30\"},{\"mode\":\"4\",\"score\":\"0\"},{\"mode\":\"5\",\"score\":\"0\"},{\"mode\":\"6\",\"score\":\"0\"}]}",
+            "isEditable": "0",
+            "splitTotalScore": null,
+            "totalScore": 5,
+            "remark": null,
+            "priceRandomMax": 0,
+            "componentType": "companyLevelRule",
+            "scoreTotal": null
+        }
+    ],
+    "zbQualificationList": [
+        {
+            "qualificationId": "07f1f6e534964fd4b16ca5c96260f44f",
+            "qualificationMessage": "具有独立法人资格或具有独立承担民事责任的能力的其它组织（提供营业执照或事业单位法人证明扫描件，原件备查）。",
+            "showOrder": 1
+        },
+        {
+            "qualificationId": "17b50c3e67974af2a0fa6c2944bcb8eb",
+            "qualificationMessage": "参与本项目投标前三年内，在经营活动中没有重大违法记录（由供应商在《投标及履约承诺函》中作出声明）。",
+            "showOrder": 2
+        },
+        {
+            "qualificationId": "3138a21512aa42488649c9dd9cb31c99",
+            "qualificationMessage": "参与本项目采购活动时不存在被有关部门禁止参与政府采购活动且在有效期内的情况（由供应商在《投标及履约承诺函》中作出声明）。",
+            "showOrder": 3
+        },
+        {
+            "qualificationId": "58590064992b40799b2784bd8393d722",
+            "qualificationMessage": "参与本采购项目投标的供应商未被列入失信被执行人、重大税收违法失信主体、政府采购严重违法失信行为记录名单、不存在《深圳市财政局政府采购供应商信用信息管理办法》（深财规〔2023）3号）列明的严重违法失信行为（由供应商在《投标及履约承诺函》中作出声明）。\n注：“信用中国”、“中国政府采购网”以及“深圳市政府采购监管网”为供应商信用信息的查询渠道，相关信息以开标当日的查询结果为准。",
+            "showOrder": 4
+        },
+        {
+            "qualificationId": "8f38dd4cd3de4cfdbead65f988ac6744",
+            "qualificationMessage": "单位负责人为同一人或者存在直接控股、管理关系的不同供应商，不得参加同一合同项下的政府采购活动；为采购项目提供整体设计、规范编制或者项目管理、监理、检测等服务的供应商，不得再参加该采购项目的其他采购活动（由供应商在《投标及履约承诺函》中作出声明）。",
+            "showOrder": 5
+        },
+        {
+            "qualificationId": "6da97333bfa44769a1053754d7a3f100",
+            "qualificationMessage": "本项目不接受投标人选用进口产品参与投标。",
+            "showOrder": 6
+        },
+        {
+            "qualificationId": "25676ae73533400ea2c45b62bc004411",
+            "qualificationMessage": "本项目不接受联合体投标。",
+            "showOrder": 7
+        }
+    ],
+    "scientificEquipmentReason": "智能机巢，也被称为无人机机场或无人机机巢，是专门为无人机提供停靠、充电、维护等服务的智能化设施。它不仅是无人机的“精装房”，更是整个自动化巡检系统的核心组成部分。智能机巢通过内置的智能系统，能够对无人机进行实时监控和管理，确保无人机的安全、高效运行。可以很好的开展实验室相关科研任务",
+    "purchaseItem": "A02000000设备/A02430000航空器及其配套设备/A02430900无人机",
+    "zbProjectComments": [
+        {
+            "commentsId": "eb0bdd1abab044f1a1baff46f05dc495",
+            "commentsType": "0",
+            "zbProjectId": "f07cd47cd8d14d8ea0e674f90e25f0dd",
+            "collegeId": "SZU53",
+            "comments": "{\"buildingAddr\":null,\"tendereeLinkman\":null,\"tendereePhone\":null,\"tendereeMail\":null,\"projectLeaderName\":null,\"projectLeaderPhone\":null,\"projectLeaderMail\":null,\"purchaseApproverName\":\"杜彦良\",\"purchaseApproverPhone\":\"19166299636\",\"purchaseApproverMail\":\"799935105@qq.com\",\"purchaseApproverId\":\"SZU53170036\",\"foundsCode\":\"868-0000030129\",\"executorEmail\":\"ywsh@szu.edu.cn\",\"executorName\":\"于文率\",\"executorPhone\":\"13243888102\",\"projectName\":\"无人机巡检智能机巢\",\"projectCode\":null,\"departmentId\":\"SZU46SZU532\",\"departmentName\":\"土木与交通工程学院\",\"fundingSource\":[],\"duration\":null,\"purchaseMoney\":392000,\"controlPrice\":null,\"costWarningLine\":null,\"tendereeAgentId\":null,\"tendereeAgent\":null,\"zbProjectCode\":\"ZB105902024000122\",\"budgetIsOpen\":null,\"expertCount\":null,\"purchaseUserCount\":null,\"lowerPriceScoringMethod\":null,\"agentName\":\"于文率\",\"agentPhone\":\"13243888102\",\"agentEmail\":\"ywsh@szu.edu.cn\",\"remark\":null,\"orderUnit\":\"土木与交通工程学院\",\"orderUnitId\":\"SZU46SZU532\",\"displayMode\":\"0\",\"agentId\":\"SZU532022000069\",\"scientificEquipmentReason\":\"智能机巢，也被称为无人机机场或无人机机巢，是专门为无人机提供停靠、充电、维护等服务的智能化设施。它不仅是无人机的“精装房”，更是整个自动化巡检系统的核心组成部分。智能机巢通过内置的智能系统，能够对无人机进行实时监控和管理，确保无人机的安全、高效运行。可以很好的开展实验室相关科研任务\",\"isAcceptInput\":\"0\",\"goodsType\":\"1\",\"purchaseItem\":\"A02000000设备/A02430000航空器及其配套设备/A02430900无人机\",\"isCompleteParameterArgument\":\"1\",\"isCompleteImportDeviceArgument\":\"0\",\"executorId\":\"SZU532022000069\"}",
+            "showOrder": 1
+        },
+        {
+            "commentsId": "df9d38323baf47e7837389dea7e7c01d",
+            "commentsType": "1",
+            "zbProjectId": "f07cd47cd8d14d8ea0e674f90e25f0dd",
+            "collegeId": "SZU53",
+            "comments": "[{\"itemId\":\"4597f9944d974f47a79e08e28ce0b2c7\",\"itemName\":\"无人机巡检智能机巢\",\"enItemName\":null,\"processId\":null,\"flowId\":null,\"projectCode\":null,\"zbProjectId\":\"f07cd47cd8d14d8ea0e674f90e25f0dd\",\"cgProjectCode\":null,\"planYear\":null,\"budgetCode\":null,\"itemCode\":null,\"showOrder\":1,\"procurementType\":null,\"orderNum\":1,\"unit\":\"台\",\"detailBudget\":\"392000.00\",\"detailAmount\":\"392000.00\",\"isMandatoryAttachment\":null,\"maintenance\":null,\"installRequirement\":null,\"installDebug\":null,\"careerMan\":null,\"frequency\":null,\"isImport\":null,\"isStandard\":null,\"isLarge\":null,\"isMedical\":null,\"isTax\":null,\"isFurniture\":null,\"isCatalog\":null,\"isCore\":null,\"itemClassify\":null,\"isRadioactivity\":null,\"radioactivityName\":null,\"projectType\":null,\"itemType\":null,\"itemCategory\":null,\"itemCategoryId\":null,\"itemCategoryIdList\":null,\"purpose\":null,\"brand\":null,\"models\":null,\"recoCompany\":null,\"recoPrice\":null,\"warrantyPeriod\":1,\"fundingSource\":null,\"mainId\":null,\"detailId\":null,\"supplierName\":null,\"usingCorrency\":null,\"bidPrice\":null,\"bidAmount\":null,\"bidAmountRenminbi\":null,\"demandSide\":null,\"demandSidePhone\":null,\"requiredDate\":null,\"departmentId\":null,\"departmentName\":null,\"bmdId\":null,\"bmdName\":null,\"collegeId\":\"SZU53\",\"collegeName\":null,\"afterSaleService\":null,\"manufacturer\":null,\"producingArea\":null,\"purchaseCompleteTime\":null,\"execStatus\":null,\"argumentStatus\":null,\"agStarttime\":null,\"approvalStatus\":null,\"itemStatus\":null,\"newItemId\":null,\"placeAddr\":null,\"assetCode\":null,\"isAutoSubmit\":null,\"isMerged\":null,\"inquireCompany\":null,\"inquireManufacturer\":null,\"inquireProducingArea\":null,\"inquirePrice\":\"0.00\",\"inquireAmount\":null,\"inquireAttachmentName\":null,\"inquireOssPath\":null,\"inquireRemark\":null,\"buyAgStatus\":null,\"buyAgAddress\":null,\"buyAgScore\":null,\"buyAgTime\":null,\"buyAgComments\":null,\"remark\":null,\"originalFactoryAuthorized\":null,\"zbItemParams\":[{\"orderParamId\":\"339252c8447344bdb11b63024fff7c97\",\"projectId\":\"f07cd47cd8d14d8ea0e674f90e25f0dd\",\"itemId\":\"4597f9944d974f47a79e08e28ce0b2c7\",\"showOrder\":1,\"orderParamCode\":null,\"orderParamContent\":\"IP防护等级：≥IP54\",\"isImportant\":\"Y\",\"negativeDeviationScore\":null,\"positiveDeviationScore\":null,\"orderParamType\":null,\"isNeedFile\":null,\"collegeId\":\"SZU53\",\"collegeName\":\"深圳大学\",\"isDelete\":\"1\",\"revision\":null,\"zcBidParamList\":null,\"itemParamRespList\":null,\"zcBidParamDtoList\":null},{\"orderParamId\":\"4f94ef5c6d4d4f0fa3348f466545312b\",\"projectId\":\"f07cd47cd8d14d8ea0e674f90e25f0dd\",\"itemId\":\"4597f9944d974f47a79e08e28ce0b2c7\",\"showOrder\":2,\"orderParamCode\":null,\"orderParamContent\":\"产品重量：≤950kg\",\"isImportant\":\"N\",\"negativeDeviationScore\":null,\"positiveDeviationScore\":null,\"orderParamType\":null,\"isNeedFile\":null,\"collegeId\":\"SZU53\",\"collegeName\":\"深圳大学\",\"isDelete\":\"1\",\"revision\":null,\"zcBidParamList\":null,\"itemParamRespList\":null,\"zcBidParamDtoList\":null},{\"orderParamId\":\"93e909be362c4359bb9f73cefdd9b25a\",\"projectId\":\"f07cd47cd8d14d8ea0e674f90e25f0dd\",\"itemId\":\"4597f9944d974f47a79e08e28ce0b2c7\",\"showOrder\":3,\"orderParamCode\":null,\"orderParamContent\":\"无人机收纳数量：≥1架\",\"isImportant\":\"N\",\"negativeDeviationScore\":null,\"positiveDeviationScore\":null,\"orderParamType\":null,\"isNeedFile\":null,\"collegeId\":\"SZU53\",\"collegeName\":\"深圳大学\",\"isDelete\":\"1\",\"revision\":null,\"zcBidParamList\":null,\"itemParamRespList\":null,\"zcBidParamDtoList\":null},{\"orderParamId\":\"34be990a530b4a25a908010e5e8793b1\",\"projectId\":\"f07cd47cd8d14d8ea0e674f90e25f0dd\",\"itemId\":\"4597f9944d974f47a79e08e28ce0b2c7\",\"showOrder\":4,\"orderParamCode\":null,\"orderParamContent\":\"安全保护：支持欠压、过载、断电保护。\",\"isImportant\":\"Y\",\"negativeDeviationScore\":null,\"positiveDeviationScore\":null,\"orderParamType\":null,\"isNeedFile\":null,\"collegeId\":\"SZU53\",\"collegeName\":\"深圳大学\",\"isDelete\":\"1\",\"revision\":null,\"zcBidParamList\":null,\"itemParamRespList\":null,\"zcBidParamDtoList\":null},{\"orderParamId\":\"4fdb849def0a4aba8d1b7e95722cc270\",\"projectId\":\"f07cd47cd8d14d8ea0e674f90e25f0dd\",\"itemId\":\"4597f9944d974f47a79e08e28ce0b2c7\",\"showOrder\":5,\"orderParamCode\":null,\"orderParamContent\":\"安全保护：支持欠压、过载、断电保护。\",\"isImportant\":\"N\",\"negativeDeviationScore\":null,\"positiveDeviationScore\":null,\"orderParamType\":null,\"isNeedFile\":null,\"collegeId\":\"SZU53\",\"collegeName\":\"深圳大学\",\"isDelete\":\"1\",\"revision\":null,\"zcBidParamList\":null,\"itemParamRespList\":null,\"zcBidParamDtoList\":null},{\"orderParamId\":\"cb2dbc4eab6f4e13b2adae731c41f6cb\",\"projectId\":\"f07cd47cd8d14d8ea0e674f90e25f0dd\",\"itemId\":\"4597f9944d974f47a79e08e28ce0b2c7\",\"showOrder\":6,\"orderParamCode\":null,\"orderParamContent\":\"工作环境温度：0℃～55℃\",\"isImportant\":\"N\",\"negativeDeviationScore\":null,\"positiveDeviationScore\":null,\"orderParamType\":null,\"isNeedFile\":null,\"collegeId\":\"SZU53\",\"collegeName\":\"深圳大学\",\"isDelete\":\"1\",\"revision\":null,\"zcBidParamList\":null,\"itemParamRespList\":null,\"zcBidParamDtoList\":null},{\"orderParamId\":\"426deb7e58884483960459c2e9ea906a\",\"projectId\":\"f07cd47cd8d14d8ea0e674f90e25f0dd\",\"itemId\":\"4597f9944d974f47a79e08e28ce0b2c7\",\"showOrder\":7,\"orderParamCode\":null,\"orderParamContent\":\"运行功率(峰值)：≤3000W\",\"isImportant\":\"N\",\"negativeDeviationScore\":null,\"positiveDeviationScore\":null,\"orderParamType\":null,\"isNeedFile\":null,\"collegeId\":\"SZU53\",\"collegeName\":\"深圳大学\",\"isDelete\":\"1\",\"revision\":null,\"zcBidParamList\":null,\"itemParamRespList\":null,\"zcBidParamDtoList\":null},{\"orderParamId\":\"5cb2240336a943309c64c26a5978e477\",\"projectId\":\"f07cd47cd8d14d8ea0e674f90e25f0dd\",\"itemId\":\"4597f9944d974f47a79e08e28ce0b2c7\",\"showOrder\":8,\"orderParamCode\":null,\"orderParamContent\":\"供电要求：AC 200V～240V\",\"isImportant\":\"N\",\"negativeDeviationScore\":null,\"positiveDeviationScore\":null,\"orderParamType\":null,\"isNeedFile\":null,\"collegeId\":\"SZU53\",\"collegeName\":\"深圳大学\",\"isDelete\":\"1\",\"revision\":null,\"zcBidParamList\":null,\"itemParamRespList\":null,\"zcBidParamDtoList\":null},{\"orderParamId\":\"eacd82d6fa474ff195f9ddda5fbf496b\",\"projectId\":\"f07cd47cd8d14d8ea0e674f90e25f0dd\",\"itemId\":\"4597f9944d974f47a79e08e28ce0b2c7\",\"showOrder\":9,\"orderParamCode\":null,\"orderParamContent\":\"无人机电池更换方式：支持自动更换电池\",\"isImportant\":\"Y\",\"negativeDeviationScore\":null,\"positiveDeviationScore\":null,\"orderParamType\":null,\"isNeedFile\":null,\"collegeId\":\"SZU53\",\"collegeName\":\"深圳大学\",\"isDelete\":\"1\",\"revision\":null,\"zcBidParamList\":null,\"itemParamRespList\":null,\"zcBidParamDtoList\":null},{\"orderParamId\":\"493027ab034048c292030cb0d6448503\",\"projectId\":\"f07cd47cd8d14d8ea0e674f90e25f0dd\",\"itemId\":\"4597f9944d974f47a79e08e28ce0b2c7\",\"showOrder\":10,\"orderParamCode\":null,\"orderParamContent\":\"自动换电时间：≤10s\",\"isImportant\":\"Z\",\"negativeDeviationScore\":null,\"positiveDeviationScore\":null,\"orderParamType\":null,\"isNeedFile\":null,\"collegeId\":\"SZU53\",\"collegeName\":\"深圳大学\",\"isDelete\":\"1\",\"revision\":null,\"zcBidParamList\":null,\"itemParamRespList\":null,\"zcBidParamDtoList\":null},{\"orderParamId\":\"3602074d14d7429b9db222fe8e980e51\",\"projectId\":\"f07cd47cd8d14d8ea0e674f90e25f0dd\",\"itemId\":\"4597f9944d974f47a79e08e28ce0b2c7\",\"showOrder\":11,\"orderParamCode\":null,\"orderParamContent\":\"作业方式：全自动\",\"isImportant\":\"N\",\"negativeDeviationScore\":null,\"positiveDeviationScore\":null,\"orderParamType\":null,\"isNeedFile\":null,\"collegeId\":\"SZU53\",\"collegeName\":\"深圳大学\",\"isDelete\":\"1\",\"revision\":null,\"zcBidParamList\":null,\"itemParamRespList\":null,\"zcBidParamDtoList\":null},{\"orderParamId\":\"7889d3b8098948ebabb4b54ef2c2ee08\",\"projectId\":\"f07cd47cd8d14d8ea0e674f90e25f0dd\",\"itemId\":\"4597f9944d974f47a79e08e28ce0b2c7\",\"showOrder\":12,\"orderParamCode\":null,\"orderParamContent\":\"无人机出舱时间：≤10s\",\"isImportant\":\"Z\",\"negativeDeviationScore\":null,\"positiveDeviationScore\":null,\"orderParamType\":null,\"isNeedFile\":null,\"collegeId\":\"SZU53\",\"collegeName\":\"深圳大学\",\"isDelete\":\"1\",\"revision\":null,\"zcBidParamList\":null,\"itemParamRespList\":null,\"zcBidParamDtoList\":null},{\"orderParamId\":\"b0aa0e7da99f4963bad1d2117918e64c\",\"projectId\":\"f07cd47cd8d14d8ea0e674f90e25f0dd\",\"itemId\":\"4597f9944d974f47a79e08e28ce0b2c7\",\"showOrder\":13,\"orderParamCode\":null,\"orderParamContent\":\"作业间隔周期：降落后再次起飞时间≤2分钟\",\"isImportant\":\"Z\",\"negativeDeviationScore\":null,\"positiveDeviationScore\":null,\"orderParamType\":null,\"isNeedFile\":null,\"collegeId\":\"SZU53\",\"collegeName\":\"深圳大学\",\"isDelete\":\"1\",\"revision\":null,\"zcBidParamList\":null,\"itemParamRespList\":null,\"zcBidParamDtoList\":null},{\"orderParamId\":\"79369e8bcb4b4618aa157985e5ec5b0a\",\"projectId\":\"f07cd47cd8d14d8ea0e674f90e25f0dd\",\"itemId\":\"4597f9944d974f47a79e08e28ce0b2c7\",\"showOrder\":14,\"orderParamCode\":null,\"orderParamContent\":\"可容纳电池数量：≥4块\",\"isImportant\":\"N\",\"negativeDeviationScore\":null,\"positiveDeviationScore\":null,\"orderParamType\":null,\"isNeedFile\":null,\"collegeId\":\"SZU53\",\"collegeName\":\"深圳大学\",\"isDelete\":\"1\",\"revision\":null,\"zcBidParamList\":null,\"itemParamRespList\":null,\"zcBidParamDtoList\":null},{\"orderParamId\":\"fd6c880fb7224f2c993b03bca6ba5134\",\"projectId\":\"f07cd47cd8d14d8ea0e674f90e25f0dd\",\"itemId\":\"4597f9944d974f47a79e08e28ce0b2c7\",\"showOrder\":15,\"orderParamCode\":null,\"orderParamContent\":\"机型匹配：支持大疆M300\\\\M350等型号无人机匹配，支持自主研发无人机匹配\",\"isImportant\":\"Y\",\"negativeDeviationScore\":null,\"positiveDeviationScore\":null,\"orderParamType\":null,\"isNeedFile\":null,\"collegeId\":\"SZU53\",\"collegeName\":\"深圳大学\",\"isDelete\":\"1\",\"revision\":null,\"zcBidParamList\":null,\"itemParamRespList\":null,\"zcBidParamDtoList\":null},{\"orderParamId\":\"089d55e80c5c4b01931feaa3c6158a15\",\"projectId\":\"f07cd47cd8d14d8ea0e674f90e25f0dd\",\"itemId\":\"4597f9944d974f47a79e08e28ce0b2c7\",\"showOrder\":16,\"orderParamCode\":null,\"orderParamContent\":\"可视化三维仿真海陆地图：实现三维仿真呈现舱门开关、平台升降、无人机位置、飞行姿态和飞行轨迹等信息。\",\"isImportant\":\"Y\",\"negativeDeviationScore\":null,\"positiveDeviationScore\":null,\"orderParamType\":null,\"isNeedFile\":null,\"collegeId\":\"SZU53\",\"collegeName\":\"深圳大学\",\"isDelete\":\"1\",\"revision\":null,\"zcBidParamList\":null,\"itemParamRespList\":null,\"zcBidParamDtoList\":null},{\"orderParamId\":\"25af518c912f46ea9344ce7cff9b5e39\",\"projectId\":\"f07cd47cd8d14d8ea0e674f90e25f0dd\",\"itemId\":\"4597f9944d974f47a79e08e28ce0b2c7\",\"showOrder\":17,\"orderParamCode\":null,\"orderParamContent\":\"可视化三维仿真海陆地图：实现三维仿真呈现舱门开关、平台升降、无人机位置、飞行姿态和飞行轨迹等信息。\",\"isImportant\":\"N\",\"negativeDeviationScore\":null,\"positiveDeviationScore\":null,\"orderParamType\":null,\"isNeedFile\":null,\"collegeId\":\"SZU53\",\"collegeName\":\"深圳大学\",\"isDelete\":\"1\",\"revision\":null,\"zcBidParamList\":null,\"itemParamRespList\":null,\"zcBidParamDtoList\":null},{\"orderParamId\":\"ed2ffb5501f14fb984cbb11ecee4bb0d\",\"projectId\":\"f07cd47cd8d14d8ea0e674f90e25f0dd\",\"itemId\":\"4597f9944d974f47a79e08e28ce0b2c7\",\"showOrder\":18,\"orderParamCode\":null,\"orderParamContent\":\"全自动飞行：支持按提前预设好的航线全自动飞行。\",\"isImportant\":\"N\",\"negativeDeviationScore\":null,\"positiveDeviationScore\":null,\"orderParamType\":null,\"isNeedFile\":null,\"collegeId\":\"SZU53\",\"collegeName\":\"深圳大学\",\"isDelete\":\"1\",\"revision\":null,\"zcBidParamList\":null,\"itemParamRespList\":null,\"zcBidParamDtoList\":null},{\"orderParamId\":\"34836f821fd1407faf07b151a63bf0e0\",\"projectId\":\"f07cd47cd8d14d8ea0e674f90e25f0dd\",\"itemId\":\"4597f9944d974f47a79e08e28ce0b2c7\",\"showOrder\":19,\"orderParamCode\":null,\"orderParamContent\":\"无人机自动起降：支持远程调度无人机一键起飞和一键返航降落。\",\"isImportant\":\"N\",\"negativeDeviationScore\":null,\"positiveDeviationScore\":null,\"orderParamType\":null,\"isNeedFile\":null,\"collegeId\":\"SZU53\",\"collegeName\":\"深圳大学\",\"isDelete\":\"1\",\"revision\":null,\"zcBidParamList\":null,\"itemParamRespList\":null,\"zcBidParamDtoList\":null},{\"orderParamId\":\"334279a7a8d04f03a12a306f54dcd10f\",\"projectId\":\"f07cd47cd8d14d8ea0e674f90e25f0dd\",\"itemId\":\"4597f9944d974f47a79e08e28ce0b2c7\",\"showOrder\":20,\"orderParamCode\":null,\"orderParamContent\":\"无人机自动避障：支持无人机基于机载高精三维地图和后端三维倾斜模型路径规划、自动避障。\",\"isImportant\":\"Z\",\"negativeDeviationScore\":null,\"positiveDeviationScore\":null,\"orderParamType\":null,\"isNeedFile\":null,\"collegeId\":\"SZU53\",\"collegeName\":\"深圳大学\",\"isDelete\":\"1\",\"revision\":null,\"zcBidParamList\":null,\"itemParamRespList\":null,\"zcBidParamDtoList\":null},{\"orderParamId\":\"dcef0a3260104a07ba8977031c82cfc3\",\"projectId\":\"f07cd47cd8d14d8ea0e674f90e25f0dd\",\"itemId\":\"4597f9944d974f47a79e08e28ce0b2c7\",\"showOrder\":21,\"orderParamCode\":null,\"orderParamContent\":\"与现有平台对接：支持通过API接口对接现有平台。\",\"isImportant\":\"N\",\"negativeDeviationScore\":null,\"positiveDeviationScore\":null,\"orderParamType\":null,\"isNeedFile\":null,\"collegeId\":\"SZU53\",\"collegeName\":\"深圳大学\",\"isDelete\":\"1\",\"revision\":null,\"zcBidParamList\":null,\"itemParamRespList\":null,\"zcBidParamDtoList\":null},{\"orderParamId\":\"f862d6ae37b6436f896cd7631684855f\",\"projectId\":\"f07cd47cd8d14d8ea0e674f90e25f0dd\",\"itemId\":\"4597f9944d974f47a79e08e28ce0b2c7\",\"showOrder\":22,\"orderParamCode\":null,\"orderParamContent\":\"指点飞行：支持中断自动飞行任务，通过平台进行鼠标指点调度无人机飞巡。\",\"isImportant\":\"Z\",\"negativeDeviationScore\":null,\"positiveDeviationScore\":null,\"orderParamType\":null,\"isNeedFile\":null,\"collegeId\":\"SZU53\",\"collegeName\":\"深圳大学\",\"isDelete\":\"1\",\"revision\":null,\"zcBidParamList\":null,\"itemParamRespList\":null,\"zcBidParamDtoList\":null},{\"orderParamId\":\"aad72a75fde54e85a50a40bfa044d0af\",\"projectId\":\"f07cd47cd8d14d8ea0e674f90e25f0dd\",\"itemId\":\"4597f9944d974f47a79e08e28ce0b2c7\",\"showOrder\":23,\"orderParamCode\":null,\"orderParamContent\":\"多机协同调度：支持多台无人机同时调度，一键起飞，同时执行巡查任务，无人机实时视频多端同步，协同工作。\",\"isImportant\":\"N\",\"negativeDeviationScore\":null,\"positiveDeviationScore\":null,\"orderParamType\":null,\"isNeedFile\":null,\"collegeId\":\"SZU53\",\"collegeName\":\"深圳大学\",\"isDelete\":\"1\",\"revision\":null,\"zcBidParamList\":null,\"itemParamRespList\":null,\"zcBidParamDtoList\":null},{\"orderParamId\":\"175f2b3a7c3a45e5a20c7d926a33ac6f\",\"projectId\":\"f07cd47cd8d14d8ea0e674f90e25f0dd\",\"itemId\":\"4597f9944d974f47a79e08e28ce0b2c7\",\"showOrder\":24,\"orderParamCode\":null,\"orderParamContent\":\"多机协同调度：支持多台无人机同时调度，一键起飞，同时执行巡查任务，无人机实时视频多端同步，协同工作。\",\"isImportant\":\"Y\",\"negativeDeviationScore\":null,\"positiveDeviationScore\":null,\"orderParamType\":null,\"isNeedFile\":null,\"collegeId\":\"SZU53\",\"collegeName\":\"深圳大学\",\"isDelete\":\"1\",\"revision\":null,\"zcBidParamList\":null,\"itemParamRespList\":null,\"zcBidParamDtoList\":null},{\"orderParamId\":\"6b7368ccebc246d490c13ef37748fbcc\",\"projectId\":\"f07cd47cd8d14d8ea0e674f90e25f0dd\",\"itemId\":\"4597f9944d974f47a79e08e28ce0b2c7\",\"showOrder\":25,\"orderParamCode\":null,\"orderParamContent\":\"视频AR融合：支持将无人机回传的实时画面AR投影至实景模型/卫星底图上，实时掌握现场情况，并直观反应事件位置和周边环境、路况等条件信息。\",\"isImportant\":\"Z\",\"negativeDeviationScore\":null,\"positiveDeviationScore\":null,\"orderParamType\":null,\"isNeedFile\":null,\"collegeId\":\"SZU53\",\"collegeName\":\"深圳大学\",\"isDelete\":\"1\",\"revision\":null,\"zcBidParamList\":null,\"itemParamRespList\":null,\"zcBidParamDtoList\":null},{\"orderParamId\":\"d447d4d51db84a8d9f8f4177105a133a\",\"projectId\":\"f07cd47cd8d14d8ea0e674f90e25f0dd\",\"itemId\":\"4597f9944d974f47a79e08e28ce0b2c7\",\"showOrder\":26,\"orderParamCode\":null,\"orderParamContent\":\"AI识别：支持定制化植入算法模型，对不同应用场景进场AI识别。\",\"isImportant\":\"Y\",\"negativeDeviationScore\":null,\"positiveDeviationScore\":null,\"orderParamType\":null,\"isNeedFile\":null,\"collegeId\":\"SZU53\",\"collegeName\":\"深圳大学\",\"isDelete\":\"1\",\"revision\":null,\"zcBidParamList\":null,\"itemParamRespList\":null,\"zcBidParamDtoList\":null}],\"initBidDetailId\":null,\"bidDetailId\":null,\"userInitReason\":null,\"isQualified\":null,\"companyId\":null,\"companyName\":null,\"bidAmountCN\":null,\"bidAmountRenminbiCN\":null,\"bidPriceCN\":null,\"deliverTime\":null,\"deliverUserid\":null,\"deliverUsername\":null,\"shipCode\":null,\"shipName\":null,\"deliverType\":null,\"deliverRemark\":null,\"isDelivered\":null,\"detailBudgetCN\":null,\"zcBidDetailList\":null,\"zcOrderParamList\":null,\"zbProjectAttachmentList\":null,\"zcBidAttachmentList\":null,\"zbItemParamList\":null,\"fileList\":[],\"update\":\"2024-11-19T09:34:06.921Z\",\"readOnly\":false}]",
+            "showOrder": 2
+        },
+        {
+            "commentsId": "5a4836258294441fabc491d06422c2f6",
+            "commentsType": "2",
+            "zbProjectId": "f07cd47cd8d14d8ea0e674f90e25f0dd",
+            "collegeId": "SZU53",
+            "comments": "{\"siteVisit\":\"0\",\"buildingAddr\":\"广东省/深圳市\"}",
+            "showOrder": 3
+        },
+        {
+            "commentsId": "845e79d9522c4f349ef137b4a90a4a3c",
+            "commentsType": "4",
+            "zbProjectId": "f07cd47cd8d14d8ea0e674f90e25f0dd",
+            "collegeId": "SZU53",
+            "comments": "{\"observeLetter\":\"1\",\"refundRemark\":\"履约保证金在中标人履行完成合同约定权利义务事项在合同期满之日起30日内按原方式退还，不计利息。采购人逾期退还履约保证金的，向中标人每日偿付履约保证金的 0.5‰的利息。因中标人原因而未能达到本项目验收标准或验收不通过的，履约保证金不予退还。\",\"observeRemark\":\"投标供应商自主选择以支票、汇票、本票、保函等非现金形式缴纳或提交。\",\"observeAmount\":5}",
+            "showOrder": 4
+        },
+        {
+            "commentsId": "6a9c16abb2d24adaac1a90c549173998",
+            "commentsType": "5",
+            "zbProjectId": "f07cd47cd8d14d8ea0e674f90e25f0dd",
+            "collegeId": "SZU53",
+            "comments": "[{\"index\":0,\"qualificationMessage\":\"具有独立法人资格或具有独立承担民事责任的能力的其它组织（提供营业执照或事业单位法人证等法人证明扫描件，原件备查）。\",\"totalScore\":0,\"zbScoreRuleId\":\"8wd5dumd2\"},{\"index\":1,\"qualificationMessage\":\"参与本项目投标前三年内，在经营活动中没有重大违法记录（由供应商在《投标及履约承诺函》中作出声明）。\",\"totalScore\":0,\"zbScoreRuleId\":\"xwss4ak5w\"},{\"index\":2,\"qualificationMessage\":\"参与本项目采购活动时不存在被有关部门禁止参与政府采购活动且在有效期内的情况（由供应商在《投标及履约承诺函》中作出声明）。\",\"totalScore\":0,\"zbScoreRuleId\":\"z7nt7tps3\"},{\"index\":3,\"qualificationMessage\":\"参与本采购项目投标的供应商未被列入失信被执行人、重大税收违法失信主体、政府采购严重违法失信行为记录名单、不存在《深圳市财政局政府采购供应商信用信息管理办法》（深财规〔2023）3号）列明的严重违法失信行为（由供应商在《投标及履约承诺函》中作出声明）。\\n注：“信用中国”、“中国政府采购网”以及“深圳市政府采购监管网”为供应商信用信息的查询渠道，相关信息以开标当日的查询结果为准。\",\"totalScore\":0,\"zbScoreRuleId\":\"9e3x2woli\"},{\"index\":4,\"qualificationMessage\":\"单位负责人为同一人或者存在直接控股、管理关系的不同供应商，不得参加同一合同项下的政府采购活动；为采购项目提供整体设计、规范编制或者项目管理、监理、检测等服务的供应商，不得再参加该采购项目的其他采购活动（由供应商在《投标及履约承诺函》中作出声明）。\",\"totalScore\":0,\"zbScoreRuleId\":\"crnj2d02g\"},{\"index\":5,\"qualificationMessage\":\"本项目不接受投标人选用进口产品参与投标。\",\"totalScore\":0,\"zbScoreRuleId\":\"zuc83tw05\"},{\"index\":6,\"qualificationMessage\":\"本项目不接受联合体投标。\",\"totalScore\":0,\"zbScoreRuleId\":\"10ncp4efe\"}]",
+            "showOrder": 5
+        },
+        {
+            "commentsId": "7699adbdff304d92884c462884943be0",
+            "commentsType": "38",
+            "zbProjectId": "f07cd47cd8d14d8ea0e674f90e25f0dd",
+            "collegeId": "SZU53",
+            "comments": "[{\"qualificationMessage\":\"★无人机巡检智能机巢-IP防护等级：≥IP54\",\"zbScoreRuleId\":\"a0tiyx5l7\"},{\"qualificationMessage\":\"★无人机巡检智能机巢-安全保护：支持欠压、过载、断电保护。\",\"zbScoreRuleId\":\"2vf4myuhr\"},{\"qualificationMessage\":\"★无人机巡检智能机巢-无人机电池更换方式：支持自动更换电池\",\"zbScoreRuleId\":\"t8q0ptmx3\"},{\"qualificationMessage\":\"★无人机巡检智能机巢-机型匹配：支持大疆M300\\\\M350等型号无人机匹配，支持自主研发无人机匹配\",\"zbScoreRuleId\":\"6ytx8a08g\"},{\"qualificationMessage\":\"★无人机巡检智能机巢-可视化三维仿真海陆地图：实现三维仿真呈现舱门开关、平台升降、无人机位置、飞行姿态和飞行轨迹等信息。\",\"zbScoreRuleId\":\"j54bsrlo1\"},{\"qualificationMessage\":\"★无人机巡检智能机巢-多机协同调度：支持多台无人机同时调度，一键起飞，同时执行巡查任务，无人机实时视频多端同步，协同工作。\",\"zbScoreRuleId\":\"psgukvegh\"},{\"qualificationMessage\":\"★无人机巡检智能机巢-AI识别：支持定制化植入算法模型，对不同应用场景进场AI识别。\",\"zbScoreRuleId\":\"29r44ytd5\"},{\"qualificationMessage\":\"★货物免费保修期符合《货物清单》质保期要求，时间自最终验收合格并交付使用之日起计算。\",\"zbScoreRuleId\":\"o801frce\"},{\"qualificationMessage\":\"★1.1、交货时间：\\n从中华人民共和国关境内提供的货物：签订合同后________7____天（日历日）内。\",\"zbScoreRuleId\":\"btjz86ax1\"},{\"qualificationMessage\":\"★3.1、从中华人民共和国关境内提供的货物：\\n验收合格后，采购方整理相关付款资料，经付款审批流程后支付货款。\",\"zbScoreRuleId\":\"yzz9cjh5g\"}]",
+            "showOrder": 6
+        },
+        {
+            "commentsId": "6a2fc4ed4f6840ac8a05a67d260c0ba0",
+            "commentsType": "6",
+            "zbProjectId": "f07cd47cd8d14d8ea0e674f90e25f0dd",
+            "collegeId": "SZU53",
+            "comments": "[{\"componentType\":\"deviationRule\",\"num\":3,\"scoreType\":\"6\",\"scoreRule\":\"{\\\"value\\\":0,\\\"label\\\":\\\"\\\",\\\"child\\\":[{\\\"value\\\":\\\"0\\\",\\\"mode\\\":\\\"2\\\",\\\"label\\\":\\\"正偏离\\\"},{\\\"value\\\":\\\"0\\\",\\\"mode\\\":\\\"1\\\",\\\"label\\\":\\\"无偏离\\\"},{\\\"value\\\":0,\\\"mode\\\":\\\"0\\\",\\\"label\\\":\\\"负偏离\\\"}],\\\"important\\\":\\\"Y\\\"}\",\"totalScore\":\"53\",\"scoreTitle\":\"所有货物\",\"undefined\":\"技术参数\",\"paramType\":\"Y\",\"fatherIndex\":0,\"zbScoreRuleId\":\"79fafdc1353b467ebe4d25d123810fec\",\"only\":false,\"scoreName\":\"技术参数\",\"scoreValue\":\"0\"},{\"paramType\":\"Z\",\"componentType\":\"deviationRule\",\"fatherIndex\":0,\"zbScoreRuleId\":\"635915b6af084d47952cea6bdab331ed\",\"only\":false,\"scoreType\":\"6\",\"scoreRule\":\"{\\\"value\\\":0,\\\"label\\\":\\\"\\\",\\\"child\\\":[{\\\"value\\\":\\\"0\\\",\\\"mode\\\":\\\"2\\\",\\\"label\\\":\\\"正偏离\\\"},{\\\"value\\\":\\\"0\\\",\\\"mode\\\":\\\"1\\\",\\\"label\\\":\\\"无偏离\\\"},{\\\"value\\\":\\\"-11.25\\\",\\\"mode\\\":\\\"0\\\",\\\"label\\\":\\\"负偏离\\\"}],\\\"important\\\":\\\"Z\\\"}\",\"totalScore\":\"53\",\"scoreTitle\":\"所有货物\",\"scoreName\":\"技术参数\",\"scoreValue\":\"0\"},{\"paramType\":\"N\",\"componentType\":\"deviationRule\",\"fatherIndex\":0,\"zbScoreRuleId\":\"86393c3048234b45a4dc13bf7f0dd4c0\",\"only\":false,\"scoreType\":\"6\",\"scoreRule\":\"{\\\"value\\\":0,\\\"label\\\":\\\"\\\",\\\"child\\\":[{\\\"value\\\":\\\"0\\\",\\\"mode\\\":\\\"2\\\",\\\"label\\\":\\\"正偏离\\\"},{\\\"value\\\":\\\"0\\\",\\\"mode\\\":\\\"1\\\",\\\"label\\\":\\\"无偏离\\\"},{\\\"value\\\":\\\"-2.5\\\",\\\"mode\\\":\\\"0\\\",\\\"label\\\":\\\"负偏离\\\"}],\\\"important\\\":\\\"N\\\"}\",\"totalScore\":\"53\",\"scoreTitle\":\"所有货物\",\"scoreName\":\"技术参数\",\"scoreValue\":\"0\"},{\"componentType\":\"priceRule\",\"num\":1,\"scoreType\":\"1\",\"scoreRule\":\"{\\\"mode\\\":\\\"0\\\",\\\"child\\\":[{\\\"value\\\":\\\"115\\\",\\\"mode\\\":\\\"2\\\",\\\"min\\\":\\\"11\\\",\\\"max\\\":null,\\\"score\\\":\\\"6\\\"},{\\\"value\\\":1,\\\"mode\\\":\\\"1\\\",\\\"min\\\":\\\"90\\\",\\\"max\\\":\\\"115\\\",\\\"score\\\":\\\"10\\\"},{\\\"value\\\":\\\"90\\\",\\\"mode\\\":\\\"0\\\",\\\"min\\\":null,\\\"max\\\":null,\\\"score\\\":\\\"5\\\"}]}\",\"totalScore\":\"30\",\"scoreTitle\":\"6\",\"undefined\":\"价格\",\"fatherIndex\":3,\"zbScoreRuleId\":\"acaff7423ce246f1917cfda29c062dad\",\"only\":false,\"scoreName\":\"价格\",\"scoreValue\":\"10\",\"priceRandomMax\":\"5\"},{\"componentType\":\"clauseRule\",\"fatherIndex\":4,\"zbScoreRuleId\":\"61baa244337b4dcca62edcff72ea23eb\",\"num\":3,\"only\":false,\"scoreType\":\"13\",\"scoreRule\":\"{\\\"value\\\":0,\\\"label\\\":\\\"\\\",\\\"child\\\":[{\\\"hint\\\":\\\"参数为不可负偏离项，若负偏离则初审不通过。\\\",\\\"isImportant\\\":\\\"Y\\\",\\\"label\\\":\\\"不可负偏离条款\\\"},{\\\"value\\\":0,\\\"isImportant\\\":\\\"Z\\\",\\\"label\\\":\\\"重要条款\\\"},{\\\"value\\\":\\\"33.5\\\",\\\"isImportant\\\":\\\"N\\\",\\\"label\\\":\\\"普通条款\\\"}]}\",\"totalScore\":\"7\",\"scoreTitle\":\"免费保修期内售后服务条款偏离情况\",\"scoreName\":\"商务条款\",\"scoreValue\":\"0\"},{\"componentType\":\"clauseRule\",\"fatherIndex\":4,\"zbScoreRuleId\":\"10d3894b9b89430793427c9a79867a79\",\"only\":false,\"scoreType\":\"13\",\"scoreRule\":\"{\\\"value\\\":0,\\\"label\\\":\\\"\\\",\\\"child\\\":[{\\\"hint\\\":\\\"参数为不可负偏离项，若负偏离则初审不通过。\\\",\\\"isImportant\\\":\\\"Y\\\",\\\"label\\\":\\\"不可负偏离条款\\\"},{\\\"value\\\":0,\\\"isImportant\\\":\\\"Z\\\",\\\"label\\\":\\\"重要条款\\\"},{\\\"value\\\":\\\"100\\\",\\\"isImportant\\\":\\\"N\\\",\\\"label\\\":\\\"普通条款\\\"}]}\",\"totalScore\":\"2\",\"scoreTitle\":\"免费保修期外售后服务条款偏离情况\",\"scoreName\":\"商务条款\",\"scoreValue\":\"0\"},{\"componentType\":\"clauseRule\",\"fatherIndex\":4,\"zbScoreRuleId\":\"c5f58750f8cc428ea89a591503226baf\",\"only\":false,\"scoreType\":\"13\",\"scoreRule\":\"{\\\"value\\\":0,\\\"label\\\":\\\"\\\",\\\"child\\\":[{\\\"hint\\\":\\\"参数为不可负偏离项，若负偏离则初审不通过。\\\",\\\"isImportant\\\":\\\"Y\\\",\\\"label\\\":\\\"不可负偏离条款\\\"},{\\\"value\\\":0,\\\"isImportant\\\":\\\"Z\\\",\\\"label\\\":\\\"重要条款\\\"},{\\\"value\\\":\\\"12.5\\\",\\\"isImportant\\\":\\\"N\\\",\\\"label\\\":\\\"普通条款\\\"}]}\",\"totalScore\":\"3\",\"scoreTitle\":\"其他商务条款偏离情况\",\"scoreName\":\"商务条款\",\"scoreValue\":\"0\"},{\"componentType\":\"companyLevelRule\",\"fatherIndex\":7,\"zbScoreRuleId\":\"6a2a72b736f4460db202e4ed9f3151cd\",\"num\":1,\"only\":false,\"scoreType\":\"14\",\"scoreRule\":\"{\\\"label\\\":\\\"竞价网供应商等级\\\",\\\"child\\\":[{\\\"mode\\\":\\\"1\\\",\\\"score\\\":\\\"100\\\"},{\\\"mode\\\":\\\"2\\\",\\\"score\\\":\\\"60\\\"},{\\\"mode\\\":\\\"3\\\",\\\"score\\\":\\\"30\\\"},{\\\"mode\\\":\\\"4\\\",\\\"score\\\":\\\"0\\\"},{\\\"mode\\\":\\\"5\\\",\\\"score\\\":\\\"0\\\"},{\\\"mode\\\":\\\"6\\\",\\\"score\\\":\\\"0\\\"}]}\",\"totalScore\":\"5\",\"scoreTitle\":\"供应商等级\",\"scoreName\":\"诚信\",\"scoreValue\":\"100\"}]",
+            "showOrder": 7
+        },
+        {
+            "commentsId": "7497a7160ec6450e8f5360d052b55123",
+            "commentsType": "7",
+            "zbProjectId": "f07cd47cd8d14d8ea0e674f90e25f0dd",
+            "collegeId": "SZU53",
+            "comments": "{\"answerRemark\":\"1.招标答疑的目的是澄清、解答投标人在查阅招标文件后或现场踏勘中可能提出的与投标有关的疑问或询问。\\n2.投标人如对招标文件内容有疑问，必须在招标文件规定的答疑截止时间前以书面形式提交给学校采购机构。\\n3.学校采购机构对疑问所做出的澄清和解答，以线上系统答复（包括网站发布信息）为准。答疑纪要的有效性规定按照本通用条款第 13.3、13.4 款规定执行。\\n4.如学校采购机构认为有必要组织现场答疑会，投标人应按照招标文件规定的时间或学校采购机构另行书面通知（包括网站发布的通知）的时间和地点，参与现场答疑会。\\n5.未参与招标答疑不作为否定投标人资格的理由。\\n\",\"answerWay\":\"2\",\"questionSubmitTimeAfter\":\"2024-11-24T18:00:00\",\"questionSubmitTimeBegin\":\"2024-11-19T17:36:40.222\"}",
+            "showOrder": 8
+        },
+        {
+            "commentsId": "4b38ec0cd0914aa9a569b86a11143e8b",
+            "commentsType": "8",
+            "zbProjectId": "f07cd47cd8d14d8ea0e674f90e25f0dd",
+            "collegeId": "SZU53",
+            "comments": "[{\"orderAttachmentId\":\"c8fb02f769ec4764aafe47b0dc11b8ba\",\"zbProjectId\":\"f07cd47cd8d14d8ea0e674f90e25f0dd\",\"itemId\":null,\"isOpen\":\"Y\",\"attachmentName\":\"无人机巡检智能机巢招标文件.docx\",\"attachmentTypeName\":null,\"ossPath\":\"http://oss.easyjcx.com/co-other/2024/11/19/f5f4a55f7f3547e4bed0fab4e521db867500402770746020214.docx?Expires=317060471803&OSSAccessKeyId=LTAIbOsi2W8XJVoJ&Signature=cg%2FTs8dPfNoOzEvnpZcKZQ4BVfo%3D\",\"attachmentType\":\"0\",\"remark\":null,\"createTime\":null,\"createUsername\":\"于文率\",\"currentDate\":null,\"fileName\":\"无人机巡检智能机巢招标文件.docx\",\"filePath\":\"http://oss.easyjcx.com/co-other/2024/11/19/f5f4a55f7f3547e4bed0fab4e521db867500402770746020214.docx?Expires=317060471803&OSSAccessKeyId=LTAIbOsi2W8XJVoJ&Signature=cg%2FTs8dPfNoOzEvnpZcKZQ4BVfo%3D\",\"userName\":\"于文率\"}]",
+            "showOrder": 9
+        },
+        {
+            "commentsId": "d307edb4a40842489c6702749089a66f",
+            "commentsType": "20",
+            "zbProjectId": "f07cd47cd8d14d8ea0e674f90e25f0dd",
+            "collegeId": "SZU53",
+            "comments": "{\"fileName\":\"投标函、投标及履约承诺函.docx\",\"filePath\":\"https://oss.easyjcx.com/co-other/2024/10/24/2405e8b00b4842d5a2f247b48bfaddc62598288634587799530.docx?Expires=317058236379&OSSAccessKeyId=LTAIbOsi2W8XJVoJ&Signature=BduwnJMmpE3PbGABqs%2FsWNGPTnI%3D\"}",
+            "showOrder": 10
+        },
+        {
+            "commentsId": "851ca56d74ff466e83a10f6ec6d5f29e",
+            "commentsType": "39",
+            "zbProjectId": "f07cd47cd8d14d8ea0e674f90e25f0dd",
+            "collegeId": "SZU53",
+            "comments": "{\"qualificationsWay\":\"1\"}",
+            "showOrder": 11
+        },
+        {
+            "commentsId": "a06b166a96794c02ac2892a72bc5b973",
+            "commentsType": "47",
+            "zbProjectId": "f07cd47cd8d14d8ea0e674f90e25f0dd",
+            "collegeId": "SZU53",
+            "comments": "{\"promotePolicies\":\"0\",\"discountedRate\":10}",
+            "showOrder": 12
+        },
+        {
+            "commentsId": "890fee806094469faafc241920000629",
+            "commentsType": "51",
+            "zbProjectId": "f07cd47cd8d14d8ea0e674f90e25f0dd",
+            "collegeId": "SZU53",
+            "comments": "[{\"zbRequirementId\":\"7804eacf1407448db4f802f811329548\",\"zbProjectId\":\"f07cd47cd8d14d8ea0e674f90e25f0dd\",\"requirementType\":\"1\",\"requirementName\":\"免费保修期内售后服务要求\",\"showOrder\":1,\"remark\":null,\"totalScore\":null,\"zbRequirementDetailList\":[{\"zbRequirementDetailId\":\"6914f63f238242fcb65ee923c8cad12a\",\"zbProjectId\":\"f07cd47cd8d14d8ea0e674f90e25f0dd\",\"zbRequirementId\":\"7804eacf1407448db4f802f811329548\",\"requirementType\":\"1\",\"showOrder\":1,\"orderParamCode\":null,\"orderParamContent\":\"★货物免费保修期符合《货物清单》质保期要求，时间自最终验收合格并交付使用之日起计算。\",\"isImportant\":\"Y\",\"isNeedFile\":null,\"scoreRule\":null},{\"zbRequirementDetailId\":\"ebf06e63eeeb4ef78b3307d63ab7b297\",\"zbProjectId\":\"f07cd47cd8d14d8ea0e674f90e25f0dd\",\"zbRequirementId\":\"7804eacf1407448db4f802f811329548\",\"requirementType\":\"1\",\"showOrder\":2,\"orderParamCode\":null,\"orderParamContent\":\"在保修期内，一旦发生质量问题，投标人保证在接到通知___2________日内赶到现场进行修理或更换。\\n\",\"isImportant\":\"N\",\"isNeedFile\":null,\"scoreRule\":null},{\"zbRequirementDetailId\":\"6ceb052680ce4fe5af46e14b1fb6f9d4\",\"zbProjectId\":\"f07cd47cd8d14d8ea0e674f90e25f0dd\",\"zbRequirementId\":\"7804eacf1407448db4f802f811329548\",\"requirementType\":\"1\",\"showOrder\":3,\"orderParamCode\":null,\"orderParamContent\":\"免费保修期内，如果有因质量问题而引起的损坏，中标人应对产品予以维修或更换，全部服务费和更换产品或配件的费用由中标人承担，中标人如不能修理或不能调换，按产品原价赔偿处理。\\n\",\"isImportant\":\"N\",\"isNeedFile\":null,\"scoreRule\":null},{\"zbRequirementDetailId\":\"c0e598dec2fa4726855255886210ee79\",\"zbProjectId\":\"f07cd47cd8d14d8ea0e674f90e25f0dd\",\"zbRequirementId\":\"7804eacf1407448db4f802f811329548\",\"requirementType\":\"1\",\"showOrder\":4,\"orderParamCode\":null,\"orderParamContent\":\"投标人应按其投标文件中的承诺，进行其他售后服务工作。\\n\",\"isImportant\":\"N\",\"isNeedFile\":null,\"scoreRule\":null}],\"readOnly\":false},{\"zbRequirementId\":\"b9901dbb9f724a91b0042a478694eab0\",\"zbProjectId\":\"f07cd47cd8d14d8ea0e674f90e25f0dd\",\"requirementType\":\"1\",\"requirementName\":\"免费保修期外售后服务要求\",\"showOrder\":2,\"remark\":null,\"totalScore\":null,\"zbRequirementDetailList\":[{\"zbRequirementDetailId\":\"ce1441ef6da0418e936737bb754470de\",\"zbProjectId\":\"f07cd47cd8d14d8ea0e674f90e25f0dd\",\"zbRequirementId\":\"b9901dbb9f724a91b0042a478694eab0\",\"requirementType\":\"1\",\"showOrder\":1,\"orderParamCode\":null,\"orderParamContent\":\"免费保修期后继续支持维修，并按成本价标准收取维修及零件费用。\\n\",\"isImportant\":\"N\",\"isNeedFile\":null,\"scoreRule\":null}],\"readOnly\":false},{\"zbRequirementId\":\"aefaaa3a0f554753be5cc77cf5e553ab\",\"zbProjectId\":\"f07cd47cd8d14d8ea0e674f90e25f0dd\",\"requirementType\":\"1\",\"requirementName\":\"其他商务要求\",\"showOrder\":3,\"remark\":null,\"totalScore\":null,\"zbRequirementDetailList\":[{\"zbRequirementDetailId\":\"c4027c2a96464b94bb2ea4de73b06ff6\",\"zbProjectId\":\"f07cd47cd8d14d8ea0e674f90e25f0dd\",\"zbRequirementId\":\"aefaaa3a0f554753be5cc77cf5e553ab\",\"requirementType\":\"1\",\"showOrder\":1,\"orderParamCode\":null,\"orderParamContent\":\"★1.1、交货时间：\\n从中华人民共和国关境内提供的货物：签订合同后________7____天（日历日）内。\",\"isImportant\":\"Y\",\"isNeedFile\":null,\"scoreRule\":null},{\"zbRequirementDetailId\":\"c5524c5d204543bab0163dcd3fedc95f\",\"zbProjectId\":\"f07cd47cd8d14d8ea0e674f90e25f0dd\",\"zbRequirementId\":\"aefaaa3a0f554753be5cc77cf5e553ab\",\"requirementType\":\"1\",\"showOrder\":2,\"orderParamCode\":null,\"orderParamContent\":\"1.2、投标人必须承担的设备运输、安装调试、验收检测和提供设备操作说明书、图纸等其他类似的义务。中标人应委派技术人员进行现场安装、调试，并提供货物安装调试的一切技术支持。安装调试的具体时间由采购人提前3天通知中标人。\",\"isImportant\":\"N\",\"isNeedFile\":null,\"scoreRule\":null},{\"zbRequirementDetailId\":\"f12b1b801ac44c73a1b3d380d40b0876\",\"zbProjectId\":\"f07cd47cd8d14d8ea0e674f90e25f0dd\",\"zbRequirementId\":\"aefaaa3a0f554753be5cc77cf5e553ab\",\"requirementType\":\"1\",\"showOrder\":3,\"orderParamCode\":null,\"orderParamContent\":\"1.3、交货（具体）地点：__ 广东省深圳市南山区南海大道3688号______________________________________\",\"isImportant\":\"N\",\"isNeedFile\":null,\"scoreRule\":null},{\"zbRequirementDetailId\":\"933f66e724fe4d5eb21e948803beb05f\",\"zbProjectId\":\"f07cd47cd8d14d8ea0e674f90e25f0dd\",\"zbRequirementId\":\"aefaaa3a0f554753be5cc77cf5e553ab\",\"requirementType\":\"1\",\"showOrder\":4,\"orderParamCode\":null,\"orderParamContent\":\"1.4、从中华人民共和国关境内提供的货物，技术资料应齐全，提供但不限于如下技术文件和资料：\\n（1）产品安装、操作和维修保养手册；\\n（2）产品使用说明书；\\n（3）产品出厂检验合格证；\\n（4）产品到货清单；\\n（5）产品保修证明；\\n\",\"isImportant\":\"N\",\"isNeedFile\":null,\"scoreRule\":null},{\"zbRequirementDetailId\":\"a9f72e814edd4757b95f28d64f9d9c0e\",\"zbProjectId\":\"f07cd47cd8d14d8ea0e674f90e25f0dd\",\"zbRequirementId\":\"aefaaa3a0f554753be5cc77cf5e553ab\",\"requirementType\":\"1\",\"showOrder\":5,\"orderParamCode\":null,\"orderParamContent\":\"2.1、投标人货物经过双方检验认可后，签署验收报告，产品保修期自验收合格之日起算，由投标人提供产品保修文件。\\n\",\"isImportant\":\"N\",\"isNeedFile\":null,\"scoreRule\":null},{\"zbRequirementDetailId\":\"2e720aabc1774ad19c057c5858776121\",\"zbProjectId\":\"f07cd47cd8d14d8ea0e674f90e25f0dd\",\"zbRequirementId\":\"aefaaa3a0f554753be5cc77cf5e553ab\",\"requirementType\":\"1\",\"showOrder\":6,\"orderParamCode\":null,\"orderParamContent\":\"2.2、当满足以下条件时，采购人才向中标人签发货物验收报告：\\na、中标人已按照合同规定提供了全部产品及完整的技术资料。\\nb、货物符合招标文件技术规格书的要求，性能满足要求。\\nc、货物具备产品合格证。\",\"isImportant\":\"N\",\"isNeedFile\":null,\"scoreRule\":null},{\"zbRequirementDetailId\":\"6b3d34f877404e12a26b194ca392b65b\",\"zbProjectId\":\"f07cd47cd8d14d8ea0e674f90e25f0dd\",\"zbRequirementId\":\"aefaaa3a0f554753be5cc77cf5e553ab\",\"requirementType\":\"1\",\"showOrder\":7,\"orderParamCode\":null,\"orderParamContent\":\"★3.1、从中华人民共和国关境内提供的货物：\\n验收合格后，采购方整理相关付款资料，经付款审批流程后支付货款。\",\"isImportant\":\"Y\",\"isNeedFile\":null,\"scoreRule\":null},{\"zbRequirementDetailId\":\"1c10a73ad62b447c889c4809c6db9269\",\"zbProjectId\":\"f07cd47cd8d14d8ea0e674f90e25f0dd\",\"zbRequirementId\":\"aefaaa3a0f554753be5cc77cf5e553ab\",\"requirementType\":\"1\",\"showOrder\":8,\"orderParamCode\":null,\"orderParamContent\":\"4.1.1、提供的货物必须是合法厂家生产和经销的原包装产品（包括零配件），必须具备生产日期、厂名、厂址、产品合格证等。\\n4.1.2、采购人在中华人民共和国境内使用该货物或货物的任何一部分时，免受第三方提出的侵犯其专利权、商标权或工业设计权等知识产权的起诉或司法干预。如果发生上述起诉或干预，则其法律责任均由中标人负责。\",\"isImportant\":\"N\",\"isNeedFile\":null,\"scoreRule\":null},{\"zbRequirementDetailId\":\"e90f2ca567424730b03a350aed19f48a\",\"zbProjectId\":\"f07cd47cd8d14d8ea0e674f90e25f0dd\",\"zbRequirementId\":\"aefaaa3a0f554753be5cc77cf5e553ab\",\"requirementType\":\"1\",\"showOrder\":9,\"orderParamCode\":null,\"orderParamContent\":\"5.1、依据相关法律法规要求，如所提供的货物需由国家商检部门进行商检的，商检、检疫费用由中标人承担。\\n\",\"isImportant\":\"N\",\"isNeedFile\":null,\"scoreRule\":null},{\"zbRequirementDetailId\":\"1a427568cea543e089473e48947817d9\",\"zbProjectId\":\"f07cd47cd8d14d8ea0e674f90e25f0dd\",\"zbRequirementId\":\"aefaaa3a0f554753be5cc77cf5e553ab\",\"requirementType\":\"1\",\"showOrder\":10,\"orderParamCode\":null,\"orderParamContent\":\"6.1.1、供需双方均应全面履行合同，任何一方未能按照合同的约定履行自己的义务，应当承担违约责任。违约方应当赔偿守约方因此遭受的损失，包括但不限于守约方的直接经济损失、间接经济损失、守约方为追究违约责任所发生的律师费、差旅费、交通费等。\\n6.1.2、供方无正当理由延迟交货，需方有权提出违约损失赔偿或解除合同。在履行合同过程中，如果供方遇到不能按时交货和提供服务的情况，应及时以书面形式将不能按时交货的理由、预期延误时间通知需方。需方收到供方通知后，认为理由正当的，可酌情延长交货时间。\\n6.1.3、如果供方未按合同的约定时间交货或提供现场安装、调试或保修等服务，需方可要求供方支付违约金。违约金按每周延迟交货或提供服务的本合同采购价格的0.5%计算，违约金的最高限额为合同价格的5%，如果累积达到最高限额，需方有权解除合同。需方已经支付货款的，供方出现上述违约行为，需方有权要求供方退还已经收到的货款。一周按7天算，不足7天按一周算。\\n\",\"isImportant\":\"N\",\"isNeedFile\":null,\"scoreRule\":null}],\"readOnly\":false}]",
+            "showOrder": 13
+        },
+        {
+            "commentsId": "0e6311511d89457c9eb65f99d403e700",
+            "commentsType": "50",
+            "zbProjectId": "f07cd47cd8d14d8ea0e674f90e25f0dd",
+            "collegeId": "SZU53",
+            "comments": "[{\"index\":1,\"qualificationMessage\":\"电子投标文件格式及签署等不符合招标文件对投标文件的制作要求（通用条款23. 投标文件的制作要求）\",\"readOnly\":false,\"totalScore\":0},{\"index\":2,\"qualificationMessage\":\"将一个包或一个标段的内容拆开投标\",\"readOnly\":false,\"totalScore\":0},{\"index\":3,\"qualificationMessage\":\"同一项目出现两个及以上报价，且按规定无法确定哪个是有效报价（见通用条款34.错误的修正）\",\"readOnly\":false,\"totalScore\":0},{\"index\":4,\"qualificationMessage\":\"投标报价高于财政预算限额或者最高投标限价\",\"readOnly\":false,\"totalScore\":0},{\"index\":5,\"qualificationMessage\":\"对同一项目投标时，提供两套以上的投标方案（招标文件另有规定的除外）\",\"readOnly\":false,\"totalScore\":0},{\"index\":6,\"qualificationMessage\":\"投标报价有缺漏项目（货物清单中的内容未完全包含在投标报价中）\",\"readOnly\":false,\"totalScore\":0},{\"index\":7,\"qualificationMessage\":\"评标委员会认为投标人的报价明显低于其他通过符合性审查投标人的报价，有可能影响产品质量或者不能诚信履约的，投标人不能在合理的时间内提供书面说明，或无法提交相关证明材料，投标人不能证明其报价合理性的（若评审委员会成员对是否须由投标人作出报价合理性说明，以及书面说明是否采纳等判断不一致的，按照“少数服从多数”的原则确定评审委员会的意见）\",\"readOnly\":false,\"totalScore\":0},{\"index\":8,\"qualificationMessage\":\"所投产品、工程、服务在商务、技术等方面没有实质性满足招标文件要求（是否实质性满足招标文件要求，由评标委员会根据招标文件中的实质性条款做出评判）\",\"readOnly\":false,\"totalScore\":0},{\"index\":9,\"qualificationMessage\":\"未按招标文件所提供的样式填写《投标函》；未按招标文件所提供的《投标及履约承诺函》进行承诺；未按招标文件对投标文件组成的要求提供投标文件（投标文件组成不完整）\",\"readOnly\":false,\"totalScore\":0},{\"index\":10,\"qualificationMessage\":\"未按招标文件要求详细填报所投产品（使用的材料）的品牌、型号\",\"readOnly\":false,\"totalScore\":0},{\"index\":13,\"qualificationMessage\":\"投标文件电子文档不带病毒\",\"readOnly\":false,\"totalScore\":0},{\"index\":14,\"qualificationMessage\":\"法律、法规规定的其他投标无效情形\",\"readOnly\":false,\"totalScore\":0}]",
+            "showOrder": 14
+        }
+    ],
+    "zbRequirementList": [
+        {
+            "zbRequirementId": "7804eacf1407448db4f802f811329548",
+            "zbProjectId": "f07cd47cd8d14d8ea0e674f90e25f0dd",
+            "requirementType": "1",
+            "requirementName": "免费保修期内售后服务要求",
+            "showOrder": 1,
+            "remark": null,
+            "totalScore": null,
+            "zbRequirementDetailList": [
+                {
+                    "zbRequirementDetailId": "6914f63f238242fcb65ee923c8cad12a",
+                    "zbProjectId": "f07cd47cd8d14d8ea0e674f90e25f0dd",
+                    "zbRequirementId": "7804eacf1407448db4f802f811329548",
+                    "requirementType": "1",
+                    "showOrder": 1,
+                    "orderParamCode": null,
+                    "orderParamContent": "★货物免费保修期符合《货物清单》质保期要求，时间自最终验收合格并交付使用之日起计算。",
+                    "isImportant": "Y",
+                    "isNeedFile": null,
+                    "scoreRule": null,
+                    "zbScoreRuleId": null
+                },
+                {
+                    "zbRequirementDetailId": "ebf06e63eeeb4ef78b3307d63ab7b297",
+                    "zbProjectId": "f07cd47cd8d14d8ea0e674f90e25f0dd",
+                    "zbRequirementId": "7804eacf1407448db4f802f811329548",
+                    "requirementType": "1",
+                    "showOrder": 2,
+                    "orderParamCode": null,
+                    "orderParamContent": "在保修期内，一旦发生质量问题，投标人保证在接到通知___2________日内赶到现场进行修理或更换。\n",
+                    "isImportant": "N",
+                    "isNeedFile": null,
+                    "scoreRule": null,
+                    "zbScoreRuleId": null
+                },
+                {
+                    "zbRequirementDetailId": "6ceb052680ce4fe5af46e14b1fb6f9d4",
+                    "zbProjectId": "f07cd47cd8d14d8ea0e674f90e25f0dd",
+                    "zbRequirementId": "7804eacf1407448db4f802f811329548",
+                    "requirementType": "1",
+                    "showOrder": 3,
+                    "orderParamCode": null,
+                    "orderParamContent": "免费保修期内，如果有因质量问题而引起的损坏，中标人应对产品予以维修或更换，全部服务费和更换产品或配件的费用由中标人承担，中标人如不能修理或不能调换，按产品原价赔偿处理。\n",
+                    "isImportant": "N",
+                    "isNeedFile": null,
+                    "scoreRule": null,
+                    "zbScoreRuleId": null
+                },
+                {
+                    "zbRequirementDetailId": "c0e598dec2fa4726855255886210ee79",
+                    "zbProjectId": "f07cd47cd8d14d8ea0e674f90e25f0dd",
+                    "zbRequirementId": "7804eacf1407448db4f802f811329548",
+                    "requirementType": "1",
+                    "showOrder": 4,
+                    "orderParamCode": null,
+                    "orderParamContent": "投标人应按其投标文件中的承诺，进行其他售后服务工作。\n",
+                    "isImportant": "N"
+                }
+            ]
+        },
+        {
+            "zbRequirementId": "b9901dbb9f724a91b0042a478694eab0",
+            "zbProjectId": "f07cd47cd8d14d8ea0e674f90e25f0dd",
+            "requirementType": "1",
+            "requirementName": "免费保修期外售后服务要求",
+            "showOrder": 2,
+            "remark": null,
+            "totalScore": null,
+            "zbRequirementDetailList": [
+                {
+                    "zbRequirementDetailId": "ce1441ef6da0418e936737bb754470de",
+                    "zbProjectId": "f07cd47cd8d14d8ea0e674f90e25f0dd",
+                    "zbRequirementId": "b9901dbb9f724a91b0042a478694eab0",
+                    "requirementType": "1",
+                    "showOrder": 1,
+                    "orderParamCode": null,
+                    "orderParamContent": "免费保修期后继续支持维修，并按成本价标准收取维修及零件费用。\n",
+                    "isImportant": "N"
+                }
+            ]
+        },
+        {
+            "zbRequirementId": "aefaaa3a0f554753be5cc77cf5e553ab",
+            "zbProjectId": "f07cd47cd8d14d8ea0e674f90e25f0dd",
+            "requirementType": "1",
+            "requirementName": "其他商务要求",
+            "showOrder": 3,
+            "remark": null,
+            "totalScore": null,
+            "zbRequirementDetailList": [
+                {
+                    "zbRequirementDetailId": "c4027c2a96464b94bb2ea4de73b06ff6",
+                    "zbProjectId": "f07cd47cd8d14d8ea0e674f90e25f0dd",
+                    "zbRequirementId": "aefaaa3a0f554753be5cc77cf5e553ab",
+                    "requirementType": "1",
+                    "showOrder": 1,
+                    "orderParamCode": null,
+                    "orderParamContent": "★1.1、交货时间：\n从中华人民共和国关境内提供的货物：签订合同后________7____天（日历日）内。",
+                    "isImportant": "Y",
+                    "isNeedFile": null,
+                    "scoreRule": null,
+                    "zbScoreRuleId": null
+                },
+                {
+                    "zbRequirementDetailId": "c5524c5d204543bab0163dcd3fedc95f",
+                    "zbProjectId": "f07cd47cd8d14d8ea0e674f90e25f0dd",
+                    "zbRequirementId": "aefaaa3a0f554753be5cc77cf5e553ab",
+                    "requirementType": "1",
+                    "showOrder": 2,
+                    "orderParamCode": null,
+                    "orderParamContent": "1.2、投标人必须承担的设备运输、安装调试、验收检测和提供设备操作说明书、图纸等其他类似的义务。中标人应委派技术人员进行现场安装、调试，并提供货物安装调试的一切技术支持。安装调试的具体时间由采购人提前3天通知采购人。",
+                    "isImportant": "N",
+                    "isNeedFile": null,
+                    "scoreRule": null,
+                    "zbScoreRuleId": null
+                },
+                {
+                    "zbRequirementDetailId": "f12b1b801ac44c73a1b3d380d40b0876",
+                    "zbProjectId": "f07cd47cd8d14d8ea0e674f90e25f0dd",
+                    "zbRequirementId": "aefaaa3a0f554753be5cc77cf5e553ab",
+                    "requirementType": 1,
+                    "showOrder": 3,
+                    "orderParamCode": null,
+                    "orderParamContent": "1.3、交货（具体）地点：__ 广东省深圳市南山区南海大道3688号______________________________________",
+                    "isImportant": "N",
+                    "isNeedFile": null,
+                    "scoreRule": null,
+                    "zbScoreRuleId": null
+                },
+                {
+                    "zbRequirementDetailId": "933f66e724fe4d5eb21e948803beb05f",
+                    "zbProjectId": "f07cd47cd8d14d8ea0e674f90e25f0dd",
+                    "zbRequirementId": "aefaaa3a0f554753be5cc77cf5e553ab",
+                    "requirementType": "1",
+                    "showOrder": 4,
+                    "orderParamCode": null,
+                    "orderParamContent": "1.4、从中华人民共和国关境内提供的货物，技术资料应齐全，提供但不限于如下技术文件和资料：\n（1）产品安装、操作和维修保养手册；\n（2）产品使用说明书；\n（3）产品出厂检验合格证；\n（4）产品到货清单；\n（5）产品保修证明；\n",
+                    "isImportant": "N",
+                    "isNeedFile": null,
+                    "scoreRule": null,
+                    "zbScoreRuleId": null
+                },
+                {
+                    "zbRequirementDetailId": "a9f72e814edd4757b95f28d64f9d9c0e",
+                    "zbProjectId": "f07cd47cd8d14d8ea0e674f90e25f0dd",
+                    "zbRequirementId": "aefaaa3a0f554753be5cc77cf5e553ab",
+                    "requirementType": "1",
+                    "showOrder": 5,
+                    "orderParamCode": null,
+                    "orderParamContent": "2.1、投标人货物经过双方检验认可后，签署验收报告，产品保修期自验收合格之日起算，由投标人提供产品保修文件。\n",
+                    "isImportant": "N",
+                    "isNeedFile": null,
+                    "scoreRule": null,
+                    "zbScoreRuleId": null
+                },
+                {
+                    "zbRequirementDetailId": "2e720aabc1774ad19c057c5858776121",
+                    "zbProjectId": "f07cd47cd8d14d8ea0e674f90e25f0dd",
+                    "zbRequirementId": "aefaaa3a0f554753be5cc77cf5e553ab",
+                    "requirementType": "1",
+                    "showOrder": 6,
+                    "orderParamCode": null,
+                    "orderParamContent": "2.2、当满足以下条件时，采购人才向中标人签发货物验收报告：\na、中标人已按照合同规定提供了全部产品及完整的技术资料。\nb、货物符合招标文件技术规格书的要求，性能满足要求。\nc、货物具备产品合格证。",
+                    "isImportant": "N",
+                    "isNeedFile": null,
+                    "scoreRule": null,
+                    "zbScoreRuleId": null
+                },
+                {
+                    "zbRequirementDetailId": "6b3d34f877404e12a26b194ca392b65b",
+                    "zbProjectId": "f07cd47cd8d14d8ea0e674f90e25f0dd",
+                    "zbRequirementId": "aefaaa3a0f554753be5cc77cf5e553ab",
+                    "requirementType": "1",
+                    "showOrder": 7,
+                    "orderParamCode": null,
+                    "orderParamContent": "★3.1、从中华人民共和国关境内提供的货物：\n验收合格后，采购方整理相关付款资料，经付款审批流程后支付货款。",
+                    "isImportant": "Y",
+                    "isNeedFile": null,
+                    "scoreRule": null,
+                    "zbScoreRuleId": null
+                },
+                {
+                    "zbRequirementDetailId": "1c10a73ad62b447c889c4809c6db9269",
+                    "zbProjectId": "f07cd47cd8d14d8ea0e674f90e25f0dd",
+                    "zbRequirementId": "aefaaa3a0f554753be5cc77cf5e553ab",
+                    "requirementType": "1",
+                    "showOrder": 8,
+                    "orderParamCode": null,
+                    "orderParamContent": "4.1.1、提供的货物必须是合法厂家生产和经销的原包装产品（包括零配件），必须具备生产日期、厂名、厂址、产品合格证等。\n4.1.2、采购人在中华人民共和国境内使用该货物或货物的任何一部分时，免受第三方提出的侵犯其专利权、商标权或工业设计权等知识产权的起诉或司法干预。如果发生上述起诉或干预，则其法律责任均由中标人负责。",
+                    "isImportant": "N",
+                    "isNeedFile": null,
+                    "scoreRule": null,
+                    "zbScoreRuleId": null
+                },
+                {
+                    "zbRequirementDetailId": "e90f2ca567424730b03a350aed19f48a",
+                    "zbProjectId": "f07cd47cd8d14d8ea0e674f90e25f0dd",
+                    "zbRequirementId": "aefaaa3a0f554753be5cc77cf5e553ab",
+                    "requirementType": "1",
+                    "showOrder": 9,
+                    "orderParamCode": null,
+                    "orderParamContent": "5.1、依据相关法律法规要求，如所提供的货物需由国家商检部门进行商检的，商检、检疫费用由中标人承担。\n",
+                    "isImportant": "N",
+                    "isNeedFile": null,
+                    "scoreRule": null,
+                    "zbScoreRuleId": null
+                },
+                {
+                    "zbRequirementDetailId": "1a427568cea543e089473e48947817d9",
+                    "zbProjectId": "f07cd47cd8d14d8ea0e674f90e25f0dd",
+                    "zbRequirementId": "aefaaa3a0f554753be5cc77cf5e553ab",
+                    "requirementType": "1",
+                    "showOrder": 10,
+                    "orderParamCode": null,
+                    "orderParamContent": "6.1.1、供需双方均应全面履行合同，任何一方未能按照合同的约定履行自己的义务，应当承担违约责任。违约方应当赔偿守约方因此遭受的损失，包括但不限于守约方的直接经济损失、间接经济损失、守约方为追究违约责任所发生的律师费、差旅费、交通费等。\n6.1.2、供方无正当理由延迟交货，需方有权提出违约损失赔偿或解除合同。在履行合同过程中，如果供方遇到不能按时交货和提供服务的情况，应及时以书面形式将不能按时交货的理由、预期延误时间通知需方。需方收到供方通知后，认为理由正当的，可酌情延长交货时间。\n6.1.3、如果供方未按合同的约定时间交货或提供现场安装、调试或保修等服务，需方可要求供方支付违约金。违约金按每周延迟交货或提供服务的本合同价格的0.5%计算，违约金的最高限额为合同价格的5%，如果累积达到最高限额，需方有权解除合同。需方已经支付货款的，供方出现上述违约行为，需方有权要求供方退还已经收到的货款。一周按7天算，不足7天按一周算。\n",
+                    "isImportant": "N",
+                    "isNeedFile": null,
+                    "scoreRule": null,
+                    "zbScoreRuleId": null
+                }
+            ]
+        }
+    ]
+}
