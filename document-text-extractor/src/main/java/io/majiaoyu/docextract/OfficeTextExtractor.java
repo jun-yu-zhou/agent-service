@@ -12,6 +12,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.imageio.ImageIO;
+import javax.imageio.ImageReader;
+import javax.imageio.stream.ImageInputStream;
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.Transparency;
@@ -25,6 +27,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Iterator;
 import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -38,6 +41,10 @@ import java.util.Map;
  * 按内容去重后逐张送视觉 OCR（提示词可经门面入参覆盖），结果附在正文之后；
  * 页眉页脚中的图片不处理；单张图片 OCR 失败只记录告警并跳过，不影响正文提取。
  * WMF/EMF 等矢量图无法解码，同样跳过。</p>
+ *
+ * <p>不可信文档防护：内嵌图解码前先按图片 header 声明的像素面积预检（{@link #MAX_DECODE_PIXELS}），
+ * 拦截解压炸弹——几 KB 的恶意 PNG/JPEG 可声明解出数十亿像素，直接 {@code ImageIO.read} 会在
+ * 校验内容前就为完整位图分配内存。</p>
  */
 final class OfficeTextExtractor {
 
@@ -46,6 +53,8 @@ final class OfficeTextExtractor {
     /** 内嵌图短边达到该像素数才视为内容图（签章、截图表格），过滤图标、logo 与装饰元素。 */
     private static final int CONTENT_IMAGE_MIN_EDGE = 200;
     private static final String IMAGE_SECTION_HEADER = "\n\n---- 内嵌图片文字（OCR）----";
+    /** 内嵌图解码前的像素面积上限，防解压炸弹（小文件解出巨图）撑爆内存；系统属性可覆盖，0 表示不限制。 */
+    static final long MAX_DECODE_PIXELS = Long.getLong("docextract.decode.max-pixels", 64_000_000L);
 
     private OfficeTextExtractor() {
     }
@@ -117,8 +126,12 @@ final class OfficeTextExtractor {
         }
     }
 
-    /** 返回该图的 OCR 结果；图过小、无法解码或 OCR 失败时返回 null 表示跳过。 */
+    /** 返回该图的 OCR 结果；图过小、超解码上限、无法解码或 OCR 失败时返回 null 表示跳过。 */
     private static String ocrSingleImage(byte[] bytes, int index, String ocrPrompt) {
+        if (exceedsDecodeLimit(bytes, MAX_DECODE_PIXELS)) {
+            log.warn("文档内嵌图片像素超限，跳过 OCR（第 {} 张，上限 {} 像素）", index, MAX_DECODE_PIXELS);
+            return null;
+        }
         BufferedImage image;
         try {
             image = ImageIO.read(new ByteArrayInputStream(bytes));
@@ -133,6 +146,28 @@ final class OfficeTextExtractor {
         } catch (Exception exception) {
             log.warn("文档内嵌图片 OCR 失败，已跳过（第 {} 张）", index, exception);
             return null;
+        }
+    }
+
+    /** 解码前只读图片 header 拿尺寸做上限判定，避免为恶意图分配解码内存；header 读不出时交还 ImageIO 正常处理。 */
+    static boolean exceedsDecodeLimit(byte[] bytes, long maxPixels) {
+        if (maxPixels <= 0 || bytes == null || bytes.length == 0) {
+            return false;
+        }
+        try (ImageInputStream input = ImageIO.createImageInputStream(new ByteArrayInputStream(bytes))) {
+            Iterator<ImageReader> readers = ImageIO.getImageReaders(input);
+            if (!readers.hasNext()) {
+                return false;
+            }
+            ImageReader reader = readers.next();
+            try {
+                reader.setInput(input);
+                return (long) reader.getWidth(0) * reader.getHeight(0) > maxPixels;
+            } finally {
+                reader.dispose();
+            }
+        } catch (IOException | IndexOutOfBoundsException exception) {
+            return false;
         }
     }
 

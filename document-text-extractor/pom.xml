@@ -22,6 +22,17 @@
         <junit.version>5.10.2</junit.version>
     </properties>
 
+    <dependencyManagement>
+        <dependencies>
+            <!-- dashscope-sdk-java 2.23.1 传递 commons-lang3 3.11（CVE-2025-48924），锁定修复版本 -->
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-lang3</artifactId>
+                <version>3.18.0</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
     <dependencies>
         <dependency>
             <groupId>org.apache.pdfbox</groupId>

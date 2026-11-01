@@ -16,6 +16,7 @@ import java.awt.Graphics2D;
 import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashSet;
@@ -37,6 +38,10 @@ import java.util.Set;
  * 失败只告警跳过。检出框的裁剪图写入系统临时目录 seal-audit/ 便于人工核对漏检误检。
  * 混排页整页 OCR 失败时兜底回退文本层；稀疏页没有文本可兜底，OCR 失败直接抛出。
  * 两个提示词均可在门面入参覆盖，null/空白回落默认。</p>
+ *
+ * <p>不可信文档防护：渲染前按 MediaBox 换算像素面积，超上限自动降 DPI、降无可降的畸形超大页
+ * 直接拒绝——恶意 PDF 一页即可申请数 GB 渲染内存打挂 JVM。审计裁剪图落盘的目录名取自外部
+ * 文件名，必须净化防路径穿越；落盘行为提供开关与保留期清理，避免敏感章图无界滞留共享临时目录。</p>
  */
 final class PdfTextExtractor {
 
@@ -60,6 +65,17 @@ final class PdfTextExtractor {
             注意每个字带旋转角度，仔细辨认形近字），每枚印章单独一行。
             不要描述图片，不要输出非印章内容。
             """;
+
+    /** 整页渲染的像素面积上限，防恶意超大 MediaBox 撑爆内存；系统属性可覆盖，0 表示不限制。 */
+    static final long MAX_RENDER_PIXELS = Long.getLong("docextract.render.max-pixels", 16_000_000L);
+    /** 渲染 DPI 降档下限：低于该分辨率的页面 OCR 已无意义，直接拒绝而不是渲染出一张废图。 */
+    private static final float MIN_RENDER_DPI = 24f;
+    /** 审计图写盘开关（默认开，保持既有行为）；系统属性可关闭。 */
+    private static final String AUDIT_ENABLED_PROPERTY = "docextract.seal.audit.enabled";
+    /** 审计图保留天数（默认 7，0 表示永不清理）。 */
+    private static final String AUDIT_RETENTION_PROPERTY = "docextract.seal.audit.retention-days";
+    /** 审计目录名最大长度，防超长文件名触发文件系统限制。 */
+    static final int AUDIT_NAME_MAX_LENGTH = 80;
 
     private PdfTextExtractor() {
     }
@@ -96,7 +112,7 @@ final class PdfTextExtractor {
         boolean hasContentImage = hasLargeEmbeddedImage(page);
         boolean needsFullOcr = sparse || hasContentImage;
         // 每页都渲染：纯文本页也可能有矢量绘制的章，只有看图才能发现
-        BufferedImage render = renderPage(renderer, pageIndex,
+        BufferedImage render = renderPage(page, renderer, pageIndex,
                 needsFullOcr ? RENDER_DPI : SEAL_DETECT_DPI);
 
         String text = textLayer;
@@ -116,7 +132,7 @@ final class PdfTextExtractor {
             return text;
         }
         // 检测渲染是 150dpi 的纯文本页，章文识读前重渲为 300dpi
-        BufferedImage readImage = needsFullOcr ? render : renderPage(renderer, pageIndex, RENDER_DPI);
+        BufferedImage readImage = needsFullOcr ? render : renderPage(page, renderer, pageIndex, RENDER_DPI);
         writeSealAudit(docName, pageIndex, render, sealBoxes);
         return text + sealTexts(readImage, pageIndex, knownSealTexts, sealBoxes.size(), sealPrompt);
     }
@@ -219,13 +235,48 @@ final class PdfTextExtractor {
         return (double) image.getWidth() * image.getHeight() >= CONTENT_IMAGE_MIN_AREA_RATIO * pageArea;
     }
 
-    private static BufferedImage renderPage(PDFRenderer renderer, int pageIndex, float dpi) throws Exception {
-        return renderer.renderImage(pageIndex, dpi / 72f);
+    /** 像素面积超上限时按比例下调 DPI 保证渲染内存受控；降无可降的畸形超大页面直接拒绝。 */
+    static float renderDpi(PDPage page, float requestedDpi) {
+        if (MAX_RENDER_PIXELS <= 0) {
+            return requestedDpi;
+        }
+        PDRectangle box = page.getMediaBox();
+        double pixels = (double) Math.abs(box.getWidth()) * Math.abs(box.getHeight())
+                * (requestedDpi / 72f) * (requestedDpi / 72f);
+        if (pixels <= MAX_RENDER_PIXELS) {
+            return requestedDpi;
+        }
+        float scaled = (float) (requestedDpi * Math.sqrt(MAX_RENDER_PIXELS / pixels));
+        if (scaled < MIN_RENDER_DPI) {
+            throw new IllegalArgumentException("PDF 页面尺寸异常，拒绝渲染："
+                    + box.getWidth() + "x" + box.getHeight() + "pt");
+        }
+        return scaled;
     }
 
-    /** 审计用：检出框裁剪放大后落盘临时目录，供人工核对漏检/误检。 */
+    private static BufferedImage renderPage(PDPage page, PDFRenderer renderer, int pageIndex,
+                                            float dpi) throws Exception {
+        return renderer.renderImage(pageIndex, renderDpi(page, dpi) / 72f);
+    }
+
+    /** 审计用：检出框裁剪放大后落盘临时目录，供人工核对漏检/误检。docName 来自外部文件名，落盘前必须净化。 */
     private static void writeSealAudit(String docName, int pageIndex, BufferedImage render,
                                        List<Rectangle> boxes) {
+        // 审计图承载文档敏感片段，写盘行为必须可关闭；默认开是保持历史行为不变
+        if (!auditEnabled()) {
+            return;
+        }
+        Path dir;
+        try {
+            // docName 来自外部文件名，可携带 ..\ 与 ../，不净化会目录穿越到临时目录之外
+            dir = Path.of(System.getProperty("java.io.tmpdir"), "seal-audit", sanitizeAuditDirName(docName));
+            Files.createDirectories(dir);
+            // 无后台清理任务，借每次写盘的时机惰性清除超保留期的旧审计图
+            purgeExpiredAuditImages(dir, auditRetentionMillis());
+        } catch (Exception exception) {
+            log.warn("印章审计目录准备失败（doc={}）", docName, exception);
+            return;
+        }
         for (int i = 0; i < boxes.size(); i++) {
             try {
                 Rectangle box = boxes.get(i);
@@ -244,11 +295,52 @@ final class PdfTextExtractor {
                     graphics.dispose();
                     crop = enlarged;
                 }
-                Path dir = Path.of(System.getProperty("java.io.tmpdir"), "seal-audit", docName);
-                Files.createDirectories(dir);
                 ImageIO.write(crop, "png", dir.resolve("p" + (pageIndex + 1) + "-s" + (i + 1) + ".png").toFile());
             } catch (Exception exception) {
                 log.warn("印章审计图写入失败（page={} seal={}）", pageIndex + 1, i + 1, exception);
+            }
+        }
+    }
+
+    private static boolean auditEnabled() {
+        return Boolean.parseBoolean(System.getProperty(AUDIT_ENABLED_PROPERTY, "true"));
+    }
+
+    private static long auditRetentionMillis() {
+        long days = Long.getLong(AUDIT_RETENTION_PROPERTY, 7);
+        return days <= 0 ? 0 : days * 24L * 3_600_000L;
+    }
+
+    /**
+     * 审计目录名净化：文件名是不可信外部输入，只保留字母/数字/点/横线/下划线（中英文均保留），
+     * 其余（含路径分隔符、Windows 保留字符）替换为下划线；去尾部点（Windows 不允许），
+     * 化解 ".." 类纯点号名，超长截断，空名回退 unknown。
+     */
+    static String sanitizeAuditDirName(String docName) {
+        String cleaned = docName.replaceAll("[^\\p{L}\\p{N}._-]", "_");
+        cleaned = cleaned.replaceAll("\\.+$", "");
+        if (cleaned.isEmpty()) {
+            return "unknown";
+        }
+        return cleaned.length() <= AUDIT_NAME_MAX_LENGTH
+                ? cleaned : cleaned.substring(0, AUDIT_NAME_MAX_LENGTH);
+    }
+
+    /** 清理超过保留期的审计图，防临时目录无界累积；保留期 0 表示跳过。 */
+    static void purgeExpiredAuditImages(Path dir, long retentionMillis) throws IOException {
+        if (retentionMillis <= 0) {
+            return;
+        }
+        long expiry = System.currentTimeMillis() - retentionMillis;
+        try (var files = Files.list(dir)) {
+            for (Path file : files.toList()) {
+                try {
+                    if (Files.getLastModifiedTime(file).toMillis() < expiry) {
+                        Files.deleteIfExists(file);
+                    }
+                } catch (IOException exception) {
+                    log.debug("审计图清理跳过：{}", file, exception);
+                }
             }
         }
     }

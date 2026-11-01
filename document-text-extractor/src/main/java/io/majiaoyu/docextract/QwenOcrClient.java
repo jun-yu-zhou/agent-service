@@ -11,6 +11,7 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 经 DashScope 官方 SDK 的多模态对话接口调用百炼视觉 OCR 模型（默认 qwen3.5-ocr）。
@@ -30,6 +31,12 @@ public final class QwenOcrClient {
             """;
     private static final int MAX_COMPLETION_TOKENS = 16_384;
     private static final String PROTOCOL_HTTP_1_1 = "http";
+
+    /**
+     * 客户端按 baseUrl 缓存复用：底层 OkHttp 连接池与调度线程池随实例创建且不随调用释放，
+     * 每次请求 new 一个会在多页文档/高并发下耗尽文件描述符。apiKey/model 走 param 不在实例上，换配置源无需重建。
+     */
+    private static final ConcurrentHashMap<String, MultiModalConversation> CLIENTS = new ConcurrentHashMap<>();
 
     private static volatile OcrConfigProvider configProvider = new SystemEnvOcrConfigProvider();
 
@@ -61,14 +68,7 @@ public final class QwenOcrClient {
                 .messages(List.of(userMessage))
                 .maxLength(MAX_COMPLETION_TOKENS)
                 .build();
-        MultiModalConversation conversation = new MultiModalConversation(
-                PROTOCOL_HTTP_1_1,
-                trimTrailingSlash(config.baseUrl()),
-                ConnectionOptions.builder()
-                        .connectTimeout(Duration.ofSeconds(30))
-                        .writeTimeout(Duration.ofMinutes(5))
-                        .readTimeout(Duration.ofMinutes(5))
-                        .build());
+        MultiModalConversation conversation = clientFor(trimTrailingSlash(config.baseUrl()));
         MultiModalConversationResult result;
         try {
             result = conversation.call(param);
@@ -81,6 +81,18 @@ public final class QwenOcrClient {
             throw new IllegalStateException("百炼 OCR 未返回文字内容（模型 " + config.model() + "）");
         }
         return content;
+    }
+
+    /** 同一 baseUrl 复用同一客户端实例；超时参数固定，与既有语义一致。 */
+    private static MultiModalConversation clientFor(String baseUrl) {
+        return CLIENTS.computeIfAbsent(baseUrl, url -> new MultiModalConversation(
+                PROTOCOL_HTTP_1_1,
+                url,
+                ConnectionOptions.builder()
+                        .connectTimeout(Duration.ofSeconds(30))
+                        .writeTimeout(Duration.ofMinutes(5))
+                        .readTimeout(Duration.ofMinutes(5))
+                        .build()));
     }
 
     /** content 形态兼容：String 直接用；List 取各分段的 text 字段拼接。 */

@@ -4,6 +4,7 @@ import org.commonmark.node.Node;
 import org.commonmark.parser.Parser;
 import org.commonmark.renderer.text.TextContentRenderer;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Locale;
@@ -18,10 +19,17 @@ import java.util.Set;
  *
  * <p>两个提示词均可按调用覆盖：整页 OCR（扫描页/混排页/图片/内嵌图）与印章识读，
  * 传 null 或空白即回落默认值。</p>
+ *
+ * <p>文件在后续流程中会被整体载入内存（图片 readAllBytes、文本 readString），入口处强制
+ * 大小上限（{@link #MAX_FILE_BYTES}）：超限文件直接拒绝，防单个超大文件占满堆。上限可经
+ * 系统属性调整，0 表示关闭校验。</p>
  */
 public final class DocumentTextExtractor {
 
     private static final Set<String> IMAGE_FORMATS = Set.of("jpg", "jpeg", "png", "bmp", "tif", "tiff");
+
+    /** 单文件大小上限（默认 100MB）：文件会被整体读入内存，超限直接拒绝；系统属性可覆盖，0 表示不限制。 */
+    static final long MAX_FILE_BYTES = Long.getLong("docextract.max-file-bytes", 100L * 1024 * 1024);
 
     private DocumentTextExtractor() {
     }
@@ -41,6 +49,7 @@ public final class DocumentTextExtractor {
         if (!Files.isRegularFile(file)) {
             throw new IllegalArgumentException("文档文件不存在：" + file.toAbsolutePath());
         }
+        checkFileSize(file, MAX_FILE_BYTES);
         String effectiveOcrPrompt = effective(ocrPrompt, QwenOcrClient.DEFAULT_OCR_PROMPT);
         String format = extension(file);
         if (IMAGE_FORMATS.contains(format)) {
@@ -62,6 +71,26 @@ public final class DocumentTextExtractor {
         String name = file.getFileName().toString();
         int dot = name.lastIndexOf('.');
         return dot < 0 ? "" : name.substring(dot + 1).toLowerCase(Locale.ROOT);
+    }
+
+    /**
+     * 大小上限检查：在读取文件内容之前拦下超限文件，而不是读入内存后才发现。
+     * maxBytes 参数化以便单测用小上限验证；生产入口传 {@link #MAX_FILE_BYTES}，非正表示不限制。
+     */
+    static void checkFileSize(Path file, long maxBytes) {
+        if (maxBytes <= 0) {
+            return;
+        }
+        long size;
+        try {
+            size = Files.size(file);
+        } catch (IOException exception) {
+            throw new IllegalArgumentException("无法读取文档大小：" + file.toAbsolutePath(), exception);
+        }
+        if (size > maxBytes) {
+            throw new IllegalArgumentException("文档超过大小上限 " + (maxBytes / 1024 / 1024) + "MB："
+                    + file.getFileName());
+        }
     }
 
     private static String effective(String custom, String defaultPrompt) {
