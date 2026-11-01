@@ -135,7 +135,8 @@ final class OfficeTextExtractor {
         BufferedImage image;
         try {
             image = ImageIO.read(new ByteArrayInputStream(bytes));
-        } catch (IOException exception) {
+        } catch (Exception exception) {
+            // 任何解码侧异常都降级为"跳过该图"，不让单张恶意图打穿整个提取
             image = null;
         }
         if (image == null || Math.min(image.getWidth(), image.getHeight()) < CONTENT_IMAGE_MIN_EDGE) {
@@ -166,7 +167,8 @@ final class OfficeTextExtractor {
             } finally {
                 reader.dispose();
             }
-        } catch (IOException | IndexOutOfBoundsException exception) {
+        } catch (IOException | RuntimeException exception) {
+            // 畸形格式可能让 reader 抛任意运行时异常（含 IndexOutOfBounds）：一律按"读不出尺寸"放行
             return false;
         }
     }

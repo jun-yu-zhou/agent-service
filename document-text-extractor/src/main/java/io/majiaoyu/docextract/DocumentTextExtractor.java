@@ -21,15 +21,22 @@ import java.util.Set;
  * 传 null 或空白即回落默认值。</p>
  *
  * <p>文件在后续流程中会被整体载入内存（图片 readAllBytes、文本 readString），入口处强制
- * 大小上限（{@link #MAX_FILE_BYTES}）：超限文件直接拒绝，防单个超大文件占满堆。上限可经
- * 系统属性调整，0 表示关闭校验。</p>
+ * 大小上限（默认 {@link #DEFAULT_MAX_FILE_BYTES}，宿主经 {@link #setMaxFileBytes(long)} 按自身
+ * 配置源覆盖，≤0 表示不限制）：超限文件直接拒绝，防单个超大文件占满堆。</p>
  */
 public final class DocumentTextExtractor {
 
     private static final Set<String> IMAGE_FORMATS = Set.of("jpg", "jpeg", "png", "bmp", "tif", "tiff");
 
-    /** 单文件大小上限（默认 100MB）：文件会被整体读入内存，超限直接拒绝；系统属性可覆盖，0 表示不限制。 */
-    static final long MAX_FILE_BYTES = Long.getLong("docextract.max-file-bytes", 100L * 1024 * 1024);
+    /** 单文件大小默认上限 100MB；宿主可经 {@link #setMaxFileBytes(long)} 按自身配置源覆盖。 */
+    private static final long DEFAULT_MAX_FILE_BYTES = 100L * 1024 * 1024;
+
+    private static volatile long maxFileBytes = DEFAULT_MAX_FILE_BYTES;
+
+    /** 宿主在启动时注入文件大小上限（字节）；≤0 表示不限制。 */
+    public static void setMaxFileBytes(long bytes) {
+        maxFileBytes = bytes;
+    }
 
     private DocumentTextExtractor() {
     }
@@ -49,7 +56,7 @@ public final class DocumentTextExtractor {
         if (!Files.isRegularFile(file)) {
             throw new IllegalArgumentException("文档文件不存在：" + file.toAbsolutePath());
         }
-        checkFileSize(file, MAX_FILE_BYTES);
+        checkFileSize(file, maxFileBytes);
         String effectiveOcrPrompt = effective(ocrPrompt, QwenOcrClient.DEFAULT_OCR_PROMPT);
         String format = extension(file);
         if (IMAGE_FORMATS.contains(format)) {
@@ -57,8 +64,7 @@ public final class DocumentTextExtractor {
             return QwenOcrClient.recognize(Files.readAllBytes(file), mime, effectiveOcrPrompt);
         }
         return switch (format) {
-            case "pdf" -> PdfTextExtractor.extract(file, effectiveOcrPrompt,
-                    effective(sealPrompt, PdfTextExtractor.SEAL_READ_PROMPT));
+            case "pdf" -> PdfTextExtractor.extract(file, effectiveOcrPrompt, sealPrompt);
             case "doc", "docx" -> OfficeTextExtractor.extract(file, effectiveOcrPrompt);
             case "md", "markdown" -> readMarkdown(file);
             case "txt" -> Files.readString(file);
@@ -75,7 +81,8 @@ public final class DocumentTextExtractor {
 
     /**
      * 大小上限检查：在读取文件内容之前拦下超限文件，而不是读入内存后才发现。
-     * maxBytes 参数化以便单测用小上限验证；生产入口传 {@link #MAX_FILE_BYTES}，非正表示不限制。
+     * maxBytes 参数化以便单测用小上限验证；生产入口传当前生效上限 {@link #getMaxFileBytes()}，
+     * 非正表示不限制。
      */
     static void checkFileSize(Path file, long maxBytes) {
         if (maxBytes <= 0) {
@@ -95,6 +102,33 @@ public final class DocumentTextExtractor {
 
     private static String effective(String custom, String defaultPrompt) {
         return custom == null || custom.isBlank() ? defaultPrompt : custom;
+    }
+
+    // ------------------------------------------------------------------
+    // 远程文档：OSS 等 http/https URL 直接入参
+    // ------------------------------------------------------------------
+
+    /** ① 全默认：下载远程文档到临时文件 → 格式识别 → 全能力解析 → 自动清理临时文件。 */
+    public static String extract(String fileUrl) throws Exception {
+        return extract(fileUrl, null, null);
+    }
+
+    /** ② 覆盖整页 OCR 提示词。 */
+    public static String extract(String fileUrl, String ocrPrompt) throws Exception {
+        return extract(fileUrl, ocrPrompt, null);
+    }
+
+    /** ③ 再覆盖印章识读提示词。URL 需已签名且有效（过期/无权限会以下载失败抛出）。 */
+    public static String extract(String fileUrl, String ocrPrompt, String sealPrompt) throws Exception {
+        Path temp = null;
+        try {
+            temp = UrlFetch.downloadToTempFile(fileUrl, maxFileBytes);
+            return extract(temp, ocrPrompt, sealPrompt);
+        } finally {
+            if (temp != null) {
+                Files.deleteIfExists(temp);
+            }
+        }
     }
 
     /** Markdown 用 commonmark 渲染为纯文本，去掉标记符号但保留文字与结构。 */

@@ -21,6 +21,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 
 /**
@@ -63,6 +64,7 @@ final class PdfTextExtractor {
     static final String SEAL_READ_PROMPT = """
             图中可能有一枚或多枚印章。请逐枚识别印章内的全部文字（环形排列的文字请按印章阅读习惯读出，
             注意每个字带旋转角度，仔细辨认形近字），每枚印章单独一行。
+            对无法清晰辨认的字符与小字（如防伪码、编号）不要猜测输出；无法完整确认的行请整行省略。
             不要描述图片，不要输出非印章内容。
             """;
 
@@ -76,12 +78,13 @@ final class PdfTextExtractor {
     private static final String AUDIT_RETENTION_PROPERTY = "docextract.seal.audit.retention-days";
     /** 审计目录名最大长度，防超长文件名触发文件系统限制。 */
     static final int AUDIT_NAME_MAX_LENGTH = 80;
+    /** Windows 保留设备名（对 "con.txt" 这类带扩展名的形式同样保留），命中时前置下划线化解。 */
+    private static final Set<String> WINDOWS_RESERVED_DEVICE_NAMES = Set.of(
+            "con", "prn", "aux", "nul",
+            "com1", "com2", "com3", "com4", "com5", "com6", "com7", "com8", "com9",
+            "lpt1", "lpt2", "lpt3", "lpt4", "lpt5", "lpt6", "lpt7", "lpt8", "lpt9");
 
     private PdfTextExtractor() {
-    }
-
-    static String extract(Path file) throws Exception {
-        return extract(file, null, null);
     }
 
     static String extract(Path file, String ocrPrompt, String sealPrompt) throws Exception {
@@ -153,7 +156,7 @@ final class PdfTextExtractor {
         }
         StringBuilder section = new StringBuilder();
         for (String line : ocr.split("\\r?\\n")) {
-            String content = line.strip();
+            String content = stripUnreliableSealFragments(line.strip());
             String normalized = content.replaceAll("\\s+", "");
             if (!isPlausibleSealText(normalized) || isNoSealStatement(normalized)
                     || !knownSealTexts.add(normalized)) {
@@ -165,6 +168,19 @@ final class PdfTextExtractor {
             section.append("\n").append(content);
         }
         return section.toString();
+    }
+
+    /**
+     * 印章行保守化（宁可少做也别做错）：防伪码长数字与 (N) 序号是章上最小、
+     * 整页渲染下最不可辨的部分，模型输出多为猜测——一律剥离，只保留可信的章名主体；
+     * 剥离后不足 3 字符的行（如纯防伪码行）整行丢弃。
+     * 长数字阈值取 8 位：防伪码实际 12~13 位必中，机构名内偶见的短编号不误伤。
+     */
+    static String stripUnreliableSealFragments(String line) {
+        return line.replaceAll("\\(\\d+\\)", "")      // 半角括号序号
+                .replaceAll("\\d{8,}", "")            // ≥8 位连续数字（防伪码 12~13 位）
+                .replaceAll("\\s{2,}", " ")
+                .strip();
     }
 
     /** 误检页上模型可能返回 rotate_rect JSON 或无印章声明，视为无效跳过。 */
@@ -314,11 +330,15 @@ final class PdfTextExtractor {
     /**
      * 审计目录名净化：文件名是不可信外部输入，只保留字母/数字/点/横线/下划线（中英文均保留），
      * 其余（含路径分隔符、Windows 保留字符）替换为下划线；去尾部点（Windows 不允许），
-     * 化解 ".." 类纯点号名，超长截断，空名回退 unknown。
+     * 化解 ".." 类纯点号名与 Windows 设备名（con.txt 亦保留），超长截断，空名回退 unknown。
      */
     static String sanitizeAuditDirName(String docName) {
         String cleaned = docName.replaceAll("[^\\p{L}\\p{N}._-]", "_");
         cleaned = cleaned.replaceAll("\\.+$", "");
+        String baseName = cleaned.split("\\.", 2)[0].toLowerCase(Locale.ROOT);
+        if (WINDOWS_RESERVED_DEVICE_NAMES.contains(baseName)) {
+            cleaned = "_" + cleaned;
+        }
         if (cleaned.isEmpty()) {
             return "unknown";
         }

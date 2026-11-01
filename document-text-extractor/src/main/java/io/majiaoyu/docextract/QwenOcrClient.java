@@ -48,12 +48,8 @@ public final class QwenOcrClient {
         QwenOcrClient.configProvider = Objects.requireNonNull(provider, "provider");
     }
 
-    /** 识别图片中的全部文字，使用默认提示词；imageFormat 为数据 URI 的 MIME 子类型（png、jpeg 等）。 */
-    public static String recognize(byte[] imageBytes, String imageFormat) {
-        return recognize(imageBytes, imageFormat, DEFAULT_OCR_PROMPT);
-    }
-
-    /** 同上，允许调用方按场景定制提示词（整页提取、印章识读各有默认值）。 */
+    /** 识别图片中的全部文字；imageFormat 为数据 URI 的 MIME 子类型（png、jpeg 等），
+     *  prompt 可按场景定制（整页提取、印章识读各有默认值）。 */
     public static String recognize(byte[] imageBytes, String imageFormat, String prompt) {
         OcrConfigProvider config = configProvider;
         String dataUri = "data:image/" + imageFormat + ";base64,"

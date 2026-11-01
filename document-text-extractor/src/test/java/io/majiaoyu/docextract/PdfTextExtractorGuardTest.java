@@ -41,6 +41,17 @@ class PdfTextExtractorGuardTest {
         assertEquals("unknown", PdfTextExtractor.sanitizeAuditDirName("."));
     }
 
+    /** Windows 对设备名（含带扩展名形式）保留，命中时前置下划线化解。 */
+    @Test
+    void windowsReservedDeviceNamesAreNeutralized() {
+        assertEquals("_con", PdfTextExtractor.sanitizeAuditDirName("con"));
+        assertEquals("_con.txt", PdfTextExtractor.sanitizeAuditDirName("con.txt"));
+        assertEquals("_NUL", PdfTextExtractor.sanitizeAuditDirName("NUL"));
+        assertEquals("_COM1", PdfTextExtractor.sanitizeAuditDirName("COM1"));
+        // 普通名字不应被误伤
+        assertEquals("constant", PdfTextExtractor.sanitizeAuditDirName("constant"));
+    }
+
     @Test
     void keepsReadableNamesAndTruncatesLongOnes() {
         assertEquals("投标文件_v1.2", PdfTextExtractor.sanitizeAuditDirName("投标文件 v1.2"));
@@ -104,5 +115,22 @@ class PdfTextExtractorGuardTest {
         PdfTextExtractor.purgeExpiredAuditImages(dir, 0L);
 
         assertTrue(Files.exists(stale));
+    }
+
+    /** 印章行保守化：防伪码与 (N) 序号剥离，纯数字行丢弃，章名主体保留（宁可少做也别做错）。 */
+    @Test
+    void stripsUnreliableFragmentsFromSealLines() {
+        // 真实误读样本：章名 + 序号 + 防伪码混排 → 只留章名
+        assertEquals("山东农业大学 项目管理有限公司 合同专用章",
+                PdfTextExtractor.stripUnreliableSealFragments(
+                        "山东农业大学 项目管理有限公司 合同专用章 (2) 3701207662353"));
+        // 纯防伪码行 → 剥离后为空，调用方按 <3 字符丢弃
+        assertEquals("", PdfTextExtractor.stripUnreliableSealFragments("(2) 3701207662353"));
+        // 8 位以下数字可能是机构名的一部分，不剥离；8 位以上按防伪码剥离
+        assertEquals("编号360123", PdfTextExtractor.stripUnreliableSealFragments("编号360123"));
+        assertEquals("证书编号", PdfTextExtractor.stripUnreliableSealFragments("证书编号12345678"));
+        // 无数字的章名主体不变
+        assertEquals("中华人民共和国国家知识产权局",
+                PdfTextExtractor.stripUnreliableSealFragments("中华人民共和国国家知识产权局"));
     }
 }

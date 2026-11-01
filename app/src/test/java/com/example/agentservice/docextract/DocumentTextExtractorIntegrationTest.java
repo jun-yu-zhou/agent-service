@@ -193,6 +193,22 @@ class DocumentTextExtractorIntegrationTest {
         assertTrue(text.contains("---- 印章文字（OCR）----"), "应检测到印章并追加印章 OCR 段");
     }
 
+    /**
+     * ① 前端 OSS URL 直接入参：下载 → 格式识别（Content-Type）→ 全能力解析 → 自动清理临时文件。
+     * 该签名 URL 有效期至 2070；约 0.3 元、2 分钟。
+     */
+    @Test
+    @Disabled("调用百炼 OCR 模型会产生费用；需要时手动执行")
+    void extract_ossUrl_下载后全能力解析() throws Exception {
+        String text = DocumentTextExtractor.extract(
+                "http://oss.easyjcx.com/co-order/2026/10/29/3355e2688a354a48a7f2d79e21e11e371859673662510620952.pdf"
+                        + "?Expires=317121699172&OSSAccessKeyId=LTAI5t7BU2scZhLpbwGCw7nZ"
+                        + "&Signature=Ala6TVVa2HOwvCIhLnWBd5y%2BT6E%3D");
+
+        log.info("Extracted text: {}", text);
+        assertFalse(text.isBlank());
+    }
+
     /** ① legacy .doc：HWPF 文字直提 + 内嵌图 OCR（该文件无内嵌图，实际零成本）。 */
     @Test
     @Disabled("调用百炼 OCR 模型会产生费用；需要时手动执行")
