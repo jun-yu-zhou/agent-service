@@ -1,6 +1,6 @@
 package com.example.agentservice.docextract;
 
-import com.example.agentservice.config.DocextractOcrConfigAdapter;
+import com.example.agentservice.config.DocextractProperties;
 import io.majiaoyu.docextract.DocumentTextExtractor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.util.Units;
@@ -35,7 +35,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *   <li>注入配置：实现 {@link io.majiaoyu.docextract.OcrConfigProvider}（baseUrl/apiKey/model 三项），
  *       业务工程用 {@code @Component + @PostConstruct} 调
  *       {@code QwenOcrClient.setConfigProvider(...)}——本工程已封装为
- *       {@link DocextractOcrConfigAdapter#install()}；纯 JUnit 无 Spring 容器，故在 {@code @BeforeAll} 手动调；</li>
+ *       {@link DocextractProperties#install()}；纯 JUnit 无 Spring 容器，故在 {@code @BeforeAll} 手动调；</li>
  *   <li>调用：{@code DocumentTextExtractor.extract(Path)}，支持 pdf/doc/docx/txt/md/图片，
  *       扫描页/混排页/图片自动走视觉 OCR，印章自动识读并追加"---- 印章文字（OCR）----"段。</li>
  * </ol>
@@ -58,9 +58,9 @@ class DocumentTextExtractorIntegrationTest {
 
     @BeforeAll
     static void installSdkConfig() {
-        // 教学点①：配置注入。业务工程由 DocextractOcrConfigAdapter 的 @PostConstruct 自动完成；
+        // 教学点①：配置注入。业务工程由 DocextractProperties 的 @PostConstruct 自动完成；
         // 测试无 Spring 容器，手动调用一次即可，等价于把 baseUrl/apiKey/model 三项交给 SDK。
-        DocextractOcrConfigAdapter.installNow();
+        DocextractProperties.installNow();
     }
 
     // ------------------------------------------------------------------

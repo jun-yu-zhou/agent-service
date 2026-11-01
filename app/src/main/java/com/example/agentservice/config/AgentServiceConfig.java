@@ -33,14 +33,14 @@ public final class AgentServiceConfig {
                 "https://dashscope.aliyuncs.com");
     }
 
-    /** docextract-sdk 的视觉 OCR 端点/模型（yml 的 docextract.ocr.* 段）；三项必填，密钥复用 dashScopeApiKey。 */
+    /** docextract-sdk 的视觉 OCR 端点/模型（yml 的 docextract.* 段）；三项必填，密钥复用 dashScopeApiKey。 */
     public static String docextractOcrBaseUrl() {
         // 必填：模型可能下架、端点可能变更，不设隐式默认。
-        return required("docextract.ocr.base-url", "DASHSCOPE_OCR_BASE_URL");
+        return required("docextract.base-url", "DASHSCOPE_OCR_BASE_URL");
     }
 
     public static String docextractOcrModel() {
-        return required("docextract.ocr.model", "DASHSCOPE_OCR_MODEL");
+        return required("docextract.model", "DASHSCOPE_OCR_MODEL");
     }
 
     public static String ossEndpoint() {

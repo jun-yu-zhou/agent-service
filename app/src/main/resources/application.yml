@@ -30,17 +30,15 @@ eureka:
 
 # Do not put real credentials here. Use application-local.yml for local-only values.
 
-# docextract-sdk 必要条件：视觉 OCR 端点/模型/密钥 + 提取防护上限。
-# base-url 为 DashScope 原生 API 根（含 /api/v1，SDK 在其后拼接服务路径，非 OpenAI 兼容端点）；
-# api-key 复用 app.dashscope.api-key（密钥在 application-local.yml 只配一处），也可用 DASHSCOPE_API_KEY 覆盖。
+# docextract-sdk 必要条件与防护上限（三项必填：模型可能下架、端点可能变更，缺失启动即失败）；
+# base-url 为 DashScope 原生 API 根（含 /api/v1，非 OpenAI 兼容端点）；
+# api-key 复用 app.dashscope.api-key（密钥在 application-local.yml 只配一处），也可用 DASHSCOPE_API_KEY 覆盖
 docextract:
-  ocr:
-    base-url: ${DASHSCOPE_OCR_BASE_URL:https://dashscope.aliyuncs.com/api/v1}
-    api-key: ${DASHSCOPE_API_KEY:${app.dashscope.api-key:}}
-    model: ${DASHSCOPE_OCR_MODEL:qwen3.5-ocr}
+  base-url: ${DASHSCOPE_OCR_BASE_URL:https://dashscope.aliyuncs.com/api/v1}
+  api-key: ${DASHSCOPE_API_KEY:${app.dashscope.api-key:}}
+  model: ${DASHSCOPE_OCR_MODEL:qwen3.5-ocr}
   # 提取防护：单文件大小上限（字节），超限直接拒绝；0 表示不限制
-  extract:
-    max-file-bytes: ${DOCEXTRACT_MAX_FILE_BYTES:104857600}
+  max-file-bytes: ${DOCEXTRACT_MAX_FILE_BYTES:104857600}
 
 app:
   bid:

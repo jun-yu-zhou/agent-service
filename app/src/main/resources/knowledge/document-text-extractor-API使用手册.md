@@ -172,37 +172,66 @@ SDK 零 Spring：一切配置经两个注入口进入——
 `DocumentTextExtractor.setMaxFileBytes(long)`（单文件上限，≤0 不限制）。
 未注入时 SDK 回退读系统属性/环境变量（键名见 3.3 方式 1）。
 
-### 3.1 Spring Boot 宿主：yml + 三个桥接类（完整三段，可直接复制）
+### 3.1 Spring Boot 宿主：yml + 一个配置类（完整两段，可直接复制）
 
 **① yml：**
 
 ```yml
 docextract:
-  ocr:
-    base-url: ${DOCEXTRACT_OCR_BASE_URL:https://dashscope.aliyuncs.com/api/v1}
-    api-key: ${DOCEXTRACT_OCR_API_KEY:}           # 也可直接写死或引自己的密钥配置
-    model: ${DOCEXTRACT_OCR_MODEL:qwen3.5-ocr}
-  extract:
-    max-file-bytes: ${DOCEXTRACT_MAX_FILE_BYTES:104857600}
+  base-url: ${DASHSCOPE_OCR_BASE_URL:https://dashscope.aliyuncs.com/api/v1}
+  api-key: ${DASHSCOPE_API_KEY:}                # 也可直接写死或引自己的密钥配置
+  model: ${DASHSCOPE_OCR_MODEL:qwen3.5-ocr}
+  max-file-bytes: ${DOCEXTRACT_MAX_FILE_BYTES:104857600}
 ```
 
-**② 配置类两个（实现 SDK 的 SPI，直接可编译）：**
+**② 配置类（实现 SDK 的 SPI 并承担注入，直接可编译）：**
 
 ```java
 package com.yourcompany.config;
 
+import io.majiaoyu.docextract.DocumentTextExtractor;
 import io.majiaoyu.docextract.OcrConfigProvider;
+import io.majiaoyu.docextract.QwenOcrClient;
+import jakarta.annotation.PostConstruct;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
-/** yml 的 docextract.ocr.* 段 → OcrConfigProvider 实现。 */
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * docextract-sdk 的宿主配置与注入点合一（yml 的 docextract.* 段）：
+ * baseUrl/apiKey/model 实现 SDK 的 OcrConfigProvider，maxFileBytes 为提取防护上限。
+ */
 @Component
-@ConfigurationProperties(prefix = "docextract.ocr")
-public class DocextractOcrProperties implements OcrConfigProvider {
+@ConfigurationProperties(prefix = "docextract")
+public class DocextractProperties implements OcrConfigProvider {
 
     private String baseUrl;
     private String apiKey;
     private String model;
+    /** 单文件大小上限（字节），≤0 表示不限制。 */
+    private long maxFileBytes = 100L * 1024 * 1024;
+
+    @PostConstruct
+    public void install() {
+        List<String> missing = new ArrayList<>();
+        if (isBlank(baseUrl)) {
+            missing.add("docextract.base-url");
+        }
+        if (isBlank(apiKey)) {
+            missing.add("docextract.api-key");
+        }
+        if (isBlank(model)) {
+            missing.add("docextract.model");
+        }
+        if (!missing.isEmpty()) {
+            throw new IllegalStateException("docextract-sdk 缺少必要配置 " + missing
+                    + "（模型可能下架、端点可能变更，须在 yml 显式声明）");
+        }
+        QwenOcrClient.setConfigProvider(this);
+        DocumentTextExtractor.setMaxFileBytes(maxFileBytes);
+    }
 
     @Override public String baseUrl() { return baseUrl; }
     @Override public String apiKey()  { return apiKey; }
@@ -211,55 +240,10 @@ public class DocextractOcrProperties implements OcrConfigProvider {
     public void setBaseUrl(String baseUrl) { this.baseUrl = baseUrl; }
     public void setApiKey(String apiKey)   { this.apiKey = apiKey; }
     public void setModel(String model)     { this.model = model; }
-}
-```
-
-```java
-package com.yourcompany.config;
-
-import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.stereotype.Component;
-
-/** yml 的 docextract.extract.* 段。 */
-@Component
-@ConfigurationProperties(prefix = "docextract.extract")
-public class DocextractExtractProperties {
-
-    /** 单文件大小上限（字节），≤0 表示不限制。 */
-    private long maxFileBytes = 100L * 1024 * 1024;
-
-    public long getMaxFileBytes() { return maxFileBytes; }
+    public long getMaxFileBytes()          { return maxFileBytes; }
     public void setMaxFileBytes(long maxFileBytes) { this.maxFileBytes = maxFileBytes; }
-}
-```
 
-**③ 桥接类（启动时把两项配置注入 SDK）：**
-
-```java
-package com.yourcompany.config;
-
-import io.majiaoyu.docextract.DocumentTextExtractor;
-import io.majiaoyu.docextract.QwenOcrClient;
-import jakarta.annotation.PostConstruct;
-import org.springframework.stereotype.Component;
-
-@Component
-public class DocextractOcrConfigAdapter {
-
-    private final DocextractOcrProperties ocrProperties;
-    private final DocextractExtractProperties extractProperties;
-
-    public DocextractOcrConfigAdapter(DocextractOcrProperties ocrProperties,
-                                      DocextractExtractProperties extractProperties) {
-        this.ocrProperties = ocrProperties;
-        this.extractProperties = extractProperties;
-    }
-
-    @PostConstruct
-    public void install() {
-        QwenOcrClient.setConfigProvider(ocrProperties);
-        DocumentTextExtractor.setMaxFileBytes(extractProperties.getMaxFileBytes());
-    }
+    private static boolean isBlank(String value) { return value == null || value.isBlank(); }
 }
 ```
 

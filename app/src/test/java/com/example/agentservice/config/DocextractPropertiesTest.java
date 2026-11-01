@@ -1,5 +1,6 @@
 package com.example.agentservice.config;
 
+import io.majiaoyu.docextract.OcrConfigProvider;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.context.properties.bind.Bindable;
 import org.springframework.boot.context.properties.bind.Binder;
@@ -8,43 +9,36 @@ import org.springframework.boot.context.properties.source.MapConfigurationProper
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
-/** 验证 docextract.* 配置段能绑定（ocr 供视觉 OCR，extract 供提取防护；纯 JUnit 下用 Spring Binder 模拟）。 */
+/** 验证 docextract.* 配置段能绑定为 SDK 配置类（纯 JUnit 下用 Spring Binder 模拟，不启容器）。 */
 class DocextractPropertiesTest {
 
     @Test
-    void bindsOcrEndpointKeyAndModelFromDocextractPrefix() {
+    void bindsAllFourKeysFromDocextractPrefix() {
         MapConfigurationPropertySource source = new MapConfigurationPropertySource(Map.of(
-                "docextract.ocr.base-url", "https://dashscope.aliyuncs.com/api/v1",
-                "docextract.ocr.api-key", "test-key",
-                "docextract.ocr.model", "qwen3.5-ocr"));
+                "docextract.base-url", "https://dashscope.aliyuncs.com/api/v1",
+                "docextract.api-key", "test-key",
+                "docextract.model", "qwen3.5-ocr",
+                "docextract.max-file-bytes", "52428800"));
 
-        DocextractOcrProperties properties = new Binder(source)
-                .bind("docextract.ocr", Bindable.of(DocextractOcrProperties.class)).get();
+        DocextractProperties properties = new Binder(source)
+                .bind("docextract", Bindable.of(DocextractProperties.class)).get();
 
         assertEquals("https://dashscope.aliyuncs.com/api/v1", properties.baseUrl());
         assertEquals("test-key", properties.apiKey());
         assertEquals("qwen3.5-ocr", properties.model());
-    }
-
-    @Test
-    void bindsMaxFileBytesFromDocextractPrefix() {
-        MapConfigurationPropertySource source = new MapConfigurationPropertySource(Map.of(
-                "docextract.extract.max-file-bytes", "52428800"));
-
-        DocextractExtractProperties properties = new Binder(source)
-                .bind("docextract.extract", Bindable.of(DocextractExtractProperties.class)).get();
-
         assertEquals(52_428_800L, properties.getMaxFileBytes());
+        assertInstanceOf(OcrConfigProvider.class, properties, "配置类本身即 SDK 的配置 SPI 实现");
     }
 
     @Test
-    void extractPropertiesDefaultsToHundredMbWhenAbsent() {
+    void maxFileBytesDefaultsToHundredMbWhenAbsent() {
         MapConfigurationPropertySource source = new MapConfigurationPropertySource(Map.of());
 
-        DocextractExtractProperties properties = new Binder(source)
-                .bind("docextract.extract", Bindable.of(DocextractExtractProperties.class))
-                .orElseGet(DocextractExtractProperties::new);
+        DocextractProperties properties = new Binder(source)
+                .bind("docextract", Bindable.of(DocextractProperties.class))
+                .orElseGet(DocextractProperties::new);
 
         assertEquals(100L * 1024 * 1024, properties.getMaxFileBytes());
     }
