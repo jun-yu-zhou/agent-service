@@ -1,26 +1,31 @@
 package io.majiaoyu.docextract;
 
-/** 默认配置实现：系统属性优先，其次环境变量；键名沿用 agent-service 既有约定。 */
+/** 默认配置实现：系统属性优先，其次环境变量；baseUrl/apiKey/model 三项均为必填（SDK 不设隐式默认）。 */
 public class SystemEnvOcrConfigProvider implements OcrConfigProvider {
 
     @Override
     public String baseUrl() {
-        // DashScope 原生 API 根（含 /api/v1，SDK 在其后拼接 /services/aigc/... 路径）。
-        return value("DASHSCOPE_OCR_BASE_URL", "https://dashscope.aliyuncs.com/api/v1");
+        // 必填：模型可能下架、端点可能变更，SDK 不设隐式默认，须显式声明。
+        return required("DASHSCOPE_OCR_BASE_URL");
     }
 
     @Override
     public String apiKey() {
-        String key = value("DASHSCOPE_API_KEY", "");
-        if (key.isBlank()) {
-            throw new IllegalStateException("缺少 DASHSCOPE_API_KEY（系统属性或环境变量），无法执行视觉 OCR");
-        }
-        return key;
+        return required("DASHSCOPE_API_KEY");
     }
 
     @Override
     public String model() {
-        return value("DASHSCOPE_OCR_MODEL", "qwen3.5-ocr");
+        return required("DASHSCOPE_OCR_MODEL");
+    }
+
+    private static String required(String key) {
+        String value = value(key, "");
+        if (value.isBlank()) {
+            throw new IllegalStateException("缺少 OCR 端点配置 " + key
+                    + "（系统属性或环境变量）；模型可能下架、端点可能变更，须显式声明");
+        }
+        return value;
     }
 
     private static String value(String key, String defaultValue) {

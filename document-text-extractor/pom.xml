@@ -13,7 +13,6 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <maven.compiler.release>17</maven.compiler.release>
-        <!-- pdfbox 3.0.7 与 ai-service 的 spring-ai-pdf-document-reader 2.0.1 传递版本精确对齐 -->
         <pdfbox.version>3.0.7</pdfbox.version>
         <poi.version>5.5.1</poi.version>
         <commonmark.version>0.30.0</commonmark.version>
@@ -85,7 +84,6 @@
                     <encoding>UTF-8</encoding>
                 </configuration>
             </plugin>
-            <!-- 本期不发私服：需要时在 distributionManagement 配好后 mvn deploy 即可 -->
         </plugins>
     </build>
 </project>

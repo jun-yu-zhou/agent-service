@@ -267,11 +267,11 @@ public class DocextractOcrConfigAdapter {
 
 **方式 1：零代码——只设环境变量或系统属性：**
 
-| 键 | 含义 | 默认 |
+| 键 | 必须性 | 含义 |
 |---|---|---|
-| `DASHSCOPE_OCR_BASE_URL` | DashScope 原生 API 根（含 `/api/v1`） | `https://dashscope.aliyuncs.com/api/v1` |
-| `DASHSCOPE_API_KEY` | 密钥（**必填**，缺失在首次 OCR 时抛 `IllegalStateException`） | — |
-| `DASHSCOPE_OCR_MODEL` | 视觉 OCR 模型 | `qwen3.5-ocr` |
+| `DASHSCOPE_OCR_BASE_URL` | **必填** | DashScope 原生 API 根（含 `/api/v1`） |
+| `DASHSCOPE_API_KEY` | **必填** | 密钥，缺失在首次 OCR 时抛 `IllegalStateException` |
+| `DASHSCOPE_OCR_MODEL` | **必填** | 视觉 OCR 模型 |
 
 ```java
 // 启动早期设置（也可用真实环境变量）
@@ -307,8 +307,8 @@ apiKey/model 走每次请求参数，换值无需重建客户端。
 
 1. `baseUrl` 必须是 **DashScope 原生 API 根且含 `/api/v1`**（SDK 在其后拼
    `/services/aigc/multimodal-generation/generation`）——裸主站或 compatible-mode 地址都会 404；
-2. 配置为 `null`/空白时：baseUrl/model 回落 SystemEnv 默认值，apiKey 缺失在首次 OCR 时抛
-   `IllegalStateException`（提示设置 DASHSCOPE_API_KEY）；
+2. `baseUrl` / `apiKey` / `model` **三项均必填，SDK 不设隐式默认**——模型可能下架、端点可能
+   变更，缺失时在启动装配或首次 OCR 时快速失败并提示缺失键名；
 3. `maxFileBytes ≤ 0` 表示关闭大小校验。
 
 ---
