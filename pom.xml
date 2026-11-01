@@ -10,7 +10,7 @@
     <description>聚合构建：docextract-sdk（可发布提取 SDK）+ app（agent-service 业务应用）</description>
 
     <modules>
-        <module>docextract-sdk</module>
+        <module>document-text-extractor</module>
         <module>app</module>
     </modules>
 </project>
