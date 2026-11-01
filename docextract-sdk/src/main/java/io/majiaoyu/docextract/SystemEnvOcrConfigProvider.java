@@ -5,7 +5,8 @@ public class SystemEnvOcrConfigProvider implements OcrConfigProvider {
 
     @Override
     public String baseUrl() {
-        return value("DASHSCOPE_OCR_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode");
+        // DashScope 原生 API 根（含 /api/v1，SDK 在其后拼接 /services/aigc/... 路径）。
+        return value("DASHSCOPE_OCR_BASE_URL", "https://dashscope.aliyuncs.com/api/v1");
     }
 
     @Override

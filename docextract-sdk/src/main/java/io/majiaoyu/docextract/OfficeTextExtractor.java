@@ -23,6 +23,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -82,12 +85,13 @@ final class OfficeTextExtractor {
 
     /** 过滤、去重后逐张 OCR 内嵌图片；返回带分隔标记的追加段落，没有可识别图时返回空串。 */
     private static String ocrImages(List<byte[]> images, String ocrPrompt) {
+        // 按图片内容 MD5 指纹去重：骑缝章、同一签章在文档多处出现时只 OCR 一次，省重复调用费。
         Map<String, byte[]> uniqueImages = new LinkedHashMap<>();
         for (byte[] bytes : images) {
             if (bytes == null || bytes.length == 0) {
                 continue;
             }
-            uniqueImages.putIfAbsent(Digests.md5Hex(bytes), bytes);
+            uniqueImages.putIfAbsent(md5Fingerprint(bytes), bytes);
         }
         StringBuilder section = new StringBuilder();
         int index = 0;
@@ -102,6 +106,15 @@ final class OfficeTextExtractor {
             }
         }
         return section.toString();
+    }
+
+    /** 图片内容指纹（MD5 hex），供去重比对；MD5 由 JCA 规范保证必存在。 */
+    private static String md5Fingerprint(byte[] bytes) {
+        try {
+            return HexFormat.of().formatHex(MessageDigest.getInstance("MD5").digest(bytes));
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("JDK 缺少 MD5 实现", exception);
+        }
     }
 
     /** 返回该图的 OCR 结果；图过小、无法解码或 OCR 失败时返回 null 表示跳过。 */

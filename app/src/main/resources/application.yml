@@ -31,10 +31,11 @@ eureka:
 # Do not put real credentials here. Use application-local.yml for local-only values.
 
 # docextract-sdk 必要条件：视觉 OCR 端点/模型/密钥。
+# base-url 为 DashScope 原生 API 根（含 /api/v1，SDK 在其后拼接服务路径，非 OpenAI 兼容端点）；
 # api-key 复用 app.dashscope.api-key（密钥在 application-local.yml 只配一处），也可用 DASHSCOPE_API_KEY 覆盖。
 docextract:
   ocr:
-    base-url: ${DASHSCOPE_OCR_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode}
+    base-url: ${DASHSCOPE_OCR_BASE_URL:https://dashscope.aliyuncs.com/api/v1}
     api-key: ${DASHSCOPE_API_KEY:${app.dashscope.api-key:}}
     model: ${DASHSCOPE_OCR_MODEL:qwen3.5-ocr}
 

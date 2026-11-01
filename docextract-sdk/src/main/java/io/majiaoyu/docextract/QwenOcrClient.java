@@ -1,25 +1,25 @@
 package io.majiaoyu.docextract;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
+import com.alibaba.dashscope.aigc.multimodalconversation.MultiModalConversation;
+import com.alibaba.dashscope.aigc.multimodalconversation.MultiModalConversationParam;
+import com.alibaba.dashscope.aigc.multimodalconversation.MultiModalConversationResult;
+import com.alibaba.dashscope.common.MultiModalMessage;
+import com.alibaba.dashscope.protocol.ConnectionOptions;
 
-import java.io.IOException;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Base64;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 /**
- * 通过 OpenAI 兼容协议调用百炼视觉 OCR 模型（默认 qwen3.5-ocr），输入单张图片，输出 Markdown 全文。
+ * 经 DashScope 官方 SDK 的多模态对话接口调用百炼视觉 OCR 模型（默认 qwen3.5-ocr）。
  *
- * <p>端点、模型与密钥经 {@link OcrConfigProvider} 注入（默认读系统属性/环境变量），
- * 语义与原 Tika tika-vlm 的 VLMOCRConfig 对齐：maxTokens 16384、超时 5 分钟。
- * 传输层显式使用 HTTP/1.1：DashScope 兼容端点对 HTTP/2 大请求体会重置流（StreamResetException）。</p>
+ * <p>配置经 {@link OcrConfigProvider} 注入（默认读系统属性/环境变量）；
+ * maxTokens 16384、读超时 5 分钟，语义与原 Tika tika-vlm 的 VLMOCRConfig 对齐。
+ * 传输层使用 HTTP/1.1 协议（与 app 内 ModelConfig 的多模态客户端同款）：
+ * DashScope 对 HTTP/2 大请求体会重置流。base-url 需为 DashScope 主站地址
+ * （原生 multimodal-generation API，非 OpenAI 兼容端点）。</p>
  */
 public final class QwenOcrClient {
 
@@ -28,13 +28,8 @@ public final class QwenOcrClient {
             请识别图片中的全部文字，并以 Markdown 返回。
             保留原有阅读顺序、标题、段落、列表和表格；不要描述图片，不要补充或猜测未显示的内容。
             """;
-    private static final long MAX_COMPLETION_TOKENS = 16_384L;
-    private static final Duration REQUEST_TIMEOUT = Duration.ofMinutes(5);
-
-    private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
-            .version(HttpClient.Version.HTTP_1_1)
-            .connectTimeout(Duration.ofSeconds(60))
-            .build();
+    private static final int MAX_COMPLETION_TOKENS = 16_384;
+    private static final String PROTOCOL_HTTP_1_1 = "http";
 
     private static volatile OcrConfigProvider configProvider = new SystemEnvOcrConfigProvider();
 
@@ -53,86 +48,68 @@ public final class QwenOcrClient {
 
     /** 同上，允许调用方按场景定制提示词（整页提取、印章识读各有默认值）。 */
     public static String recognize(byte[] imageBytes, String imageFormat, String prompt) {
-        JsonObject response = send(request(imageBytes, imageFormat, prompt));
-        return contentOf(response);
-    }
-
-    private static byte[] request(byte[] imageBytes, String imageFormat, String prompt) {
         OcrConfigProvider config = configProvider;
         String dataUri = "data:image/" + imageFormat + ";base64,"
                 + Base64.getEncoder().encodeToString(imageBytes);
-        JsonObject imageUrl = new JsonObject();
-        imageUrl.addProperty("url", dataUri);
-        JsonObject imagePart = new JsonObject();
-        imagePart.addProperty("type", "image_url");
-        imagePart.add("image_url", imageUrl);
-
-        JsonObject textPart = new JsonObject();
-        textPart.addProperty("type", "text");
-        textPart.addProperty("text", prompt);
-
-        JsonArray content = new JsonArray();
-        content.add(imagePart);
-        content.add(textPart);
-
-        JsonObject userMessage = new JsonObject();
-        userMessage.addProperty("role", "user");
-        userMessage.add("content", content);
-
-        JsonArray messages = new JsonArray();
-        messages.add(userMessage);
-
-        JsonObject body = new JsonObject();
-        body.addProperty("model", config.model());
-        body.addProperty("max_tokens", MAX_COMPLETION_TOKENS);
-        body.add("messages", messages);
-        return body.toString().getBytes(StandardCharsets.UTF_8);
-    }
-
-    private static JsonObject send(byte[] bodyBytes) {
-        OcrConfigProvider config = configProvider;
-        String baseUrl = config.baseUrl().replaceAll("/$", "");
-        // 兼容端点完整路径为 {base}/v1/chat/completions；base 以 /v1 结尾时不再重复拼接。
-        String chatCompletionsUrl = baseUrl
-                + (baseUrl.endsWith("/v1") ? "/chat/completions" : "/v1/chat/completions");
-        HttpRequest request = HttpRequest.newBuilder(URI.create(chatCompletionsUrl))
-                .timeout(REQUEST_TIMEOUT)
-                .header("Authorization", "Bearer " + config.apiKey())
-                .header("Content-Type", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofByteArray(bodyBytes))
+        MultiModalMessage userMessage = MultiModalMessage.builder()
+                .role("user")
+                .content(List.of(Map.of("image", dataUri), Map.of("text", prompt)))
                 .build();
-        HttpResponse<String> response;
+        MultiModalConversationParam param = MultiModalConversationParam.builder()
+                .apiKey(config.apiKey())
+                .model(config.model())
+                .messages(List.of(userMessage))
+                .maxLength(MAX_COMPLETION_TOKENS)
+                .build();
+        MultiModalConversation conversation = new MultiModalConversation(
+                PROTOCOL_HTTP_1_1,
+                trimTrailingSlash(config.baseUrl()),
+                ConnectionOptions.builder()
+                        .connectTimeout(Duration.ofSeconds(30))
+                        .writeTimeout(Duration.ofMinutes(5))
+                        .readTimeout(Duration.ofMinutes(5))
+                        .build());
+        MultiModalConversationResult result;
         try {
-            response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
-        } catch (IOException exception) {
-            throw new IllegalStateException("百炼 OCR 请求失败（模型 " + config.model() + "）", exception);
-        } catch (InterruptedException exception) {
-            Thread.currentThread().interrupt();
-            throw new IllegalStateException("百炼 OCR 请求被中断", exception);
+            result = conversation.call(param);
+        } catch (Exception exception) {
+            throw new IllegalStateException("百炼 OCR 调用失败（模型 " + config.model() + "）"
+                    + exception.getMessage(), exception);
         }
-        if (response.statusCode() < 200 || response.statusCode() >= 300) {
-            throw new IllegalStateException("百炼 OCR 返回 HTTP " + response.statusCode()
-                    + "：" + snippet(response.body()));
-        }
-        return JsonParser.parseString(response.body()).getAsJsonObject();
-    }
-
-    private static String contentOf(JsonObject response) {
-        JsonArray choices = response.getAsJsonArray("choices");
-        if (choices == null || choices.isEmpty()) {
-            throw new IllegalStateException("百炼 OCR 未返回 choices：" + snippet(response.toString()));
-        }
-        String content = choices.get(0).getAsJsonObject()
-                .getAsJsonObject("message")
-                .get("content").getAsString();
-        if (content == null || content.isBlank()) {
-            throw new IllegalStateException("百炼 OCR 未返回文字内容：" + snippet(response.toString()));
+        String content = contentText(result);
+        if (content.isBlank()) {
+            throw new IllegalStateException("百炼 OCR 未返回文字内容（模型 " + config.model() + "）");
         }
         return content;
     }
 
-    private static String snippet(String text) {
-        String trimmed = text == null ? "" : text.strip();
-        return trimmed.length() <= 500 ? trimmed : trimmed.substring(0, 500) + "...";
+    /** content 形态兼容：String 直接用；List 取各分段的 text 字段拼接。 */
+    private static String contentText(MultiModalConversationResult result) {
+        if (result.getOutput() == null || result.getOutput().getChoices() == null
+                || result.getOutput().getChoices().isEmpty()
+                || result.getOutput().getChoices().get(0).getMessage() == null) {
+            return "";
+        }
+        Object content = result.getOutput().getChoices().get(0).getMessage().getContent();
+        if (content == null) {
+            return "";
+        }
+        if (content instanceof String text) {
+            return text;
+        }
+        if (content instanceof List<?> parts) {
+            StringBuilder text = new StringBuilder();
+            for (Object part : parts) {
+                if (part instanceof Map<?, ?> map && map.get("text") != null) {
+                    text.append(map.get("text"));
+                }
+            }
+            return text.toString();
+        }
+        return String.valueOf(content);
+    }
+
+    private static String trimTrailingSlash(String baseUrl) {
+        return baseUrl.replaceAll("/$", "");
     }
 }

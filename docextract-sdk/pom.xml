@@ -44,6 +44,12 @@
             <artifactId>gson</artifactId>
             <version>${gson.version}</version>
         </dependency>
+        <!-- DashScope 官方 SDK：多模态对话调百炼 OCR 模型（宿主项目均已携带该依赖）。 -->
+        <dependency>
+            <groupId>com.alibaba</groupId>
+            <artifactId>dashscope-sdk-java</artifactId>
+            <version>2.23.1</version>
+        </dependency>
         <dependency>
             <groupId>org.commonmark</groupId>
             <artifactId>commonmark</artifactId>
