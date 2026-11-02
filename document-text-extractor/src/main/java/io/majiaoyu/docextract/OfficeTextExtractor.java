@@ -59,10 +59,6 @@ final class OfficeTextExtractor {
     private OfficeTextExtractor() {
     }
 
-    static String extract(Path file) throws IOException {
-        return extract(file, QwenOcrClient.DEFAULT_OCR_PROMPT);
-    }
-
     static String extract(Path file, String ocrPrompt) throws IOException {
         try (InputStream input = new BufferedInputStream(Files.newInputStream(file))) {
             boolean docx = file.getFileName().toString().toLowerCase(Locale.ROOT).endsWith(".docx");
