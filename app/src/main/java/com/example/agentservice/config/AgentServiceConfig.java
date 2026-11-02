@@ -9,13 +9,13 @@ import java.util.Properties;
 
 /**
  * Loads application settings from application.yml, with optional local overrides in
- * application-local.yml. API credentials are read from JVM properties, environment
+ * application-dev.yml. API credentials are read from JVM properties, environment
  * variables, or the YAML files, in that order.
  */
 public final class AgentServiceConfig {
 
     private static final Properties BASE_PROPERTIES = loadProperties("application.yml");
-    private static final Properties LOCAL_PROPERTIES = loadProperties("application-local.yml");
+    private static final Properties LOCAL_PROPERTIES = loadProperties("application-dev.yml");
 
     private AgentServiceConfig() {
     }

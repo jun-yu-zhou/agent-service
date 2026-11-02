@@ -36,7 +36,7 @@ build/
 .vscode/
 
 # Local credentials and test URLs. Never commit this file.
-application-local.yml
+application-dev.yml
 *.stackdump
 .env
 

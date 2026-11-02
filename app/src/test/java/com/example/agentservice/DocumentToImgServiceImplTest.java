@@ -35,7 +35,7 @@ import static org.mockito.Mockito.when;
 
 /**
  * {@link DocumentToImgServiceImpl} 的离线单元测试：override 客户端工厂注入 mock，
- * 不访问真实 OSS/IMM。system property 在类级设置，覆盖 application-local.yml 的真实值。
+ * 不访问真实 OSS/IMM。system property 在类级设置，覆盖 application-dev.yml 的真实值。
  */
 class DocumentToImgServiceImplTest {
 

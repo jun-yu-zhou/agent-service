@@ -47,7 +47,7 @@ public class DocextractProperties implements OcrConfigProvider {
         DocumentTextExtractor.setMaxFileBytes(maxFileBytes);
     }
 
-    /** 无 Spring 容器（如纯 JUnit）时的装配入口：读 application.yml 与 application-local.yml 的既有键。 */
+    /** 无 Spring 容器（如纯 JUnit）时的装配入口：读 application.yml 与 application-dev.yml 的既有键。 */
     public static void installNow() {
         DocextractProperties properties = new DocextractProperties();
         properties.setBaseUrl(AgentServiceConfig.docextractOcrBaseUrl());
