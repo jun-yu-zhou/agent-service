@@ -198,22 +198,27 @@ public class ModelConfig {
                 .build();
     }
 
+    /** 百炼原生 DashScope 模型执行控标审查：关闭原生结构化输出，走 generate_response 收口。 */
     @Bean
     @Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)
-    public OpenAIChatModel qwen37PlusBidControlReportModel() {
-        return OpenAIChatModel.builder()
+    public DashScopeChatModel qwen37PlusBidControlReportModel() {
+        return DashScopeChatModel.builder()
                 .apiKey(AgentServiceConfig.dashScopeApiKey())
                 .modelName(QWEN37_PLUS_MODEL_NAME)
-                .baseUrl(DASH_SCOPE_COMPATIBLE_BASE_URL)
-                .endpointPath("/chat/completions")
+                // qwen3.7-plus 在 DashScope 原生 text-generation 路径上返回 url error
+                //（TEXT 端点实测不可用），官方可用的原生路径是多模态会话端点，
+                // 与 qwen37PlusStreamingReviewModel 一致。
+                .endpointType(EndpointType.MULTIMODAL)
                 .httpTransport(newHttpTransport())
                 .stream(true)
-                // 百炼工具场景使用 generate_response 收口，避免原生路径返回自由文本。
+                // 百炼工具场景使用 generate_response 收口，避免原生路径返回自由文本；
+                // 这两个开关必须显式置 false，AGENTIC 检索工具才能与结构化输出共存
+                // （详见 BidControlReview 中流式与结构化共用的 doStructuredCall 说明）。
                 .nativeStructuredOutput(false)
                 .nativeStructuredOutputWithTools(false)
-                .generateOptions(GenerateOptions.builder()
+                .enableThinking(false)
+                .defaultOptions(GenerateOptions.builder()
                         .temperature(0.1D)
-                        .additionalBodyParam("enable_thinking", false)
                         .executionConfig(longExecutionConfig())
                         .build())
                 .build();
