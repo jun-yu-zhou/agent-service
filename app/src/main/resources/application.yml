@@ -7,6 +7,10 @@ logging:
     io.agentscope: INFO
     org.docx4j: ERROR
     org.apache.fop: ERROR
+  charset:
+    console: UTF-8
+  pattern:
+    console: "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{48} - %msg%n"
 spring:
   # 敏感信息（api-key/数据库连接串/OSS 凭证等）不要写在本文件，
   # 统一放 application-dev.yml（已加入 .gitignore）
