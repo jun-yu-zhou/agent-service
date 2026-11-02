@@ -14,8 +14,7 @@ import org.springframework.context.annotation.Configuration;
  * 流程的库 id，另一个流程跟着错"的隐性耦合。所以 id 以常量形式写在
  * {@link BidControlReview} 里、bean 注册在本配置类中，职责边界一目了然。
  *
- * <p>检索词与检索行为在 {@code BidControlReview#retrieveLegalContext}（手动
- * {@code retrieve}，不挂 {@code RAGMode}，原因见其注释）。
+ * <p>检索由审查 Agent 的 RAGMode.AGENTIC 按疑点自主发起。
  *
  * <p>关于弃用告警：{@code BailianKnowledge} 自 2.0.0 起 {@code @Deprecated(forRemoval)}，
  * 但 2.0.4 官方文档仍推荐该 API 且无替代实现发布，这里压制弃用警告，

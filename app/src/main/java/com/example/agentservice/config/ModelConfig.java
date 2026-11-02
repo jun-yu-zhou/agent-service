@@ -208,13 +208,12 @@ public class ModelConfig {
                 .endpointPath("/chat/completions")
                 .httpTransport(newHttpTransport())
                 .stream(true)
+                // 百炼工具场景使用 generate_response 收口，避免原生路径返回自由文本。
+                .nativeStructuredOutput(false)
+                .nativeStructuredOutputWithTools(false)
                 .generateOptions(GenerateOptions.builder()
-                        .maxTokens(4096)
                         .temperature(0.1D)
-                        .additionalBodyParam("enable_thinking", true)
-                        .additionalBodyParam("enable_search", true)
-                        .additionalBodyParam("search_options",
-                                Map.of("forced_search", true, "search_strategy", "max"))
+                        .additionalBodyParam("enable_thinking", false)
                         .executionConfig(longExecutionConfig())
                         .build())
                 .build();
