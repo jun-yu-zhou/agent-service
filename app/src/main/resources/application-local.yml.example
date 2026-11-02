@@ -20,3 +20,9 @@ app:
   procurement-document:
     generation-model: "qwen3.7-plus"
     max-concurrency: 4
+
+docextract:
+  base-url: ${DASHSCOPE_OCR_BASE_URL:https://dashscope.aliyuncs.com/api/v1}
+  api-key: ${DASHSCOPE_API_KEY:${app.dashscope.api-key:}}
+  model: ${DASHSCOPE_OCR_MODEL:qwen3.5-ocr}
+  max-file-bytes: ${DOCEXTRACT_MAX_FILE_BYTES:104857600}

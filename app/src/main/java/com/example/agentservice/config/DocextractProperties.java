@@ -41,7 +41,7 @@ public class DocextractProperties implements OcrConfigProvider {
         }
         if (!missing.isEmpty()) {
             throw new IllegalStateException("docextract-sdk 缺少必要配置 " + missing
-                    + "（模型可能下架、端点可能变更，须在 yml 显式声明）");
+                    + "，请通过应用配置提供 OCR 端点、密钥和模型");
         }
         QwenOcrClient.setConfigProvider(this);
         DocumentTextExtractor.setMaxFileBytes(maxFileBytes);

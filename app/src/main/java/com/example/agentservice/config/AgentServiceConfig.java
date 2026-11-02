@@ -23,7 +23,7 @@ public final class AgentServiceConfig {
     public static String dashScopeApiKey() {
         String result = value("app.dashscope.api-key", "DASHSCOPE_API_KEY", "");
         if (result.isBlank()) {
-            throw new IllegalStateException("缺少配置 app.dashscope.api-key，请在 application-local.yml 或环境变量 DASHSCOPE_API_KEY 中设置");
+            throw new IllegalStateException("未配置百炼 API Key：请设置 app.dashscope.api-key 或 DASHSCOPE_API_KEY");
         }
         return result;
     }
@@ -84,6 +84,10 @@ public final class AgentServiceConfig {
         return required("app.bailian.knowledge-base-id", "ALIYUN_BAILIAN_KNOWLEDGE_BASE_ID");
     }
 
+    public static String bidControlDocumentUrl() {
+        return required("bid-control-review.document-url", "BID_CONTROL_DOCUMENT_URL");
+    }
+
     public static String ruleFileUrl() {
         return required("app.documents.rule-file-url", "RULE_FILE_URL");
     }
@@ -96,7 +100,7 @@ public final class AgentServiceConfig {
         String result = value(propertyName, environmentName, "");
         if (result.isBlank()) {
             throw new IllegalStateException("缺少配置 " + propertyName
-                    + "，请在 application-local.yml 或环境变量 " + environmentName + " 中设置");
+                    + "，也可通过环境变量或 JVM 系统属性 " + environmentName + " 设置");
         }
         return result;
     }
